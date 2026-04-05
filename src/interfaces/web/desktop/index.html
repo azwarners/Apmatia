@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Apmatia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .card {
+      background: #1e293b;
+      padding: 2rem;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      width: 80%;
+      max-width: 800px;
+    }
+
+    input, button {
+      padding: 0.5rem;
+      margin-top: 1rem;
+      border-radius: 6px;
+      border: none;
+    }
+
+    input {
+      width: 80%;
+    }
+
+    button {
+      background: #3b82f6;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #2563eb;
+    }
+
+    #result {
+      margin-top: 1.5rem;
+      text-align: left;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="card">
+  <h1>Apmatia</h1>
+
+  <input id="prompt" placeholder="Enter prompt" />
+  <br>
+
+  <button onclick="callApi()">Send Prompt</button>
+
+  <div id="result"></div>
+</div>
+
+<script>
+async function callApi() {
+  const prompt = document.getElementById("prompt").value || "Hello";
+  const res = await fetch(`/api/prompt?prompt=${encodeURIComponent(prompt)}`);
+  const data = await res.json();
+  document.getElementById("result").innerText = data.message;
+}
+</script>
+
+</body>
+</html>

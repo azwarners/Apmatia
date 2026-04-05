@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: ysparr
+Version: 0.1.0
+Summary: Ysparr Sends Prompts And Receives Responses
+Author: Nick
+License-File: LICENSE
+Requires-Dist: requests
+Dynamic: license-file

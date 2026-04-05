@@ -1,0 +1,3 @@
+fastapi
+uvicorn
+-e ./src/libraries/ysparr

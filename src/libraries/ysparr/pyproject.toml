@@ -1,0 +1,17 @@
+[project]
+name = "ysparr"
+version = "0.1.0"
+description = "Ysparr Sends Prompts And Receives Responses"
+authors = [{ name = "Nick" }]
+dependencies = [
+    "requests"
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests"
+]

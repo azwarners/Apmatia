@@ -1,51 +1,90 @@
-# Ampcawmutt
+# Apmatia
 
-**Ampcawmutt is My Python Core API With Multiple UIs and Tests Template**
+**Apmatia Packs Minimal AI Tools Into an Application**
 
-A reusable, API-first template for building self-hosted Python applications with multiple interfaces (CLI, web, mobile) that all share a single execution path.
+Apmatia is an API-first, self-hosted application framework for building modular AI-powered systems using lightweight, composable libraries.
 
 ---
 
 ## 🧠 What This Is
 
-Ampcawmutt is not just a starter project—it is a **structured application system**.
+Apmatia is a structured system for integrating AI capabilities into real applications without bloated frameworks.
 
 It enforces a clean architecture where:
 
-- **Libraries** contain all business logic
-- **Core** coordinates libraries (no logic of its own)
-- **API (internal)** is the single programmatic interface
-- **API (HTTP)** exposes the system over the network
-- **Interfaces (CLI, web, etc.)** all consume the same API
+- **Libraries** contain all functionality (e.g., ysparr)
 
-This guarantees consistency across every interface and prevents architectural drift.
+- **Core** orchestrates libraries
+
+- **API (internal)** is the single programmatic interface
+
+- **API (HTTP)** exposes the system
+
+- **Interfaces (CLI, web, etc.)** consume the same API
 
 ---
 
 ## 🔁 Execution Flow
 
-Every request follows the same path:
+All requests follow a single path:
 
 ```
-Library → Core → API (internal) → API (HTTP or CLI)
+Interface → API (internal) → Core → Library → External Service (LLM)
 ```
 
-This means:
+This guarantees:
 
-- CLI and HTTP always behave identically
-- Logic is never duplicated
-- New interfaces can be added without rewriting the system
+- consistent behavior across interfaces
+
+- no duplicated logic
+
+- clean extensibility
 
 ---
 
 ## 🚀 Features
 
 - FastAPI-based HTTP server
-- CLI interface using the same internal API
-- Dockerized runtime
-- Virtual environment for development
-- Pytest-based test suite (unit + integration)
-- Example "hello world" library wired through the full stack
+
+- CLI interface using the same execution path
+
+- Docker-first deployment
+
+- Modular library integration (ysparr)
+
+- Local LLM support via KoboldCpp
+
+- Environment-based configuration
+
+- Pytest test suite (unit + integration)
+
+---
+
+## 🧠 Current Integration
+
+Apmatia currently integrates:
+
+- **ysparr** → minimal execution library
+
+- **KoboldCpp** → local LLM backend
+
+---
+
+## ⚙️ Configuration
+
+Create a `.env` file:
+
+```
+KOBOLDCPP_URL=http://localhost:5001
+```
+
+> This file is ignored by Git and should contain your local configuration.
+
+You can copy the example:
+
+```
+cp .env.example .env
+```
 
 ---
 
@@ -58,7 +97,7 @@ This means:
 Then open:
 
 ```
-http://localhost:8000/api/hello
+http://localhost:8000
 ```
 
 ---
@@ -66,15 +105,15 @@ http://localhost:8000/api/hello
 ## 💻 CLI Usage
 
 ```
-python -m src.interfaces.cli.mainpython -m src.interfaces.cli.main Nick
+python -m src.interfaces.cli.main "Say hello"
 ```
 
 ---
 
-## 🧪 Run Tests
+## 🧪 Run Tests (Docker)
 
 ```
-source .venv/bin/activate./test.sh
+docker compose run --rm app pytest
 ```
 
 ---
@@ -82,26 +121,50 @@ source .venv/bin/activate./test.sh
 ## 🏗️ Project Structure
 
 ```
-libraries/   → business logiccore/        → orchestrationapi/internal → canonical interfaceapi/http     → network layerinterfaces/  → CLI + web clients
+src/
+├── libraries/   → business logic (ysparr)
+├── core/        → orchestration
+├── api/internal → canonical interface
+├── api/http     → HTTP layer
+├── interfaces/  → CLI + web
 ```
 
 ---
 
-## 🏭 Purpose
+## 🏭 Philosophy
 
-This template is designed to be **cloned and reused**.
+- One execution path
 
-Each new project should:
+- No duplicated logic
 
-1. Replace the example library (`hello_world`)
-2. Implement a real feature
-3. Keep the architecture intact
+- Libraries are independent
+
+- Interfaces are clients
+
+- Keep everything minimal
 
 ---
 
-## 💬 Philosophy
+## 🚧 Roadmap
 
-- One execution path
-- No duplicated logic
-- Interfaces are clients, not owners
-- Architecture is enforced by structure
+- Config library
+
+- Model manager
+
+- Multi-model routing
+
+- Persistent storage / CRUD library
+
+- Multi-user support
+
+---
+
+## 💬 Summary
+
+Apmatia is a lightweight foundation for building AI-powered systems that:
+
+- stay modular
+
+- avoid framework lock-in
+
+- scale cleanly

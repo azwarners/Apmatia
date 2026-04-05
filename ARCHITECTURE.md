@@ -1,8 +1,6 @@
 # Architecture
 
-Ampcawmutt is designed around a **strict, API-first layered architecture**.
-
-The goal is to enforce a single execution path and prevent logic duplication across interfaces.
+Apmatia is built around a **strict, API-first layered architecture** designed to enforce a single execution path and prevent logic duplication.
 
 ---
 
@@ -10,11 +8,35 @@ The goal is to enforce a single execution path and prevent logic duplication acr
 
 All functionality flows in one direction:
 
-```text
+```
 Libraries → Core → API (internal) → Interfaces
 ```
 
 No layer is allowed to bypass another.
+
+---
+
+## 🔁 Execution Flow
+
+All interactions follow the same path:
+
+```
+Interface → API (internal) → Core → Library → External Service (LLM)
+```
+
+For HTTP requests:
+
+```
+HTTP → API (http) → API (internal) → Core → Library
+```
+
+This ensures:
+
+- consistent behavior across all interfaces
+
+- no duplicated logic
+
+- easy extensibility
 
 ---
 
@@ -32,6 +54,8 @@ They:
 
 - contain domain logic
 
+- integrate with external systems (e.g., KoboldCpp via ysparr)
+
 - are completely independent of the rest of the system
 
 They do NOT:
@@ -42,7 +66,7 @@ They do NOT:
 
 - know about CLI or UI
 
-> Libraries should be reusable outside of this application.
+> Libraries should be reusable outside of Apmatia.
 
 ---
 
@@ -56,7 +80,7 @@ It:
 
 - calls one or more libraries
 
-- combines results
+- composes and transforms results
 
 - defines application-level behavior
 
@@ -68,7 +92,7 @@ It does NOT:
 
 - handle HTTP or CLI concerns
 
-> Core is the glue, not the brain.
+> Core is the orchestrator, not the source of logic.
 
 ---
 
@@ -78,7 +102,7 @@ It does NOT:
 
 This is the **canonical interface** of the system.
 
-Everything that wants to interact with the application must go through this layer.
+Everything that interacts with the application must go through this layer.
 
 It:
 
@@ -142,39 +166,17 @@ Examples:
 
 - mobile UI
 
-- future game interfaces
+- future game or automation interfaces
 
 They do NOT:
 
 - call core directly
 
+- call libraries directly
+
 - implement business logic
 
 > Interfaces are consumers, not owners.
-
----
-
-## 🔁 Execution Flow
-
-All interactions follow the same path:
-
-```text
-Interface → API (internal) → Core → Library
-```
-
-For HTTP:
-
-```text
-HTTP → API (http) → API (internal) → Core → Library
-```
-
-This ensures:
-
-- consistent behavior across all interfaces
-
-- no duplicated logic
-
-- easy extensibility
 
 ---
 
@@ -190,17 +192,37 @@ This ensures:
 
 ---
 
-## 🎯 Design Goals
+## ⚙️ Configuration Flow
+
+Configuration is injected from the environment.
+
+Example:
+
+```
+.env → docker-compose → container environment → core → libraries
+```
+
+This ensures:
+
+- no secrets in source code
+
+- environment-specific configuration
+
+- portability across systems
+
+---
+
+## 🧠 Design Goals
 
 - **Single execution path**
 
 - **Separation of concerns**
 
-- **Reusability of libraries**
+- **Library reusability**
 
-- **Consistency across interfaces**
+- **Interface consistency**
 
-- **Ease of extension**
+- **Minimalism over abstraction**
 
 ---
 
@@ -220,9 +242,25 @@ No existing layers should be modified beyond what is necessary.
 
 ---
 
+## 🚧 Future Evolution
+
+Planned architectural additions:
+
+- Config library (structured config access)
+
+- Model manager (LLM routing and selection)
+
+- CRUD/persistence layer
+
+- Multi-user support
+
+These will extend the system without breaking the existing layering.
+
+---
+
 ## 💬 Summary
 
-Ampcawmutt enforces a clean architecture where:
+Apmatia enforces a clean architecture where:
 
 - logic lives in one place
 
@@ -231,5 +269,3 @@ Ampcawmutt enforces a clean architecture where:
 - interfaces remain thin
 
 - the system scales without becoming tangled
-
-This structure is designed to be copied and reused across multiple applications.

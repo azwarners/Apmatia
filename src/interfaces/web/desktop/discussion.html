@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Apmatia Discussion</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="/theme-runtime.js"></script>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body class="page-discussion">
+
+<div class="card">
+  <div class="header">
+    <h1>Discussion</h1>
+    <div class="header-links">
+      <div class="meta">Discussion: <span id="discussion-id">-</span></div>
+      <a class="nav-link" href="/settings">Settings</a>
+      <a class="nav-link" href="/">Main Menu</a>
+    </div>
+  </div>
+
+  <div id="conversation"></div>
+  <div class="row">
+    <input id="prompt" placeholder="Enter prompt" />
+    <button id="send-button" onclick="sendPrompt()">Send Prompt</button>
+    <button id="reset-button" onclick="resetDiscussion()">Reset</button>
+  </div>
+  <div class="status" id="status">Connecting...</div>
+</div>
+
+<script src="/discussion.js"></script>
+
+</body>
+</html>

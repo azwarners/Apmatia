@@ -5,5 +5,7 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
+      - ${HOME}/.apmatia:/root/.apmatia
+      - ${HOME}/.config/apmatia:/root/.config/apmatia
     environment:
-      - KOBOLDCPP_URL=${KOBOLDCPP_URL}
+      - APMATIA_HOME=/root/.apmatia

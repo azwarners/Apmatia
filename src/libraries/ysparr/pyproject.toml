@@ -4,7 +4,8 @@ version = "0.1.0"
 description = "Ysparr Sends Prompts And Receives Responses"
 authors = [{ name = "Nick" }]
 dependencies = [
-    "requests"
+    "requests",
+    "jinja2"
 ]
 
 [build-system]

@@ -7,7 +7,12 @@ from src.api.internal.prompt_LLM import prompt_llm
 def test_internal_prompt(mock_core_prompt):
     mock_core_prompt.return_value = "mocked response"
 
-    result = prompt_llm("Nick test")
+    result = prompt_llm("Nick test", output_dir="/tmp/apmatia_logs")
 
     assert result == "mocked response"
-    mock_core_prompt.assert_called_once_with("Nick test")
+    mock_core_prompt.assert_called_once_with(
+        "Nick test",
+        output_dir="/tmp/apmatia_logs",
+        prompt_id=None,
+        append_existing=False,
+    )

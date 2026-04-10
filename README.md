@@ -54,7 +54,9 @@ This guarantees:
 
 - Local LLM support via KoboldCpp
 
-- Environment-based configuration
+- Config file-based configuration
+
+- Web UI with modular Web Components for settings categories
 
 - Pytest test suite (unit + integration)
 
@@ -72,19 +74,49 @@ Apmatia currently integrates:
 
 ## ⚙️ Configuration
 
-Create a `.env` file:
+Apmatia stores runtime config in:
 
 ```
-KOBOLDCPP_URL=http://localhost:5001
+~/.config/apmatia/config.json
 ```
 
-> This file is ignored by Git and should contain your local configuration.
+This is now the primary configuration source.
 
-You can copy the example:
+`.env` is optional and only used as a fallback/bootstrap source. If set, values are saved into the config store.
 
+Common config keys in `config.json`:
+
+```json
+{
+  "llm": {
+    "backend": "openai_compatible",
+    "max_tokens": 8192,
+    "openai_compatible": {
+      "base_url": "http://localhost:5001",
+      "api_key": null,
+      "model_name": null
+    },
+    "koboldcpp": {
+      "base_url": "http://localhost:5001"
+    }
+  },
+  "discussion": {
+    "system_prompt": ""
+  },
+  "ui": {
+    "theme": "dark",
+    "font_family": "system-ui",
+    "font_size": 16
+  }
+}
 ```
-cp .env.example .env
-```
+
+You can edit these values in the web app at `/settings`.
+Settings are grouped by collapsible categories and backed by reusable Web Components:
+
+- `AI Settings`
+- `Discussion Settings`
+- `Theme Settings`
 
 ---
 
@@ -147,13 +179,9 @@ src/
 
 ## 🚧 Roadmap
 
-- Config library
-
 - Model manager
 
 - Multi-model routing
-
-- Persistent storage / CRUD library
 
 - Multi-user support
 

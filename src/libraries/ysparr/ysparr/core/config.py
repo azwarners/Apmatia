@@ -1,43 +1,22 @@
-import json
-from pathlib import Path
 from typing import Any, Dict
 
-
-CONFIG_DIR = Path.home() / ".ysparr"
-CONFIG_FILE = CONFIG_DIR / "config.json"
+from src.core.app_config import (
+    get_config_value as _get_app_config_value,
+    load_app_config,
+    save_app_config,
+)
 
 
 def load_config() -> Dict[str, Any]:
-    """
-    Load Ysparr configuration from ~/.ysparr/config.json
+    """Load Ysparr configuration from the shared Apmatia config store."""
+    return load_app_config()
 
-    Returns empty dict if file does not exist.
-    """
 
-    if not CONFIG_FILE.exists():
-        return {}
-
-    try:
-        with CONFIG_FILE.open("r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+def save_config(config: Dict[str, Any]) -> None:
+    """Persist Ysparr config to the shared Apmatia config store."""
+    save_app_config(config)
 
 
 def get_config_value(*keys, default=None):
-    """
-    Retrieve nested config value.
-
-    Example:
-        get_config_value("text2text", "koboldcpp", "base_url")
-    """
-
-    config = load_config()
-
-    current = config
-    for key in keys:
-        if not isinstance(current, dict):
-            return default
-        current = current.get(key)
-
-    return current if current is not None else default
+    """Retrieve nested config value from the shared Apmatia config store."""
+    return _get_app_config_value(*keys, default=default)

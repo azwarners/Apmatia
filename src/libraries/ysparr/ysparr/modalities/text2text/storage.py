@@ -54,7 +54,10 @@ class TextFileStorage:
             self.output_dir.mkdir(parents=True, exist_ok=True)
 
             output_path = self.get_output_path(request.prompt_id)
-            output_path.write_text("", encoding="utf-8")
+            if request.metadata.get("append_existing", False):
+                output_path.touch(exist_ok=True)
+            else:
+                output_path.write_text("", encoding="utf-8")
 
             return str(output_path)
 

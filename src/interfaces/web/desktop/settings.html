@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Apmatia Settings</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="/theme-runtime.js"></script>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body class="page-settings">
+
+<div class="card">
+  <div class="header">
+    <div>
+      <h1>Settings</h1>
+      <p class="subtitle">Apmatia Configuration</p>
+    </div>
+    <a class="nav-link" href="/">Main Menu</a>
+  </div>
+
+  <form class="settings-form">
+    <details class="settings-group">
+      <summary>AI Settings</summary>
+      <ai-settings id="ai-settings"></ai-settings>
+    </details>
+
+    <details class="settings-group">
+      <summary>Discussion Settings</summary>
+      <discussion-settings id="discussion-settings"></discussion-settings>
+    </details>
+
+    <details class="settings-group">
+      <summary>Theme Settings</summary>
+      <theme-settings id="theme-settings"></theme-settings>
+    </details>
+
+    <div class="actions">
+      <button id="save-button" type="button" onclick="saveSettings()" disabled>Save Settings</button>
+    </div>
+  </form>
+
+  <div class="status" id="status">Loading settings...</div>
+</div>
+
+<script src="/ai-settings.js"></script>
+<script src="/discussion-settings.js"></script>
+<script src="/theme-settings.js"></script>
+<script src="/settings.js"></script>
+
+</body>
+</html>

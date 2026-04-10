@@ -162,7 +162,7 @@ Examples:
 
 - CLI
 
-- web UI
+- web UI (`index`, `discussion`, `settings`)
 
 - mobile UI
 
@@ -177,6 +177,13 @@ They do NOT:
 - implement business logic
 
 > Interfaces are consumers, not owners.
+
+For the web interface, presentation is split into external assets under `src/interfaces/web/desktop/`:
+
+- HTML entry pages (`index.html`, `discussion.html`, `settings.html`)
+- shared stylesheet (`styles.css`)
+- page scripts (`discussion.js`, `settings.js`, `theme-runtime.js`)
+- reusable Web Components (`ai-settings.js`, `discussion-settings.js`, `theme-settings.js`)
 
 ---
 
@@ -194,21 +201,25 @@ They do NOT:
 
 ## ⚙️ Configuration Flow
 
-Configuration is injected from the environment.
+Configuration is loaded from a persistent config file first, with environment variables as fallback/bootstrap.
 
 Example:
 
 ```
-.env → docker-compose → container environment → core → libraries
+config.json (~/.config/apmatia/config.json) → core/api → libraries/interfaces
+               ↑
+         optional env bootstrap (.env/container env)
 ```
 
 This ensures:
 
 - no secrets in source code
 
-- environment-specific configuration
+- persistent runtime settings across CLI + HTTP + web UI
 
 - portability across systems
+
+The web `/settings` screen persists both model/discussion options and UI preferences (theme, font family, font size) through `/api/settings`.
 
 ---
 
@@ -246,11 +257,7 @@ No existing layers should be modified beyond what is necessary.
 
 Planned architectural additions:
 
-- Config library (structured config access)
-
 - Model manager (LLM routing and selection)
-
-- CRUD/persistence layer
 
 - Multi-user support
 

@@ -72,6 +72,16 @@ Each backend:
 
 - yields text output
 
+Available backends in `ysparr.modalities.text2text.backends`:
+
+- `KoboldCppBackend`
+- `OpenAICompatibleBackend`
+
+If your app chooses backends through environment variables, one simple pattern is:
+
+- `YSPARR_TEXT2TEXT_BACKEND=openai_compatible` (default)
+- `YSPARR_TEXT2TEXT_BACKEND=koboldcpp`
+
 ---
 
 ## 🧠 Summary

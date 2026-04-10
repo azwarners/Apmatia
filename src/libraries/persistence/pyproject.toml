@@ -1,0 +1,13 @@
+[project]
+name = "persistence"
+version = "0.1.0"
+description = "Shared persistence utilities for JSON and YAML config files."
+authors = [{ name = "Nick" }]
+dependencies = ["PyYAML>=6.0"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

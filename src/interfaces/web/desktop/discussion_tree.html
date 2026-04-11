@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Apmatia Settings</title>
+  <title>Apmatia Discussion Tree</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="/theme-runtime.js"></script>
   <link rel="stylesheet" href="/styles.css">
 </head>
 
-<body class="page-settings">
+<body class="page-discussion-tree">
 <div class="mobile-titlebar">
   <div class="mobile-titlebar-inner">
     <div class="mobile-titlebar-left">
@@ -15,7 +15,7 @@
         <span class="icon-hamburger" aria-hidden="true"></span>
       </button>
     </div>
-    <span class="mobile-titlebar-title">Settings</span>
+    <span class="mobile-titlebar-title">Discussion Tree</span>
     <div class="mobile-titlebar-right">
       <a class="mobile-icon-button" href="/settings" aria-label="Settings">
         <svg class="mobile-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -37,6 +37,8 @@
   <ul class="mobile-drawer-links">
     <li><a href="/">Main Menu</a></li>
     <li><a href="/discussion">Discussion</a></li>
+    <li><a href="/discussion_tree">Discussion Tree</a></li>
+    <li><button type="button" id="drawer-create-folder-button">Create Folder</button></li>
     <li><a href="/settings">Settings</a></li>
     <li><button type="button" class="logout-action">Logout</button></li>
     <li><button type="button" data-mobile-menu-close>Close</button></li>
@@ -46,44 +48,19 @@
 
 <div class="card">
   <div class="header">
-    <div>
-      <h1>Settings</h1>
-      <p class="subtitle">Apmatia Configuration</p>
-    </div>
+    <h1>Discussion Tree</h1>
     <div class="header-links">
-      <a class="nav-link" href="/">Main Menu</a>
+      <a class="nav-link" href="/discussion">Back to Discussion</a>
+      <button id="create-folder-button" type="button">Create Folder</button>
       <button type="button" class="nav-link-button logout-action">Logout</button>
     </div>
   </div>
 
-  <form class="settings-form">
-    <details class="settings-group">
-      <summary>AI Settings</summary>
-      <ai-settings id="ai-settings"></ai-settings>
-    </details>
-
-    <details class="settings-group">
-      <summary>Discussion Settings</summary>
-      <discussion-settings id="discussion-settings"></discussion-settings>
-    </details>
-
-    <details class="settings-group">
-      <summary>Theme Settings</summary>
-      <theme-settings id="theme-settings"></theme-settings>
-    </details>
-
-    <div class="actions">
-      <button id="save-button" type="button" onclick="saveSettings()" disabled>Save Settings</button>
-    </div>
-  </form>
-
-  <div class="status" id="status">Loading settings...</div>
+  <div id="discussion-tree" class="tree-list"></div>
+  <div class="status" id="tree-status">Loading discussions...</div>
 </div>
 
-<script src="/ai-settings.js"></script>
-<script src="/discussion-settings.js"></script>
-<script src="/theme-settings.js"></script>
-<script src="/settings.js"></script>
+<script src="/discussion-tree.js"></script>
 <script src="/auth-ui.js"></script>
 <script src="/mobile-menu.js"></script>
 

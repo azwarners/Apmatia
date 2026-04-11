@@ -55,6 +55,8 @@ def _default_config() -> dict[str, Any]:
             "theme": "dark",
             "font_family": "system-ui",
             "font_size": 16,
+            "title_bar_height": 56,
+            "title_bar_font_size": 20,
         },
     }
 

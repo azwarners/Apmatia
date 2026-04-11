@@ -1,17 +1,33 @@
 import json
 import os
+import sys
 import uuid
 from pathlib import Path
 from typing import Any
 
 from src.core.app_config import get_config_value
-from ysparr.core.types import PromptRequest
-from ysparr.modalities.text2text.backends.koboldcpp_backend import KoboldCppBackend
-from ysparr.modalities.text2text.backends.openai_compatible_backend import (
-    OpenAICompatibleBackend,
-)
-from ysparr.modalities.text2text.executor import execute
-from ysparr.modalities.text2text.storage import TextFileStorage
+
+try:
+    from ysparr.core.types import PromptRequest
+    from ysparr.modalities.text2text.backends.koboldcpp_backend import KoboldCppBackend
+    from ysparr.modalities.text2text.backends.openai_compatible_backend import (
+        OpenAICompatibleBackend,
+    )
+    from ysparr.modalities.text2text.executor import execute
+    from ysparr.modalities.text2text.storage import TextFileStorage
+except ModuleNotFoundError:
+    repo_root = Path(__file__).resolve().parents[2]
+    ysparr_src = repo_root / "src" / "libraries" / "ysparr"
+    if str(ysparr_src) not in sys.path:
+        sys.path.append(str(ysparr_src))
+
+    from ysparr.core.types import PromptRequest
+    from ysparr.modalities.text2text.backends.koboldcpp_backend import KoboldCppBackend
+    from ysparr.modalities.text2text.backends.openai_compatible_backend import (
+        OpenAICompatibleBackend,
+    )
+    from ysparr.modalities.text2text.executor import execute
+    from ysparr.modalities.text2text.storage import TextFileStorage
 
 
 def prompt_llm(

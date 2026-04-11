@@ -1,5 +1,8 @@
 from unittest.mock import patch
 
+import pytest
+
+pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 from src.api.http.app import app
 
@@ -28,6 +31,8 @@ def test_api_get_settings_includes_ui_preferences(mock_get_config_value):
             ("ui", "theme"): "light",
             ("ui", "font_family"): "serif",
             ("ui", "font_size"): 18,
+            ("ui", "title_bar_height"): 60,
+            ("ui", "title_bar_font_size"): 22,
         }
         return mapping.get(keys, default)
 
@@ -44,6 +49,8 @@ def test_api_get_settings_includes_ui_preferences(mock_get_config_value):
         "theme": "light",
         "font_family": "serif",
         "font_size": 18,
+        "title_bar_height": 60,
+        "title_bar_font_size": 22,
     }
 
 
@@ -61,6 +68,8 @@ def test_api_save_settings_persists_theme_and_llm_fields(
         "theme": "light",
         "font_family": "monospace",
         "font_size": 20,
+        "title_bar_height": 58,
+        "title_bar_font_size": 21,
     }
 
     response = client.post("/api/settings", json=payload)
@@ -74,6 +83,8 @@ def test_api_save_settings_persists_theme_and_llm_fields(
     mock_set_config_value.assert_any_call("ui", "theme", value="light")
     mock_set_config_value.assert_any_call("ui", "font_family", value="monospace")
     mock_set_config_value.assert_any_call("ui", "font_size", value=20)
+    mock_set_config_value.assert_any_call("ui", "title_bar_height", value=58)
+    mock_set_config_value.assert_any_call("ui", "title_bar_font_size", value=21)
     mock_discussion_state.set_system_prompt.assert_called_once_with("Always help.")
 
 
@@ -85,6 +96,8 @@ def test_api_save_settings_rejects_invalid_font_size():
         "theme": "dark",
         "font_family": "system-ui",
         "font_size": 99,
+        "title_bar_height": 56,
+        "title_bar_font_size": 20,
     }
 
     response = client.post("/api/settings", json=payload)

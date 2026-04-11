@@ -5,7 +5,7 @@ WORKDIR /app
 COPY requirements.txt .
 COPY src/ ./src/
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --no-build-isolation -r requirements.txt
 
 COPY run.py ./
 

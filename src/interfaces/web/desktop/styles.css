@@ -1,6 +1,8 @@
 :root {
   --app-font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   --app-font-size: 16px;
+  --mobile-titlebar-height: 56px;
+  --mobile-titlebar-font-size: 20px;
   --page-bg: linear-gradient(145deg, #0f172a 0%, #111827 60%, #1f2937 100%);
   --text-primary: #e5e7eb;
   --text-secondary: #e2e8f0;
@@ -44,6 +46,21 @@ body {
   box-sizing: border-box;
 }
 
+.mobile-titlebar {
+  display: none;
+}
+
+.mobile-drawer-overlay,
+.mobile-drawer {
+  display: none;
+}
+
+.mobile-content {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
 h1 {
   margin: 0;
 }
@@ -84,6 +101,19 @@ h1 {
 }
 
 .nav-link:hover {
+  text-decoration: underline;
+}
+
+.nav-link-button {
+  border: none;
+  background: transparent;
+  color: var(--text-link);
+  text-decoration: none;
+  font-size: 0.92rem;
+  padding: 0;
+}
+
+.nav-link-button:hover {
   text-decoration: underline;
 }
 
@@ -211,14 +241,18 @@ button:disabled {
   line-height: 1.4;
 }
 
-.row {
+.composer {
   display: flex;
-  gap: 0.5rem;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.45rem;
 }
 
-.row input {
-  flex: 1;
+.composer textarea {
+  width: 100%;
+  min-height: 5.5rem;
+  max-height: 28vh;
+  resize: vertical;
+  line-height: 1.35;
 }
 
 .page-discussion button {
@@ -227,9 +261,137 @@ button:disabled {
   padding: 0.5rem;
 }
 
+.composer #send-button {
+  align-self: flex-start;
+}
+
 .page-settings {
   align-items: center;
   padding: 1.2rem;
+}
+
+.page-discussion-tree {
+  align-items: center;
+  padding: 1rem;
+}
+
+.page-discussion-tree .card {
+  width: min(100%, 980px);
+  gap: 0.75rem;
+}
+
+.tree-list {
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0.6rem;
+  min-height: 40vh;
+  background: var(--input-bg);
+}
+
+.tree-node {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0;
+}
+
+.tree-discussion {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0.2rem;
+}
+
+.tree-discussion-title {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.tree-discussion-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-row-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.tree-meatballs-button {
+  border: 1px solid var(--card-border);
+  background: var(--surface-bg);
+  color: var(--text-primary);
+  border-radius: 8px;
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+
+.tree-menu {
+  position: absolute;
+  right: 0;
+  top: 2.2rem;
+  width: 10.5rem;
+  display: grid;
+  gap: 0.3rem;
+  background: var(--panel-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0.35rem;
+  z-index: 1200;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.tree-menu button {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  background: var(--surface-bg);
+  color: var(--text-primary);
+  padding: 0.4rem 0.55rem;
+}
+
+.tree-folder {
+  margin: 0.25rem 0 0.3rem;
+}
+
+.tree-folder-summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-secondary);
+  user-select: none;
+  padding: 0.2rem 0.1rem;
+}
+
+.tree-folder-content {
+  margin-top: 0.2rem;
+  border-left: 1px dashed var(--card-border);
+  padding-left: 0.45rem;
+}
+
+.small-button {
+  font-size: 0.82rem;
+  padding: 0.25rem 0.45rem;
+  border-radius: 6px;
+}
+
+.page-login {
+  align-items: center;
+  padding: 1.2rem;
+}
+
+.auth-card {
+  width: min(100%, 480px);
+  gap: 1rem;
 }
 
 .page-settings .card {
@@ -317,5 +479,227 @@ textarea {
   .row {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .page-discussion-tree .header-links {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobile-titlebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--mobile-titlebar-height);
+    display: flex;
+    align-items: center;
+    padding: 0 0.9rem;
+    background: var(--panel-bg);
+    border-bottom: 1px solid var(--card-border);
+    z-index: 1000;
+    box-sizing: border-box;
+  }
+
+  .mobile-titlebar-inner {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .mobile-titlebar-left {
+    justify-self: start;
+  }
+
+  .mobile-titlebar-right {
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .mobile-titlebar-title {
+    font-size: var(--mobile-titlebar-font-size);
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-icon-button {
+    width: 2.1rem;
+    height: 2.1rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    text-decoration: none;
+    box-sizing: border-box;
+  }
+
+  .mobile-icon-button:hover {
+    border-color: var(--card-border);
+    background: var(--surface-bg);
+  }
+
+  .mobile-icon {
+    width: 1.05rem;
+    height: 1.05rem;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .icon-hamburger {
+    width: 1rem;
+    height: 2px;
+    background: currentColor;
+    border-radius: 2px;
+    position: relative;
+    display: block;
+  }
+
+  .icon-hamburger::before,
+  .icon-hamburger::after {
+    content: "";
+    width: 1rem;
+    height: 2px;
+    background: currentColor;
+    border-radius: 2px;
+    position: absolute;
+    left: 0;
+  }
+
+  .icon-hamburger::before {
+    top: -5px;
+  }
+
+  .icon-hamburger::after {
+    top: 5px;
+  }
+
+  .mobile-content {
+    width: 100%;
+    padding-top: calc(var(--mobile-titlebar-height) + 0.8rem);
+    box-sizing: border-box;
+  }
+
+  .mobile-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.55);
+    z-index: 1090;
+  }
+
+  .mobile-drawer {
+    position: fixed;
+    top: var(--mobile-titlebar-height);
+    left: 0;
+    bottom: 0;
+    width: min(86vw, 320px);
+    background: var(--panel-bg);
+    border-right: 1px solid var(--card-border);
+    z-index: 1100;
+    padding: 0.8rem 0.7rem;
+    box-sizing: border-box;
+    transform: translateX(-104%);
+    transition: transform 160ms ease;
+    display: block;
+    overflow-y: auto;
+  }
+
+  .mobile-drawer-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .mobile-drawer-links a,
+  .mobile-drawer-links button {
+    width: 100%;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: var(--surface-bg);
+    color: var(--text-primary);
+    text-decoration: none;
+    text-align: left;
+    padding: 0.65rem 0.75rem;
+    box-sizing: border-box;
+    font: inherit;
+  }
+
+  .mobile-drawer-links button {
+    cursor: pointer;
+  }
+
+  .mobile-drawer-links a:hover,
+  .mobile-drawer-links button:hover {
+    border-color: #60a5fa;
+  }
+
+  body.mobile-menu-open .mobile-drawer-overlay {
+    display: block;
+  }
+
+  body.mobile-menu-open .mobile-drawer {
+    transform: translateX(0);
+  }
+
+  .page-discussion .header {
+    display: none;
+  }
+
+  .page-discussion .mobile-content {
+    padding-bottom: 9.8rem;
+  }
+
+  .page-discussion .card {
+    width: min(100%, 980px);
+    padding: 0.5rem;
+  }
+
+  .page-discussion #conversation {
+    min-height: calc(100vh - var(--mobile-titlebar-height) - 12.5rem);
+    max-height: none;
+  }
+
+  .page-discussion .composer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1080;
+    padding: 0.65rem;
+    background: var(--panel-bg);
+    border-top: 1px solid var(--card-border);
+    box-sizing: border-box;
+  }
+
+  .page-discussion .composer #send-button {
+    align-self: stretch;
+  }
+
+  .page-discussion .composer textarea {
+    min-height: 5rem;
+    max-height: 22vh;
+  }
+
+  .page-discussion-tree .header-links button#create-folder-button {
+    display: none;
   }
 }

@@ -1,4 +1,5 @@
 fastapi
 uvicorn
--e ./src/libraries/persistence
--e ./src/libraries/ysparr
+PyYAML
+requests
+jinja2

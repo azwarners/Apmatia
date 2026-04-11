@@ -1,4 +1,3 @@
-const discussionIdEl = document.getElementById("discussion-id");
 const conversationEl = document.getElementById("conversation");
 const statusEl = document.getElementById("status");
 const sendButtonEl = document.getElementById("send-button");
@@ -11,11 +10,15 @@ function setStatus(text) {
   statusEl.innerText = text;
 }
 
+function autoGrowPrompt() {
+  promptEl.style.height = "auto";
+  promptEl.style.height = `${promptEl.scrollHeight}px`;
+}
+
 function renderSnapshot(snapshot) {
   const nearBottom =
     conversationEl.scrollTop + conversationEl.clientHeight >= conversationEl.scrollHeight - 24;
 
-  discussionIdEl.innerText = snapshot.discussion_id;
   conversationEl.innerText = snapshot.content || "";
 
   if (nearBottom) {
@@ -36,6 +39,10 @@ function renderSnapshot(snapshot) {
 async function fetchSnapshot() {
   try {
     const response = await fetch("/api/discussion/state");
+    if (response.status === 401) {
+      window.location.href = "/login";
+      return;
+    }
     const snapshot = await response.json();
     renderSnapshot(snapshot);
   } catch (error) {
@@ -58,12 +65,17 @@ async function sendPrompt() {
       },
       body: JSON.stringify({ prompt }),
     });
+    if (response.status === 401) {
+      window.location.href = "/login";
+      return;
+    }
     if (!response.ok) {
       const err = await response.json();
       setStatus(`Unable to start: ${err.detail || response.statusText}`);
       return;
     }
     promptEl.value = "";
+    autoGrowPrompt();
     await fetchSnapshot();
   } catch (error) {
     setStatus("Failed to send prompt.");
@@ -73,6 +85,10 @@ async function sendPrompt() {
 async function resetDiscussion() {
   try {
     const response = await fetch("/api/discussion/reset", { method: "POST" });
+    if (response.status === 401) {
+      window.location.href = "/login";
+      return;
+    }
     if (!response.ok) {
       const err = await response.json();
       setStatus(`Unable to reset: ${err.detail || response.statusText}`);
@@ -85,12 +101,16 @@ async function resetDiscussion() {
 }
 
 promptEl.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
+  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+    event.preventDefault();
     sendPrompt();
   }
 });
 
+promptEl.addEventListener("input", autoGrowPrompt);
+
 async function startPolling() {
+  autoGrowPrompt();
   await fetchSnapshot();
   if (pollHandle) {
     clearInterval(pollHandle);

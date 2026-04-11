@@ -23,10 +23,14 @@ function applyThemeLocally(values) {
     theme: values.theme || "dark",
     font_family: values.font_family || "system-ui",
     font_size: Number(values.font_size || 16),
+    title_bar_height: Number(values.title_bar_height || 56),
+    title_bar_font_size: Number(values.title_bar_font_size || 20),
   };
   localStorage.setItem("apmatia.theme", themeValues.theme);
   localStorage.setItem("apmatia.font_family", themeValues.font_family);
   localStorage.setItem("apmatia.font_size", String(themeValues.font_size));
+  localStorage.setItem("apmatia.title_bar_height", String(themeValues.title_bar_height));
+  localStorage.setItem("apmatia.title_bar_font_size", String(themeValues.title_bar_font_size));
   if (typeof applyThemePreferences === "function") {
     applyThemePreferences(themeValues);
   }
@@ -50,6 +54,10 @@ function refreshDirtyState() {
 async function loadSettings() {
   try {
     const response = await fetch("/api/settings");
+    if (response.status === 401) {
+      window.location.href = "/login";
+      return;
+    }
     if (!response.ok) {
       setStatus("Failed to load settings.");
       return;
@@ -66,6 +74,8 @@ async function loadSettings() {
       theme: settings.theme || "dark",
       font_family: settings.font_family || "system-ui",
       font_size: settings.font_size || 16,
+      title_bar_height: settings.title_bar_height || 56,
+      title_bar_font_size: settings.title_bar_font_size || 20,
     });
     applyThemeLocally(settings);
     initialSettings = currentFormValues();
@@ -96,6 +106,22 @@ async function saveSettings() {
     setStatus("Font size must be an integer from 12 to 24.");
     return;
   }
+  if (
+    !Number.isInteger(payload.title_bar_height) ||
+    payload.title_bar_height < 40 ||
+    payload.title_bar_height > 96
+  ) {
+    setStatus("Title bar height must be an integer from 40 to 96.");
+    return;
+  }
+  if (
+    !Number.isInteger(payload.title_bar_font_size) ||
+    payload.title_bar_font_size < 12 ||
+    payload.title_bar_font_size > 40
+  ) {
+    setStatus("Title bar font size must be an integer from 12 to 40.");
+    return;
+  }
 
   saveButtonEl.disabled = true;
   setStatus("Saving settings...");
@@ -107,6 +133,10 @@ async function saveSettings() {
       },
       body: JSON.stringify(payload),
     });
+    if (response.status === 401) {
+      window.location.href = "/login";
+      return;
+    }
     if (!response.ok) {
       const err = await response.json();
       setStatus(`Failed to save settings: ${err.detail || response.statusText}`);

@@ -59,6 +59,16 @@ class ThemeSettings extends HTMLElement {
         <input id="font-size" type="number" min="12" max="24" step="1" />
         <p class="hint">Base font size in pixels (12-24).</p>
       </div>
+      <div class="field">
+        <label for="title-bar-height">Mobile Title Bar Height</label>
+        <input id="title-bar-height" type="number" min="40" max="96" step="1" />
+        <p class="hint">Height in pixels for the fixed mobile title bar (40-96).</p>
+      </div>
+      <div class="field">
+        <label for="title-bar-font-size">Mobile Title Font Size</label>
+        <input id="title-bar-font-size" type="number" min="12" max="40" step="1" />
+        <p class="hint">Font size in pixels for the mobile title text (12-40).</p>
+      </div>
     `;
   }
 
@@ -69,6 +79,8 @@ class ThemeSettings extends HTMLElement {
     this._themeEl().addEventListener("change", notifyChange);
     this._fontFamilyEl().addEventListener("change", notifyChange);
     this._fontSizeEl().addEventListener("input", notifyChange);
+    this._titleBarHeightEl().addEventListener("input", notifyChange);
+    this._titleBarFontSizeEl().addEventListener("input", notifyChange);
   }
 
   _themeEl() {
@@ -83,11 +95,21 @@ class ThemeSettings extends HTMLElement {
     return this.shadowRoot.getElementById("font-size");
   }
 
+  _titleBarHeightEl() {
+    return this.shadowRoot.getElementById("title-bar-height");
+  }
+
+  _titleBarFontSizeEl() {
+    return this.shadowRoot.getElementById("title-bar-font-size");
+  }
+
   getValues() {
     return {
       theme: this._themeEl().value || "dark",
       font_family: this._fontFamilyEl().value || "system-ui",
       font_size: Number(this._fontSizeEl().value || 16),
+      title_bar_height: Number(this._titleBarHeightEl().value || 56),
+      title_bar_font_size: Number(this._titleBarFontSizeEl().value || 20),
     };
   }
 
@@ -95,6 +117,8 @@ class ThemeSettings extends HTMLElement {
     this._themeEl().value = values.theme || "dark";
     this._fontFamilyEl().value = values.font_family || "system-ui";
     this._fontSizeEl().value = String(values.font_size || 16);
+    this._titleBarHeightEl().value = String(values.title_bar_height || 56);
+    this._titleBarFontSizeEl().value = String(values.title_bar_font_size || 20);
   }
 }
 

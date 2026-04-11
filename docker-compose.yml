@@ -1,5 +1,6 @@
 services:
   app:
+    container_name: apmatia-app
     build: .
     ports:
       - "8000:8000"

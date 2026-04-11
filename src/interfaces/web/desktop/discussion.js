@@ -3,8 +3,12 @@ const statusEl = document.getElementById("status");
 const sendButtonEl = document.getElementById("send-button");
 const resetButtonEl = document.getElementById("reset-button");
 const promptEl = document.getElementById("prompt");
+const scrollLatestButtonEl = document.getElementById("scroll-latest-button");
+const discussionBottomEl = document.getElementById("discussion-bottom");
 
 let pollHandle = null;
+let userLabel = "User";
+let followLiveEdge = true;
 
 function setStatus(text) {
   statusEl.innerText = text;
@@ -13,16 +17,138 @@ function setStatus(text) {
 function autoGrowPrompt() {
   promptEl.style.height = "auto";
   promptEl.style.height = `${promptEl.scrollHeight}px`;
+  syncBottomInset();
+}
+
+function isNearBottom() {
+  return conversationEl.scrollTop + conversationEl.clientHeight >= conversationEl.scrollHeight - 24;
+}
+
+function pageIsNearBottom() {
+  const pageBottom = window.scrollY + window.innerHeight;
+  return pageBottom >= document.documentElement.scrollHeight - 24;
+}
+
+function updateScrollLatestVisibility() {
+  if (!scrollLatestButtonEl) {
+    return;
+  }
+  const conversationCanScroll = conversationEl.scrollHeight > conversationEl.clientHeight + 24;
+  const pageCanScroll = document.documentElement.scrollHeight > window.innerHeight + 24;
+  const shouldShow = (conversationCanScroll || pageCanScroll) && (!isNearBottom() || !pageIsNearBottom());
+  scrollLatestButtonEl.classList.toggle("is-visible", shouldShow);
+}
+
+function syncBottomInset() {
+  if (!discussionBottomEl) {
+    return;
+  }
+  const inset = Math.ceil(discussionBottomEl.getBoundingClientRect().height) + 16;
+  document.documentElement.style.setProperty("--discussion-bottom-height", `${inset}px`);
+  updateScrollLatestVisibility();
+}
+
+function atLiveEdge() {
+  return isNearBottom() && pageIsNearBottom();
+}
+
+function scrollConversationToBottom(behavior = "auto") {
+  followLiveEdge = true;
+  conversationEl.scrollTo({ top: conversationEl.scrollHeight, behavior });
+  window.scrollTo({ top: document.documentElement.scrollHeight, behavior });
+  updateScrollLatestVisibility();
+}
+
+function closeMobileDrawer() {
+  document.body.classList.remove("mobile-menu-open");
+}
+
+function toDisplayName(username) {
+  const clean = String(username || "").trim();
+  if (!clean) {
+    return "User";
+  }
+  const firstToken = clean.split(/[\s._-]+/)[0] || clean;
+  return firstToken.charAt(0).toUpperCase() + firstToken.slice(1);
+}
+
+async function loadUserLabel() {
+  try {
+    const response = await fetch("/api/auth/session");
+    if (!response.ok) {
+      return;
+    }
+    const session = await response.json();
+    userLabel = toDisplayName(session.username);
+  } catch (error) {
+    // Keep fallback label when session lookup fails.
+  }
+}
+
+function parseDiscussion(content) {
+  const lines = String(content || "").split("\n");
+  const messages = [];
+  let current = null;
+
+  lines.forEach((line) => {
+    const roleMatch = line.match(/^(User|Assistant):\s?(.*)$/);
+    if (roleMatch) {
+      if (current) {
+        messages.push(current);
+      }
+      current = { role: roleMatch[1], text: roleMatch[2] || "" };
+      return;
+    }
+    if (!current) {
+      current = { role: "Assistant", text: "" };
+    }
+    current.text += `${current.text ? "\n" : ""}${line}`;
+  });
+
+  if (current) {
+    messages.push(current);
+  }
+
+  return messages.filter((message) => message.text.trim().length > 0);
+}
+
+function renderConversation(content) {
+  const fragment = document.createDocumentFragment();
+  const messages = parseDiscussion(content);
+
+  if (messages.length === 0) {
+    conversationEl.innerHTML = "";
+    return;
+  }
+
+  messages.forEach((message) => {
+    const item = document.createElement("article");
+    item.className = `chat-message ${message.role === "User" ? "from-user" : "from-assistant"}`;
+
+    const label = document.createElement("div");
+    label.className = "chat-label";
+    label.textContent = message.role === "User" ? `${userLabel}:` : "Assistant:";
+
+    const body = document.createElement("div");
+    body.className = "chat-body";
+    body.textContent = message.text.trimEnd();
+
+    item.appendChild(label);
+    item.appendChild(body);
+    fragment.appendChild(item);
+  });
+
+  conversationEl.innerHTML = "";
+  conversationEl.appendChild(fragment);
 }
 
 function renderSnapshot(snapshot) {
-  const nearBottom =
-    conversationEl.scrollTop + conversationEl.clientHeight >= conversationEl.scrollHeight - 24;
+  renderConversation(snapshot.content || "");
 
-  conversationEl.innerText = snapshot.content || "";
-
-  if (nearBottom) {
-    conversationEl.scrollTop = conversationEl.scrollHeight;
+  if (followLiveEdge) {
+    scrollConversationToBottom();
+  } else {
+    updateScrollLatestVisibility();
   }
 
   if (snapshot.is_streaming) {
@@ -58,6 +184,7 @@ async function sendPrompt() {
   }
 
   try {
+    followLiveEdge = true;
     const response = await fetch("/api/discussion/prompt", {
       method: "POST",
       headers: {
@@ -94,10 +221,16 @@ async function resetDiscussion() {
       setStatus(`Unable to reset: ${err.detail || response.statusText}`);
       return;
     }
+    followLiveEdge = true;
     await fetchSnapshot();
   } catch (error) {
     setStatus("Failed to reset discussion.");
   }
+}
+
+async function startNewDiscussionFromMenu() {
+  closeMobileDrawer();
+  await resetDiscussion();
 }
 
 promptEl.addEventListener("keydown", (event) => {
@@ -108,9 +241,29 @@ promptEl.addEventListener("keydown", (event) => {
 });
 
 promptEl.addEventListener("input", autoGrowPrompt);
+conversationEl.addEventListener("scroll", () => {
+  followLiveEdge = atLiveEdge();
+  updateScrollLatestVisibility();
+});
+window.addEventListener("resize", syncBottomInset);
+window.addEventListener(
+  "scroll",
+  () => {
+    followLiveEdge = atLiveEdge();
+    updateScrollLatestVisibility();
+  },
+  { passive: true }
+);
+if (scrollLatestButtonEl) {
+  scrollLatestButtonEl.addEventListener("click", () => {
+    scrollConversationToBottom("smooth");
+  });
+}
 
 async function startPolling() {
   autoGrowPrompt();
+  syncBottomInset();
+  await loadUserLabel();
   await fetchSnapshot();
   if (pollHandle) {
     clearInterval(pollHandle);

@@ -1,6 +1,7 @@
 const aiSettingsEl = document.getElementById("ai-settings");
 const discussionSettingsEl = document.getElementById("discussion-settings");
 const themeSettingsEl = document.getElementById("theme-settings");
+const aboutInfoEl = document.getElementById("about-info");
 const saveButtonEl = document.getElementById("save-button");
 const statusEl = document.getElementById("status");
 
@@ -8,6 +9,23 @@ let initialSettings = null;
 
 function setStatus(text) {
   statusEl.innerText = text;
+}
+
+async function loadVersion() {
+  if (!aboutInfoEl || typeof aboutInfoEl.setVersion !== "function") {
+    return;
+  }
+  try {
+    const response = await fetch("/api/version");
+    if (!response.ok) {
+      aboutInfoEl.setVersion("unavailable");
+      return;
+    }
+    const payload = await response.json();
+    aboutInfoEl.setVersion(payload.version || "unknown");
+  } catch (error) {
+    aboutInfoEl.setVersion("unavailable");
+  }
 }
 
 function currentFormValues() {
@@ -160,3 +178,4 @@ themeSettingsEl.addEventListener("change", () => {
 });
 
 loadSettings();
+loadVersion();

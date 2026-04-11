@@ -14,6 +14,8 @@
   --panel-bg: #1e293b;
   --surface-bg: #111a2e;
   --input-bg: #0b1222;
+  --user-bubble-bg: #1e3a5f;
+  --user-bubble-border: #2563eb;
   --button-bg: #3b82f6;
   --button-hover-bg: #2563eb;
 }
@@ -30,6 +32,8 @@ html[data-theme="light"] {
   --panel-bg: #f8fafc;
   --surface-bg: #eef2ff;
   --input-bg: #ffffff;
+  --user-bubble-bg: #e0ecff;
+  --user-bubble-border: #93c5fd;
   --button-bg: #2563eb;
   --button-hover-bg: #1d4ed8;
 }
@@ -241,6 +245,37 @@ button:disabled {
   line-height: 1.4;
 }
 
+.chat-message {
+  max-width: min(88%, 50rem);
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  margin-bottom: 0.6rem;
+  border: 1px solid var(--card-border);
+  background: var(--surface-bg);
+}
+
+.chat-message.from-user {
+  margin-left: auto;
+  background: var(--user-bubble-bg);
+  border-color: var(--user-bubble-border);
+}
+
+.chat-message.from-assistant {
+  margin-right: auto;
+}
+
+.chat-label {
+  font-weight: 600;
+  font-size: 0.86rem;
+  margin-bottom: 0.24rem;
+  color: var(--text-link);
+}
+
+.chat-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .composer {
   display: flex;
   flex-direction: column;
@@ -263,6 +298,16 @@ button:disabled {
 
 .composer #send-button {
   align-self: flex-start;
+}
+
+#scroll-latest-button {
+  display: none;
+}
+
+.discussion-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
 }
 
 .page-settings {
@@ -518,6 +563,7 @@ textarea {
     justify-self: end;
     display: flex;
     align-items: center;
+    position: relative;
     gap: 0.35rem;
   }
 
@@ -631,16 +677,19 @@ textarea {
 
   .mobile-drawer-links a,
   .mobile-drawer-links button {
+    display: block;
     width: 100%;
     border: 1px solid var(--card-border);
-    border-radius: 8px;
+    border-radius: 10px;
     background: var(--surface-bg);
     color: var(--text-primary);
     text-decoration: none;
     text-align: left;
-    padding: 0.65rem 0.75rem;
+    padding: 0.9rem 0.95rem;
+    min-height: 3rem;
     box-sizing: border-box;
     font: inherit;
+    font-size: 1rem;
   }
 
   .mobile-drawer-links button {
@@ -649,6 +698,46 @@ textarea {
 
   .mobile-drawer-links a:hover,
   .mobile-drawer-links button:hover {
+    border-color: #60a5fa;
+  }
+
+  .user-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.25rem);
+    width: min(76vw, 220px);
+    display: none;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.4rem;
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    background: var(--panel-bg);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+    z-index: 1205;
+  }
+
+  .user-menu.is-open {
+    display: flex;
+  }
+
+  .user-menu a,
+  .user-menu button {
+    display: block;
+    width: 100%;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: var(--surface-bg);
+    color: var(--text-primary);
+    text-decoration: none;
+    text-align: left;
+    padding: 0.62rem 0.72rem;
+    box-sizing: border-box;
+    font: inherit;
+  }
+
+  .user-menu a:hover,
+  .user-menu button:hover {
     border-color: #60a5fa;
   }
 
@@ -665,29 +754,49 @@ textarea {
   }
 
   .page-discussion .mobile-content {
-    padding-bottom: 9.8rem;
+    min-height: calc(100dvh - var(--mobile-titlebar-height));
+    padding-bottom: 0;
   }
 
   .page-discussion .card {
     width: min(100%, 980px);
+    min-height: calc(100dvh - var(--mobile-titlebar-height) - 0.8rem);
     padding: 0.5rem;
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
   .page-discussion #conversation {
-    min-height: calc(100vh - var(--mobile-titlebar-height) - 12.5rem);
+    flex: 1 1 auto;
+    min-height: 0;
     max-height: none;
+    padding-bottom: calc(var(--discussion-bottom-height, 9rem) + 0.3rem);
   }
 
-  .page-discussion .composer {
+  .page-discussion .discussion-bottom {
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
     z-index: 1080;
-    padding: 0.65rem;
+    padding: 0.55rem calc(0.65rem + env(safe-area-inset-right)) calc(0.65rem + env(safe-area-inset-bottom))
+      calc(0.65rem + env(safe-area-inset-left));
     background: var(--panel-bg);
     border-top: 1px solid var(--card-border);
     box-sizing: border-box;
+  }
+
+  .page-discussion .status {
+    margin-top: 0;
+  }
+
+  .page-discussion .composer {
+    padding: 0;
+    background: transparent;
+    border-top: none;
   }
 
   .page-discussion .composer #send-button {
@@ -697,6 +806,27 @@ textarea {
   .page-discussion .composer textarea {
     min-height: 5rem;
     max-height: 22vh;
+  }
+
+  .page-discussion #scroll-latest-button {
+    position: fixed;
+    right: 0.75rem;
+    bottom: calc(var(--discussion-bottom-height, 9rem) + 0.75rem);
+    z-index: 1085;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--button-hover-bg);
+    background: var(--button-bg);
+    color: #ffffff;
+    opacity: 0.65;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.34);
+  }
+
+  .page-discussion #scroll-latest-button.is-visible {
+    display: inline-flex;
   }
 
   .page-discussion-tree .header-links button#create-folder-button {

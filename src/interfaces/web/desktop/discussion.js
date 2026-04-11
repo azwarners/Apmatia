@@ -154,11 +154,15 @@ function renderSnapshot(snapshot) {
   if (snapshot.is_streaming) {
     setStatus("Streaming response...");
     sendButtonEl.disabled = true;
-    resetButtonEl.disabled = true;
+    if (resetButtonEl) {
+      resetButtonEl.disabled = true;
+    }
   } else {
     setStatus(snapshot.last_error ? `Error: ${snapshot.last_error}` : "Idle");
     sendButtonEl.disabled = false;
-    resetButtonEl.disabled = false;
+    if (resetButtonEl) {
+      resetButtonEl.disabled = false;
+    }
   }
 }
 
@@ -232,6 +236,13 @@ async function startNewDiscussionFromMenu() {
   closeMobileDrawer();
   await resetDiscussion();
 }
+
+document.addEventListener("mobile-drawer-action", async (event) => {
+  const action = event?.detail?.action;
+  if (action === "new-discussion") {
+    await startNewDiscussionFromMenu();
+  }
+});
 
 promptEl.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {

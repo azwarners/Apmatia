@@ -183,7 +183,9 @@ For the web interface, presentation is split into external assets under `src/int
 - HTML entry pages (`index.html`, `discussion.html`, `settings.html`)
 - shared stylesheet (`styles.css`)
 - page scripts (`discussion.js`, `settings.js`, `theme-runtime.js`)
-- reusable Web Components (`ai-settings.js`, `discussion-settings.js`, `theme-settings.js`)
+- reusable Web Components (`ai-settings.js`, `discussion-settings.js`, `theme-settings.js`, `about-info.js`)
+- reusable mobile/navigation modules (`mobile-drawer.js`, `folder-browser.js`, `folder-picker.js`)
+- interaction helpers (`mobile-menu.js`, `auth-ui.js`)
 
 ---
 
@@ -220,6 +222,19 @@ This ensures:
 - portability across systems
 
 The web `/settings` screen persists both model/discussion options and UI preferences (theme, font family, font size) through `/api/settings`.
+
+---
+
+## 🗑️ Discussion Data Lifecycle
+
+Discussion and folder deletion follows a soft-delete lifecycle:
+
+1. Delete action marks records as trashed (`deleted_at`, `purge_after`)
+2. Trashed items are excluded from normal tree/discussion views
+3. Restore APIs can recover folders/discussions during retention window
+4. Expired trash is purged automatically after 90 days
+
+This behavior keeps accidental deletions reversible while preserving clean active views.
 
 ---
 

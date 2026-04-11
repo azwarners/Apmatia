@@ -143,3 +143,18 @@ def auth_ui_script():
 @app.get("/mobile-menu.js")
 def mobile_menu_script():
     return _ui_file_response("src/interfaces/web/desktop/mobile-menu.js")
+
+
+@app.get("/mobile-drawer.js")
+def mobile_drawer_script():
+    return _ui_file_response("src/interfaces/web/desktop/mobile-drawer.js")
+
+
+@app.get("/folder-browser.js")
+def folder_browser_script():
+    return _ui_file_response("src/interfaces/web/desktop/folder-browser.js")
+
+
+@app.get("/folder-picker.js")
+def folder_picker_script():
+    return _ui_file_response("src/interfaces/web/desktop/folder-picker.js")

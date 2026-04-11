@@ -32,16 +32,9 @@
     </div>
   </div>
 </div>
-<div class="mobile-drawer-overlay" data-mobile-menu-close></div>
-<aside class="mobile-drawer">
-  <ul class="mobile-drawer-links">
-    <li><a href="/">Main Menu</a></li>
-    <li><a href="/discussion">Discussion</a></li>
-    <li><a href="/settings">Settings</a></li>
-    <li><button type="button" class="logout-action">Logout</button></li>
-    <li><button type="button" data-mobile-menu-close>Close</button></li>
-  </ul>
-</aside>
+<mobile-drawer-menu
+  items='[{"type":"link","label":"Main Menu","href":"/"},{"type":"link","label":"Discussion","href":"/discussion"},{"type":"link","label":"Settings","href":"/settings"}]'
+></mobile-drawer-menu>
 <div class="mobile-content">
 
 <div class="card">
@@ -91,6 +84,7 @@
 <script src="/about-info.js"></script>
 <script src="/settings.js"></script>
 <script src="/auth-ui.js"></script>
+<script src="/mobile-drawer.js"></script>
 <script src="/mobile-menu.js"></script>
 
 </div>

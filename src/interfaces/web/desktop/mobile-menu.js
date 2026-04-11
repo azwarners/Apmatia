@@ -15,7 +15,9 @@ document.querySelectorAll("[data-mobile-menu-toggle]").forEach((el) => {
 
 document.querySelectorAll("[data-mobile-menu-close]").forEach((el) => {
   el.addEventListener("click", (event) => {
-    event.preventDefault();
+    if (!(el instanceof HTMLAnchorElement)) {
+      event.preventDefault();
+    }
     closeMobileMenu();
   });
 });
@@ -23,4 +25,3 @@ document.querySelectorAll("[data-mobile-menu-close]").forEach((el) => {
 document.querySelectorAll(".mobile-drawer a").forEach((el) => {
   el.addEventListener("click", () => closeMobileMenu());
 });
-

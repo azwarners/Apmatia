@@ -32,18 +32,9 @@
     </div>
   </div>
 </div>
-<div class="mobile-drawer-overlay" data-mobile-menu-close></div>
-<aside class="mobile-drawer">
-  <ul class="mobile-drawer-links">
-    <li><a href="/">Main Menu</a></li>
-    <li><a href="/discussion">Discussion</a></li>
-    <li><a href="/discussion_tree">Discussion Tree</a></li>
-    <li><button type="button" id="drawer-create-folder-button">Create Folder</button></li>
-    <li><a href="/settings">Settings</a></li>
-    <li><button type="button" class="logout-action">Logout</button></li>
-    <li><button type="button" data-mobile-menu-close>Close</button></li>
-  </ul>
-</aside>
+<mobile-drawer-menu
+  items='[{"type":"link","label":"Main Menu","href":"/"},{"type":"link","label":"Discussion","href":"/discussion"},{"type":"link","label":"Discussion Tree","href":"/discussion_tree"},{"type":"button","label":"Create Folder","action":"create-folder","closeOnClick":true},{"type":"button","label":"Trash (Soon)","action":"trash-soon","closeOnClick":true}]'
+></mobile-drawer-menu>
 <div class="mobile-content">
 
 <div class="card">
@@ -56,12 +47,16 @@
     </div>
   </div>
 
+  <div id="folder-nav" class="folder-nav"></div>
   <div id="discussion-tree" class="tree-list"></div>
   <div class="status" id="tree-status">Loading discussions...</div>
 </div>
 
+<script src="/folder-browser.js"></script>
+<script src="/folder-picker.js"></script>
 <script src="/discussion-tree.js"></script>
 <script src="/auth-ui.js"></script>
+<script src="/mobile-drawer.js"></script>
 <script src="/mobile-menu.js"></script>
 
 </div>

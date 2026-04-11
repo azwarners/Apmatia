@@ -4,7 +4,7 @@ import os
 import threading
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 try:
@@ -22,10 +22,28 @@ DATA_DIR = Path(
 ).expanduser()
 DISCUSSIONS_DIR = DATA_DIR / "discussions"
 DISCUSSIONS_DB = DATA_DIR / "discussions.db"
+TRASH_RETENTION_DAYS = 90
 
 
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def parse_iso_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    if raw.endswith("Z"):
+        raw = raw[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
 
 
 def _new_discussion_id() -> str:
@@ -62,7 +80,10 @@ class DiscussionState:
             file.flush()
 
     def _get_discussion(self, discussion_id: str) -> dict | None:
-        return self._store.get("discussions", discussion_id=discussion_id)
+        row = self._store.get("discussions", discussion_id=discussion_id)
+        if row and row.get("deleted_at") is None:
+            return row
+        return None
 
     def _update_discussion(self, discussion_id: str, data: dict) -> None:
         row = self._store.get("discussions", discussion_id=discussion_id)
@@ -90,6 +111,8 @@ class DiscussionState:
             "folder_id": folder_id,
             "system_prompt": "",
             "last_error": None,
+            "deleted_at": None,
+            "purge_after": None,
             "created_at": created_at,
             "updated_at": created_at,
         }
@@ -118,6 +141,8 @@ class DiscussionState:
         return None if current_discussion_id is None else str(current_discussion_id)
 
     def _is_visible(self, discussion: dict, user_id: int, member_group_ids: set[int]) -> bool:
+        if discussion.get("deleted_at") is not None:
+            return False
         owner_user_id = int(discussion.get("owner_user_id", 0))
         if owner_user_id == user_id:
             return True
@@ -137,6 +162,66 @@ class DiscussionState:
         created = self._create_discussion(owner_user_id=user_id, title="New Discussion")
         self._set_current_discussion(user_id, created["discussion_id"])
         return created
+
+    def _trash_payload(self) -> dict:
+        now = datetime.now(timezone.utc)
+        purge_after = now + timedelta(days=TRASH_RETENTION_DAYS)
+        return {
+            "deleted_at": now.isoformat(),
+            "purge_after": purge_after.isoformat(),
+        }
+
+    def _collect_descendant_folder_ids(self, owner_user_id: int, root_folder_id: int) -> list[int]:
+        folders = self._store.find("discussion_folders", owner_user_id=owner_user_id)
+        by_parent: dict[str, list[dict]] = {}
+        for folder in folders:
+            parent_key = "root" if folder.get("parent_id") is None else str(folder.get("parent_id"))
+            by_parent.setdefault(parent_key, []).append(folder)
+
+        collected: list[int] = []
+        stack: list[int] = [int(root_folder_id)]
+        seen: set[int] = set()
+        while stack:
+            current = int(stack.pop())
+            if current in seen:
+                continue
+            seen.add(current)
+            collected.append(current)
+            for child in by_parent.get(str(current), []):
+                child_id = int(child.get("id", 0))
+                if child_id > 0:
+                    stack.append(child_id)
+        return collected
+
+    def _purge_expired_trash(self, owner_user_id: int) -> None:
+        now = datetime.now(timezone.utc)
+        folders = self._store.find("discussion_folders", owner_user_id=owner_user_id)
+        for folder in folders:
+            deleted_at = parse_iso_datetime(folder.get("deleted_at"))
+            if deleted_at is None:
+                continue
+            purge_after = parse_iso_datetime(folder.get("purge_after")) or (
+                deleted_at + timedelta(days=TRASH_RETENTION_DAYS)
+            )
+            if purge_after <= now:
+                self._store.delete("discussion_folders", id=int(folder["id"]))
+
+        discussions = self._store.find("discussions", owner_user_id=owner_user_id)
+        for discussion in discussions:
+            deleted_at = parse_iso_datetime(discussion.get("deleted_at"))
+            if deleted_at is None:
+                continue
+            purge_after = parse_iso_datetime(discussion.get("purge_after")) or (
+                deleted_at + timedelta(days=TRASH_RETENTION_DAYS)
+            )
+            if purge_after <= now:
+                self._store.delete("discussions", id=int(discussion["id"]))
+                discussion_id = str(discussion.get("discussion_id", "")).strip()
+                if discussion_id:
+                    try:
+                        self._discussion_path(discussion_id).unlink(missing_ok=True)
+                    except OSError:
+                        pass
 
     def _run_prompt(self, discussion_id: str, prompt: str) -> None:
         try:
@@ -188,6 +273,8 @@ class DiscussionState:
             "name": clean_name,
             "parent_id": parent_id,
             "owner_user_id": owner_user_id,
+            "deleted_at": None,
+            "purge_after": None,
             "created_at": created_at,
             "updated_at": created_at,
         }
@@ -204,6 +291,8 @@ class DiscussionState:
         folder = self._store.get("discussion_folders", id=folder_id)
         if not folder or int(folder.get("owner_user_id", -1)) != owner_user_id:
             raise ValueError("Folder not found.")
+        if folder.get("deleted_at") is not None:
+            raise ValueError("Folder not found.")
 
         updates: dict = {}
         if name is not None:
@@ -218,6 +307,8 @@ class DiscussionState:
             parent = self._store.get("discussion_folders", id=parent_id)
             if not parent or int(parent.get("owner_user_id", -1)) != owner_user_id:
                 raise ValueError("Parent folder not found.")
+            if parent.get("deleted_at") is not None:
+                raise ValueError("Parent folder not found.")
             updates["parent_id"] = parent_id
 
         if updates:
@@ -226,6 +317,130 @@ class DiscussionState:
 
         merged = {**folder, **updates}
         return merged
+
+    def delete_folder(self, owner_user_id: int, folder_id: int, force: bool = False) -> dict:
+        folder = self._store.get("discussion_folders", id=folder_id)
+        if not folder or int(folder.get("owner_user_id", -1)) != owner_user_id:
+            raise ValueError("Folder not found.")
+        if folder.get("deleted_at") is not None:
+            raise ValueError("Folder is already in trash.")
+
+        subtree_folder_ids = self._collect_descendant_folder_ids(owner_user_id, folder_id)
+        folder_ids_set = set(subtree_folder_ids)
+
+        all_owned_discussions = self._store.find("discussions", owner_user_id=owner_user_id)
+        contained_discussions = [
+            discussion
+            for discussion in all_owned_discussions
+            if discussion.get("deleted_at") is None and int(discussion.get("folder_id", -1)) in folder_ids_set
+        ]
+        has_contents = bool(len(subtree_folder_ids) > 1 or contained_discussions)
+        if has_contents and not force:
+            raise ValueError("Folder is not empty.")
+
+        trash = self._trash_payload()
+        touched_at = utc_now_iso()
+
+        for subfolder_id in subtree_folder_ids:
+            self._store.update(
+                "discussion_folders",
+                where={"id": int(subfolder_id)},
+                data={**trash, "updated_at": touched_at},
+            )
+
+        for discussion in contained_discussions:
+            self._store.update(
+                "discussions",
+                where={"id": int(discussion["id"])},
+                data={**trash, "updated_at": touched_at},
+            )
+
+        return {
+            "id": int(folder_id),
+            "trashed_folders": len(subtree_folder_ids),
+            "trashed_discussions": len(contained_discussions),
+        }
+
+    def restore_folder(self, owner_user_id: int, folder_id: int) -> dict:
+        folder = self._store.get("discussion_folders", id=folder_id)
+        if not folder or int(folder.get("owner_user_id", -1)) != owner_user_id:
+            raise ValueError("Folder not found.")
+        if folder.get("deleted_at") is None:
+            raise ValueError("Folder is not in trash.")
+
+        subtree_folder_ids = self._collect_descendant_folder_ids(owner_user_id, folder_id)
+        folder_ids_set = set(subtree_folder_ids)
+
+        all_owned_discussions = self._store.find("discussions", owner_user_id=owner_user_id)
+        contained_discussions = [
+            discussion
+            for discussion in all_owned_discussions
+            if discussion.get("deleted_at") is not None and int(discussion.get("folder_id", -1)) in folder_ids_set
+        ]
+
+        touched_at = utc_now_iso()
+        for subfolder_id in subtree_folder_ids:
+            self._store.update(
+                "discussion_folders",
+                where={"id": int(subfolder_id)},
+                data={"deleted_at": None, "purge_after": None, "updated_at": touched_at},
+            )
+
+        for discussion in contained_discussions:
+            self._store.update(
+                "discussions",
+                where={"id": int(discussion["id"])},
+                data={"deleted_at": None, "purge_after": None, "updated_at": touched_at},
+            )
+
+        return {
+            "id": int(folder_id),
+            "restored_folders": len(subtree_folder_ids),
+            "restored_discussions": len(contained_discussions),
+        }
+
+    def restore_discussion(self, owner_user_id: int, discussion_id: str) -> dict:
+        discussion = self._store.get("discussions", discussion_id=discussion_id)
+        if not discussion or int(discussion.get("owner_user_id", -1)) != owner_user_id:
+            raise ValueError("Discussion not found.")
+        if discussion.get("deleted_at") is None:
+            raise ValueError("Discussion is not in trash.")
+
+        restored_folder_id = discussion.get("folder_id")
+        if restored_folder_id is not None:
+            folder = self._store.get("discussion_folders", id=restored_folder_id)
+            if (
+                not folder
+                or int(folder.get("owner_user_id", -1)) != owner_user_id
+                or folder.get("deleted_at") is not None
+            ):
+                restored_folder_id = None
+
+        self._store.update(
+            "discussions",
+            where={"id": int(discussion["id"])},
+            data={
+                "folder_id": restored_folder_id,
+                "deleted_at": None,
+                "purge_after": None,
+                "updated_at": utc_now_iso(),
+            },
+        )
+        return {"discussion_id": str(discussion_id), "folder_id": restored_folder_id}
+
+    def list_trash(self, owner_user_id: int) -> dict:
+        self._purge_expired_trash(owner_user_id)
+        folders = [
+            folder
+            for folder in self._store.find("discussion_folders", owner_user_id=owner_user_id)
+            if folder.get("deleted_at") is not None
+        ]
+        discussions = [
+            discussion
+            for discussion in self._store.find("discussions", owner_user_id=owner_user_id)
+            if discussion.get("deleted_at") is not None
+        ]
+        return {"folders": folders, "discussions": discussions}
 
     def create_discussion(
         self,
@@ -241,6 +456,8 @@ class DiscussionState:
         if folder_id is not None:
             folder = self._store.get("discussion_folders", id=folder_id)
             if not folder or int(folder.get("owner_user_id", -1)) != owner_user_id:
+                raise ValueError("Folder not found.")
+            if folder.get("deleted_at") is not None:
                 raise ValueError("Folder not found.")
 
         created = self._create_discussion(
@@ -277,6 +494,8 @@ class DiscussionState:
             folder = self._store.get("discussion_folders", id=folder_id)
             if not folder or int(folder.get("owner_user_id", -1)) != owner_user_id:
                 raise ValueError("Folder not found.")
+            if folder.get("deleted_at") is not None:
+                raise ValueError("Folder not found.")
             updates["folder_id"] = folder_id
 
         self._update_discussion(discussion_id, updates)
@@ -289,12 +508,17 @@ class DiscussionState:
         self._set_current_discussion(user_id, discussion_id)
 
     def list_tree(self, user_id: int, member_group_ids: set[int]) -> dict:
-        folders = self._store.find("discussion_folders", owner_user_id=user_id)
+        self._purge_expired_trash(user_id)
+        folders = [
+            folder
+            for folder in self._store.find("discussion_folders", owner_user_id=user_id)
+            if folder.get("deleted_at") is None
+        ]
         all_discussions = self._store.find("discussions")
         visible = [
             discussion
             for discussion in all_discussions
-            if self._is_visible(discussion, user_id, member_group_ids)
+            if discussion.get("deleted_at") is None and self._is_visible(discussion, user_id, member_group_ids)
         ]
         current_discussion_id = self._get_current_discussion_id(user_id)
         return {

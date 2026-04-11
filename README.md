@@ -56,7 +56,21 @@ This guarantees:
 
 - Config file-based configuration
 
-- Web UI with modular Web Components for settings categories
+- Web UI with modular Web Components and reusable mobile components
+
+- Mobile-first Discussion experience:
+  - fixed bottom composer/status bar
+  - live streaming output with controlled follow mode
+  - jump-to-latest control
+  - chat bubble rendering and authenticated user label
+
+- Discussion Tree folder browser:
+  - current-folder navigation model (instead of deep nested indentation)
+  - fixed folder navigation bar on mobile
+  - per-item action menus for discussions and folders
+  - hierarchical folder picker for create/move flows
+
+- Soft-delete trash model with restore APIs and 90-day retention
 
 - Pytest test suite (unit + integration)
 
@@ -66,9 +80,11 @@ This guarantees:
 
 Apmatia currently integrates:
 
-- **ysparr** → minimal execution library
+- **OpenAI Compatible backend** → OpenAI-style API endpoint support (self-hosted or hosted providers)
 
-- **KoboldCpp** → local LLM backend
+- **KoboldCpp backend** → local LLM backend
+
+- **ysparr** → minimal execution library
 
 ---
 
@@ -126,6 +142,12 @@ Settings are grouped by collapsible categories and backed by reusable Web Compon
 ./start.sh
 ```
 
+Startup prints the current app version from `VERSION`:
+
+```
+Starting Apmatia version: 0.0.1.2
+```
+
 Then open:
 
 ```
@@ -147,6 +169,27 @@ python -m src.interfaces.cli.main "Say hello"
 ```
 docker compose run --rm app pytest
 ```
+
+---
+
+## 📝 Versioning and Changelog
+
+- Current version: `VERSION`
+- API version probe: `/api/version`
+- Release notes: `CHANGELOG.md`
+
+---
+
+## 🗑️ Trash and Restore (API)
+
+Discussion/folder deletes use soft-delete with a 90-day retention window.
+
+Available endpoints:
+
+- `GET /api/discussions/trash`
+- `DELETE /api/discussions/folders/{folder_id}` (supports `?force=true`)
+- `POST /api/discussions/folders/{folder_id}/restore`
+- `POST /api/discussions/{discussion_id}/restore`
 
 ---
 

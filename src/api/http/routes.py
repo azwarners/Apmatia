@@ -143,6 +143,8 @@ def _serialize_discussion(discussion: dict) -> dict:
         "group_id": None if discussion.get("group_id") is None else int(discussion.get("group_id")),
         "visibility": str(discussion.get("visibility", "private")),
         "folder_id": None if discussion.get("folder_id") is None else int(discussion.get("folder_id")),
+        "deleted_at": discussion.get("deleted_at"),
+        "purge_after": discussion.get("purge_after"),
         "created_at": discussion.get("created_at"),
         "updated_at": discussion.get("updated_at"),
     }
@@ -154,6 +156,8 @@ def _serialize_folder(folder: dict) -> dict:
         "name": str(folder.get("name", "")),
         "parent_id": None if folder.get("parent_id") is None else int(folder.get("parent_id")),
         "owner_user_id": int(folder.get("owner_user_id", 0)),
+        "deleted_at": folder.get("deleted_at"),
+        "purge_after": folder.get("purge_after"),
         "created_at": folder.get("created_at"),
         "updated_at": folder.get("updated_at"),
     }
@@ -319,6 +323,59 @@ def update_discussion_folder(request: Request, folder_id: int, payload: UpdateFo
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     return {"status": "updated", "folder": _serialize_folder(folder)}
+
+
+@router.delete("/discussions/folders/{folder_id}")
+def delete_discussion_folder(request: Request, folder_id: int, force: bool = False):
+    session = _require_session(request)
+    try:
+        result = discussion_state.delete_folder(
+            owner_user_id=session.user_id,
+            folder_id=folder_id,
+            force=force,
+        )
+    except ValueError as error:
+        detail = str(error)
+        status_code = 409 if "not empty" in detail.lower() else 400
+        raise HTTPException(status_code=status_code, detail=detail) from error
+    return {"status": "deleted", "result": result}
+
+
+@router.post("/discussions/folders/{folder_id}/restore")
+def restore_discussion_folder(request: Request, folder_id: int):
+    session = _require_session(request)
+    try:
+        result = discussion_state.restore_folder(
+            owner_user_id=session.user_id,
+            folder_id=folder_id,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {"status": "restored", "result": result}
+
+
+@router.post("/discussions/{discussion_id}/restore")
+def restore_discussion(request: Request, discussion_id: str):
+    session = _require_session(request)
+    try:
+        result = discussion_state.restore_discussion(
+            owner_user_id=session.user_id,
+            discussion_id=discussion_id,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {"status": "restored", "result": result}
+
+
+@router.get("/discussions/trash")
+def discussions_trash(request: Request):
+    session = _require_session(request)
+    trash = discussion_state.list_trash(owner_user_id=session.user_id)
+    return {
+        "folders": [_serialize_folder(folder) for folder in trash.get("folders", [])],
+        "discussions": [_serialize_discussion(discussion) for discussion in trash.get("discussions", [])],
+        "retention_days": 90,
+    }
 
 
 @router.post("/discussions")

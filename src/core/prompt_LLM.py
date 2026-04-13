@@ -17,7 +17,7 @@ try:
     from ysparr.modalities.text2text.storage import TextFileStorage
 except ModuleNotFoundError:
     repo_root = Path(__file__).resolve().parents[2]
-    ysparr_src = repo_root / "src" / "libraries" / "ysparr"
+    ysparr_src = repo_root / "src" / "lib" / "ysparr"
     if str(ysparr_src) not in sys.path:
         sys.path.append(str(ysparr_src))
 

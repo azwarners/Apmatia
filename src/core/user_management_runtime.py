@@ -4,11 +4,11 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from src.core.user_management.auth import SessionManager
-from src.core.user_management.module import GroupManager, UserManager
+from src.lib.user_management.auth import SessionManager
+from src.lib.user_management.module import GroupManager, UserManager
 
 if TYPE_CHECKING:
-    from src.core.user_management.sqlite_repositories import SQLiteUserManagementBundle
+    from src.lib.user_management.sqlite_repositories import SQLiteUserManagementBundle
 
 
 APP_DIR = Path(os.getenv("APMATIA_HOME", str(Path.home() / ".apmatia"))).expanduser()
@@ -31,7 +31,7 @@ def _ensure_runtime() -> None:
     global _session_manager
 
     if _bundle is None:
-        from src.core.user_management.sqlite_repositories import SQLiteUserManagementBundle
+        from src.lib.user_management.sqlite_repositories import SQLiteUserManagementBundle
 
         APP_DIR.mkdir(parents=True, exist_ok=True)
         DATA_DIR.mkdir(parents=True, exist_ok=True)

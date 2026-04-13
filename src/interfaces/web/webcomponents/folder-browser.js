@@ -81,4 +81,56 @@ class FolderBrowserState {
   }
 }
 
+class FolderBrowserNav extends HTMLElement {
+  constructor() {
+    super();
+    this._state = {
+      isRoot: true,
+      label: "Root",
+      parentLabel: "Root",
+    };
+  }
+
+  setState({ isRoot, label, parentLabel }) {
+    this._state = {
+      isRoot: Boolean(isRoot),
+      label: label || "Root",
+      parentLabel: parentLabel || "Root",
+    };
+    this.render();
+  }
+
+  render() {
+    const { isRoot, label, parentLabel } = this._state;
+    this.innerHTML = "";
+
+    const bar = document.createElement("div");
+    bar.className = "folder-nav-bar";
+
+    if (isRoot) {
+      const rootLabel = document.createElement("span");
+      rootLabel.className = "folder-nav-label";
+      rootLabel.innerText = "Root";
+      bar.appendChild(rootLabel);
+    } else {
+      const backBtn = document.createElement("button");
+      backBtn.type = "button";
+      backBtn.className = "folder-nav-back";
+      backBtn.innerText = `\u2190 ${parentLabel}`;
+      backBtn.addEventListener("click", () => {
+        this.dispatchEvent(new CustomEvent("navigate-up", { bubbles: true }));
+      });
+      bar.appendChild(backBtn);
+
+      const currentLabel = document.createElement("span");
+      currentLabel.className = "folder-nav-label";
+      currentLabel.innerText = label;
+      bar.appendChild(currentLabel);
+    }
+
+    this.appendChild(bar);
+  }
+}
+
 window.FolderBrowserState = FolderBrowserState;
+customElements.define("folder-browser-nav", FolderBrowserNav);

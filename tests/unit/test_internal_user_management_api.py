@@ -1,7 +1,7 @@
 from unittest.mock import Mock, patch
 
 from src.api.internal import user_management
-from src.core.user_management.models import GroupRole
+from src.lib.user_management.models import GroupRole
 
 
 @patch("src.api.internal.user_management.get_user_manager")

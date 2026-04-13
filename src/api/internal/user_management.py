@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from src.core.user_management.models import GroupRole, UserId
-from src.core.user_management.runtime import get_group_manager, get_user_manager
+from src.lib.user_management.models import GroupRole, UserId
+from src.core.user_management_runtime import get_group_manager, get_user_manager
 
 
 def create_user(username: str, password: str):

@@ -108,38 +108,6 @@ async function saveSettings() {
     return;
   }
   const payload = currentFormValues();
-  if (!payload.model_url) {
-    setStatus("Model URL is required.");
-    return;
-  }
-  if (!Number.isInteger(payload.max_response_size) || payload.max_response_size < 1) {
-    setStatus("Max response size must be a positive integer.");
-    return;
-  }
-  if (payload.theme !== "dark" && payload.theme !== "light") {
-    setStatus("Theme must be dark or light.");
-    return;
-  }
-  if (!Number.isInteger(payload.font_size) || payload.font_size < 12 || payload.font_size > 24) {
-    setStatus("Font size must be an integer from 12 to 24.");
-    return;
-  }
-  if (
-    !Number.isInteger(payload.title_bar_height) ||
-    payload.title_bar_height < 40 ||
-    payload.title_bar_height > 96
-  ) {
-    setStatus("Title bar height must be an integer from 40 to 96.");
-    return;
-  }
-  if (
-    !Number.isInteger(payload.title_bar_font_size) ||
-    payload.title_bar_font_size < 12 ||
-    payload.title_bar_font_size > 40
-  ) {
-    setStatus("Title bar font size must be an integer from 12 to 40.");
-    return;
-  }
 
   saveButtonEl.disabled = true;
   setStatus("Saving settings...");

@@ -7,9 +7,9 @@ from pathlib import Path
 try:
     from persistence import SQLiteStore
 except ModuleNotFoundError:
-    from src.libraries.persistence.persistence import SQLiteStore
+    from src.lib.persistence.persistence import SQLiteStore
 
-from src.core.user_management.models import (
+from .models import (
     Group,
     GroupMembership,
     GroupRole,
@@ -18,7 +18,7 @@ from src.core.user_management.models import (
     User,
     utc_now,
 )
-from src.core.user_management.repositories import GroupMembershipRepository, GroupRepository, UserRepository
+from .repositories import GroupMembershipRepository, GroupRepository, UserRepository
 
 
 @dataclass(frozen=True, slots=True)

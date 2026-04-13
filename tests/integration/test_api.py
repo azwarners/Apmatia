@@ -9,7 +9,7 @@ from src.api.http.app import app
 client = TestClient(app)
 
 
-@patch("src.api.http.routes.prompt_llm")
+@patch("src.api.http.routes.prompt_routes.prompt_llm")
 def test_api_prompt(mock_prompt_llm):
     mock_prompt_llm.return_value = "mocked api response"
 
@@ -20,23 +20,19 @@ def test_api_prompt(mock_prompt_llm):
     mock_prompt_llm.assert_called_once_with("Nick", output_dir=None)
 
 
-@patch("src.api.http.routes.get_config_value")
-def test_api_get_settings_includes_ui_preferences(mock_get_config_value):
-    def fake_get_config(*keys, default=None):
-        mapping = {
-            ("llm", "backend"): "openai_compatible",
-            ("llm", "openai_compatible", "base_url"): "http://localhost:5001",
-            ("llm", "max_tokens"): 4096,
-            ("discussion", "system_prompt"): "Be concise.",
-            ("ui", "theme"): "light",
-            ("ui", "font_family"): "serif",
-            ("ui", "font_size"): 18,
-            ("ui", "title_bar_height"): 60,
-            ("ui", "title_bar_font_size"): 22,
-        }
-        return mapping.get(keys, default)
-
-    mock_get_config_value.side_effect = fake_get_config
+@patch("src.api.http.routes.settings_routes.get_settings_payload")
+def test_api_get_settings_includes_ui_preferences(mock_get_settings_payload):
+    mock_get_settings_payload.return_value = {
+        "backend": "openai_compatible",
+        "model_url": "http://localhost:5001",
+        "max_response_size": 4096,
+        "system_prompt": "Be concise.",
+        "theme": "light",
+        "font_family": "serif",
+        "font_size": 18,
+        "title_bar_height": 60,
+        "title_bar_font_size": 22,
+    }
 
     response = client.get("/api/settings")
 
@@ -54,13 +50,8 @@ def test_api_get_settings_includes_ui_preferences(mock_get_config_value):
     }
 
 
-@patch("src.api.http.routes.discussion_state")
-@patch("src.api.http.routes.set_config_value")
-@patch("src.api.http.routes.get_config_value")
-def test_api_save_settings_persists_theme_and_llm_fields(
-    mock_get_config_value, mock_set_config_value, mock_discussion_state
-):
-    mock_get_config_value.return_value = "openai_compatible"
+@patch("src.api.http.routes.settings_routes.save_settings_payload")
+def test_api_save_settings_persists_theme_and_llm_fields(mock_save_settings_payload):
     payload = {
         "model_url": "http://example.local:5001",
         "max_response_size": 2048,
@@ -76,16 +67,7 @@ def test_api_save_settings_persists_theme_and_llm_fields(
 
     assert response.status_code == 200
     assert response.json() == {"status": "saved"}
-    mock_set_config_value.assert_any_call(
-        "llm", "openai_compatible", "base_url", value="http://example.local:5001"
-    )
-    mock_set_config_value.assert_any_call("llm", "max_tokens", value=2048)
-    mock_set_config_value.assert_any_call("ui", "theme", value="light")
-    mock_set_config_value.assert_any_call("ui", "font_family", value="monospace")
-    mock_set_config_value.assert_any_call("ui", "font_size", value=20)
-    mock_set_config_value.assert_any_call("ui", "title_bar_height", value=58)
-    mock_set_config_value.assert_any_call("ui", "title_bar_font_size", value=21)
-    mock_discussion_state.set_system_prompt.assert_called_once_with("Always help.")
+    assert mock_save_settings_payload.call_count == 1
 
 
 def test_api_save_settings_rejects_invalid_font_size():

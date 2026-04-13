@@ -327,6 +327,7 @@ button:disabled {
 }
 
 .tree-list {
+  display: block;
   border: 1px solid var(--card-border);
   border-radius: 8px;
   padding: 0.6rem;
@@ -335,6 +336,7 @@ button:disabled {
 }
 
 .folder-nav {
+  display: block;
   border: 1px solid var(--card-border);
   border-radius: 8px;
   background: var(--surface-bg);

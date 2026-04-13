@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from src.core.user_management.models import Group, GroupId, GroupMembership, MembershipId, User, UserId
+from .models import Group, GroupId, GroupMembership, MembershipId, User, UserId
 
 
 class UserRepository(Protocol):

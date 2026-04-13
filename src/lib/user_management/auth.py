@@ -4,7 +4,7 @@ import secrets
 import threading
 from dataclasses import dataclass
 
-from src.core.user_management.models import UserId
+from .models import UserId
 
 
 @dataclass(slots=True)

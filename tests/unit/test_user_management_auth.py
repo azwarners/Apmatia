@@ -1,4 +1,4 @@
-from src.core.user_management.auth import SessionManager
+from src.lib.user_management.auth import SessionManager
 
 
 def test_session_manager_create_get_delete():

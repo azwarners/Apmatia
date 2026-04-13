@@ -5,9 +5,9 @@ import hmac
 import secrets
 from dataclasses import replace
 
-from src.core.user_management.models import Group, GroupMembership, GroupRole, User, UserId, utc_now
-from src.core.user_management.repositories import GroupMembershipRepository, GroupRepository, UserRepository
-from src.core.user_management.services import AccessControlService, GroupService, UserService
+from .models import Group, GroupMembership, GroupRole, User, UserId, utc_now
+from .repositories import GroupMembershipRepository, GroupRepository, UserRepository
+from .services import AccessControlService, GroupService, UserService
 
 
 def _hash_password(password: str, scheme: str = "sha512") -> str:

@@ -85,53 +85,32 @@ async function loadUserLabel() {
   }
 }
 
-function parseDiscussion(content) {
-  const lines = String(content || "").split("\n");
-  const messages = [];
-  let current = null;
-
-  lines.forEach((line) => {
-    const roleMatch = line.match(/^(User|Assistant):\s?(.*)$/);
-    if (roleMatch) {
-      if (current) {
-        messages.push(current);
-      }
-      current = { role: roleMatch[1], text: roleMatch[2] || "" };
-      return;
-    }
-    if (!current) {
-      current = { role: "Assistant", text: "" };
-    }
-    current.text += `${current.text ? "\n" : ""}${line}`;
-  });
-
-  if (current) {
-    messages.push(current);
-  }
-
-  return messages.filter((message) => message.text.trim().length > 0);
-}
-
-function renderConversation(content) {
+function renderConversation(messages) {
   const fragment = document.createDocumentFragment();
-  const messages = parseDiscussion(content);
+  const normalized = Array.isArray(messages) ? messages : [];
 
-  if (messages.length === 0) {
+  if (normalized.length === 0) {
     conversationEl.innerHTML = "";
     return;
   }
 
-  messages.forEach((message) => {
+  normalized.forEach((message) => {
+    const role = message?.role === "User" ? "User" : "Assistant";
+    const text = String(message?.text || "").trimEnd();
+    if (!text) {
+      return;
+    }
+
     const item = document.createElement("article");
-    item.className = `chat-message ${message.role === "User" ? "from-user" : "from-assistant"}`;
+    item.className = `chat-message ${role === "User" ? "from-user" : "from-assistant"}`;
 
     const label = document.createElement("div");
     label.className = "chat-label";
-    label.textContent = message.role === "User" ? `${userLabel}:` : "Assistant:";
+    label.textContent = role === "User" ? `${userLabel}:` : "Assistant:";
 
     const body = document.createElement("div");
     body.className = "chat-body";
-    body.textContent = message.text.trimEnd();
+    body.textContent = text;
 
     item.appendChild(label);
     item.appendChild(body);
@@ -143,7 +122,7 @@ function renderConversation(content) {
 }
 
 function renderSnapshot(snapshot) {
-  renderConversation(snapshot.content || "");
+  renderConversation(snapshot.messages || []);
 
   if (followLiveEdge) {
     scrollConversationToBottom();

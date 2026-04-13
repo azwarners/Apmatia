@@ -44,7 +44,7 @@ This ensures:
 
 ### 1. Libraries (Business Logic)
 
-**Location:** `src/libraries/`
+**Location:** `src/lib/`
 
 Libraries contain all real functionality.
 
@@ -68,6 +68,12 @@ They do NOT:
 
 > Libraries should be reusable outside of Apmatia.
 
+Current examples include:
+
+- `ysparr` (LLM execution)
+- `persistence` (SQLite store)
+- `user_management` (user/group domain + repository adapters)
+
 ---
 
 ### 2. Core (Orchestration)
@@ -83,6 +89,7 @@ It:
 - composes and transforms results
 
 - defines application-level behavior
+- owns app-specific runtime composition (for example `user_management_runtime.py`)
 
 It does NOT:
 
@@ -178,7 +185,7 @@ They do NOT:
 
 > Interfaces are consumers, not owners.
 
-For the web interface, presentation is split into external assets under `src/interfaces/web/desktop/`:
+For the web interface, presentation is split into external assets under `src/interfaces/web/`:
 
 - HTML entry pages (`index.html`, `discussion.html`, `settings.html`)
 - shared stylesheet (`styles.css`)
@@ -208,7 +215,7 @@ Configuration is loaded from a persistent config file first, with environment va
 Example:
 
 ```
-config.json (~/.config/apmatia/config.json) → core/api → libraries/interfaces
+config.json (~/.config/apmatia/config.json) → core/api → lib/interfaces
                ↑
          optional env bootstrap (.env/container env)
 ```
@@ -220,6 +227,11 @@ This ensures:
 - persistent runtime settings across CLI + HTTP + web UI
 
 - portability across systems
+
+For user management specifically:
+
+- reusable logic lives in `src/lib/user_management`
+- Apmatia-specific env/path/runtime state lives in `src/core/user_management_runtime.py`
 
 The web `/settings` screen persists both model/discussion options and UI preferences (theme, font family, font size) through `/api/settings`.
 

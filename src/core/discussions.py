@@ -10,7 +10,7 @@ from pathlib import Path
 try:
     from persistence import SQLiteStore
 except ModuleNotFoundError:
-    from src.libraries.persistence.persistence import SQLiteStore
+    from src.lib.persistence.persistence import SQLiteStore
 
 from src.core.discussion_templates import DISCUSSION_CHAT_TEMPLATE, build_chat_messages
 from src.core.prompt_LLM import prompt_llm
@@ -23,6 +23,7 @@ DATA_DIR = Path(
 DISCUSSIONS_DIR = DATA_DIR / "discussions"
 DISCUSSIONS_DB = DATA_DIR / "discussions.db"
 TRASH_RETENTION_DAYS = 90
+_UNSET = object()
 
 
 def utc_now_iso() -> str:
@@ -57,6 +58,7 @@ class DiscussionSnapshot:
     last_error: str | None
     system_prompt: str
     content: str
+    messages: list[dict[str, str]]
 
 
 class DiscussionState:
@@ -71,6 +73,35 @@ class DiscussionState:
 
     def _discussion_path(self, discussion_id: str) -> Path:
         return DISCUSSIONS_DIR / f"{discussion_id}.txt"
+
+    def _parse_messages(self, content: str) -> list[dict[str, str]]:
+        lines = str(content or "").split("\n")
+        messages: list[dict[str, str]] = []
+        current: dict[str, str] | None = None
+
+        for line in lines:
+            if line.startswith("User:") or line.startswith("Assistant:"):
+                if current is not None:
+                    messages.append(current)
+                role, _, rest = line.partition(":")
+                current = {"role": role, "text": rest.lstrip()}
+                continue
+
+            if current is None:
+                current = {"role": "Assistant", "text": ""}
+            separator = "\n" if current["text"] else ""
+            current["text"] = f"{current['text']}{separator}{line}"
+
+        if current is not None:
+            messages.append(current)
+
+        cleaned: list[dict[str, str]] = []
+        for message in messages:
+            text = str(message.get("text", "")).rstrip()
+            if not text:
+                continue
+            cleaned.append({"role": str(message.get("role", "Assistant")), "text": text})
+        return cleaned
 
     def _append_text(self, discussion_id: str, text: str) -> None:
         path = self._discussion_path(discussion_id)
@@ -285,8 +316,8 @@ class DiscussionState:
         self,
         owner_user_id: int,
         folder_id: int,
-        name: str | None = None,
-        parent_id: int | None = None,
+        name: str | None | object = _UNSET,
+        parent_id: int | None | object = _UNSET,
     ) -> dict:
         folder = self._store.get("discussion_folders", id=folder_id)
         if not folder or int(folder.get("owner_user_id", -1)) != owner_user_id:
@@ -295,21 +326,28 @@ class DiscussionState:
             raise ValueError("Folder not found.")
 
         updates: dict = {}
-        if name is not None:
+        if name is not _UNSET and name is not None:
             clean_name = name.strip()
             if not clean_name:
                 raise ValueError("Folder name cannot be empty.")
             updates["name"] = clean_name
 
-        if parent_id is not None:
-            if parent_id == folder_id:
-                raise ValueError("Folder cannot be its own parent.")
-            parent = self._store.get("discussion_folders", id=parent_id)
-            if not parent or int(parent.get("owner_user_id", -1)) != owner_user_id:
-                raise ValueError("Parent folder not found.")
-            if parent.get("deleted_at") is not None:
-                raise ValueError("Parent folder not found.")
-            updates["parent_id"] = parent_id
+        if parent_id is not _UNSET:
+            if parent_id is None:
+                updates["parent_id"] = None
+            else:
+                next_parent_id = int(parent_id)
+                if next_parent_id == folder_id:
+                    raise ValueError("Folder cannot be its own parent.")
+                descendant_ids = set(self._collect_descendant_folder_ids(owner_user_id, folder_id))
+                if next_parent_id in descendant_ids:
+                    raise ValueError("Folder cannot be moved into itself or its descendants.")
+                parent = self._store.get("discussion_folders", id=next_parent_id)
+                if not parent or int(parent.get("owner_user_id", -1)) != owner_user_id:
+                    raise ValueError("Parent folder not found.")
+                if parent.get("deleted_at") is not None:
+                    raise ValueError("Parent folder not found.")
+                updates["parent_id"] = next_parent_id
 
         if updates:
             updates["updated_at"] = utc_now_iso()
@@ -472,31 +510,36 @@ class DiscussionState:
         self,
         owner_user_id: int,
         discussion_id: str,
-        title: str | None = None,
-        group_id: int | None = None,
-        folder_id: int | None = None,
+        title: str | None | object = _UNSET,
+        group_id: int | None | object = _UNSET,
+        folder_id: int | None | object = _UNSET,
     ) -> dict:
         discussion = self._get_discussion(discussion_id)
         if not discussion or int(discussion.get("owner_user_id", -1)) != owner_user_id:
             raise ValueError("Discussion not found.")
 
         updates: dict = {}
-        if title is not None:
+        if title is not _UNSET and title is not None:
             clean_title = title.strip()
             if not clean_title:
                 raise ValueError("Discussion title cannot be empty.")
             updates["title"] = clean_title
 
-        updates["group_id"] = group_id
-        updates["visibility"] = "group" if group_id is not None else "private"
+        if group_id is not _UNSET:
+            updates["group_id"] = group_id
+            updates["visibility"] = "group" if group_id is not None else "private"
 
-        if folder_id is not None:
-            folder = self._store.get("discussion_folders", id=folder_id)
-            if not folder or int(folder.get("owner_user_id", -1)) != owner_user_id:
-                raise ValueError("Folder not found.")
-            if folder.get("deleted_at") is not None:
-                raise ValueError("Folder not found.")
-            updates["folder_id"] = folder_id
+        if folder_id is not _UNSET:
+            if folder_id is None:
+                updates["folder_id"] = None
+            else:
+                next_folder_id = int(folder_id)
+                folder = self._store.get("discussion_folders", id=next_folder_id)
+                if not folder or int(folder.get("owner_user_id", -1)) != owner_user_id:
+                    raise ValueError("Folder not found.")
+                if folder.get("deleted_at") is not None:
+                    raise ValueError("Folder not found.")
+                updates["folder_id"] = next_folder_id
 
         self._update_discussion(discussion_id, updates)
         return {**discussion, **updates}
@@ -568,6 +611,7 @@ class DiscussionState:
         discussion_id = str(current["discussion_id"])
         path = self._discussion_path(discussion_id)
         content = path.read_text(encoding="utf-8") if path.exists() else ""
+        messages = self._parse_messages(content)
 
         with self._lock:
             is_streaming = discussion_id in self._streaming
@@ -578,6 +622,7 @@ class DiscussionState:
             last_error=None if current.get("last_error") is None else str(current.get("last_error")),
             system_prompt=str(current.get("system_prompt", "")),
             content=content,
+            messages=messages,
         )
 
 

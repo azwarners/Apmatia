@@ -12,7 +12,7 @@ Apmatia is a structured system for integrating AI capabilities into real applica
 
 It enforces a clean architecture where:
 
-- **Libraries** contain all functionality (e.g., ysparr)
+- **Libraries** contain all functionality (e.g., ysparr, user_management)
 
 - **Core** orchestrates libraries
 
@@ -56,6 +56,8 @@ This guarantees:
 
 - Config file-based configuration
 
+- Reusable user/group management library (`src/lib/user_management`) with app-specific runtime wiring in core
+
 - Web UI with modular Web Components and reusable mobile components
 
 - Mobile-first Discussion experience:
@@ -85,6 +87,8 @@ Apmatia currently integrates:
 - **KoboldCpp backend** → local LLM backend
 
 - **ysparr** → minimal execution library
+
+- **user_management** → reusable user/group domain and persistence library
 
 ---
 
@@ -145,7 +149,7 @@ Settings are grouped by collapsible categories and backed by reusable Web Compon
 Startup prints the current app version from `VERSION`:
 
 ```
-Starting Apmatia version: 0.0.1.2
+Starting Apmatia version: 0.0.1.3
 ```
 
 Then open:
@@ -197,8 +201,9 @@ Available endpoints:
 
 ```
 src/
-├── libraries/   → business logic (ysparr)
+├── lib/         → business logic libraries (ysparr, user_management, persistence)
 ├── core/        → orchestration
+│   └── user_management_runtime.py → Apmatia runtime wiring for user_management
 ├── api/internal → canonical interface
 ├── api/http     → HTTP layer
 ├── interfaces/  → CLI + web
@@ -226,7 +231,7 @@ src/
 
 - Multi-model routing
 
-- Multi-user support
+- Multi-user hardening (authz policies, schema migrations, admin workflows)
 
 ---
 

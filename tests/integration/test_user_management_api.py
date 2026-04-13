@@ -10,7 +10,7 @@ from src.api.http.app import app
 client = TestClient(app)
 
 
-@patch("src.api.http.routes.create_user")
+@patch("src.api.http.routes.users_routes.create_user")
 def test_api_create_user(mock_create_user):
     mock_create_user.return_value = {"id": 1, "username": "nick"}
 
@@ -24,7 +24,7 @@ def test_api_create_user(mock_create_user):
     mock_create_user.assert_called_once_with(username="nick", password="pw")
 
 
-@patch("src.api.http.routes.verify_user")
+@patch("src.api.http.routes.users_routes.verify_user")
 def test_api_verify_user(mock_verify_user):
     mock_verify_user.return_value = True
 
@@ -35,7 +35,7 @@ def test_api_verify_user(mock_verify_user):
     mock_verify_user.assert_called_once_with(username="nick", password="pw")
 
 
-@patch("src.api.http.routes.edit_user")
+@patch("src.api.http.routes.users_routes.edit_user")
 def test_api_edit_user(mock_edit_user):
     mock_edit_user.return_value = {"id": 1, "username": "nick-updated", "is_enabled": True}
 
@@ -54,7 +54,7 @@ def test_api_edit_user(mock_edit_user):
     )
 
 
-@patch("src.api.http.routes.delete_user")
+@patch("src.api.http.routes.users_routes.delete_user")
 def test_api_delete_user(mock_delete_user):
     mock_delete_user.return_value = True
 
@@ -65,7 +65,7 @@ def test_api_delete_user(mock_delete_user):
     mock_delete_user.assert_called_once_with(user_id=1)
 
 
-@patch("src.api.http.routes.list_users")
+@patch("src.api.http.routes.users_routes.list_users")
 def test_api_list_users(mock_list_users):
     mock_list_users.return_value = [{"id": 1, "username": "nick"}]
 
@@ -76,7 +76,7 @@ def test_api_list_users(mock_list_users):
     mock_list_users.assert_called_once_with()
 
 
-@patch("src.api.http.routes.create_group")
+@patch("src.api.http.routes.groups_routes.create_group")
 def test_api_create_group(mock_create_group):
     mock_create_group.return_value = {"id": 10, "name": "team"}
 
@@ -94,7 +94,7 @@ def test_api_create_group(mock_create_group):
     )
 
 
-@patch("src.api.http.routes.delete_group")
+@patch("src.api.http.routes.groups_routes.delete_group")
 def test_api_delete_group(mock_delete_group):
     mock_delete_group.return_value = True
 
@@ -105,7 +105,7 @@ def test_api_delete_group(mock_delete_group):
     mock_delete_group.assert_called_once_with(group_id=10)
 
 
-@patch("src.api.http.routes.list_groups")
+@patch("src.api.http.routes.groups_routes.list_groups")
 def test_api_list_groups(mock_list_groups):
     mock_list_groups.return_value = [{"id": 10, "name": "team"}]
 
@@ -116,7 +116,7 @@ def test_api_list_groups(mock_list_groups):
     mock_list_groups.assert_called_once_with()
 
 
-@patch("src.api.http.routes.add_member")
+@patch("src.api.http.routes.groups_routes.add_member")
 def test_api_add_member(mock_add_member):
     mock_add_member.return_value = {"id": 100, "group_id": 10, "user_id": 1, "role": "member"}
 
@@ -130,7 +130,7 @@ def test_api_add_member(mock_add_member):
     assert mock_add_member.call_count == 1
 
 
-@patch("src.api.http.routes.create_user")
+@patch("src.api.http.routes.users_routes.create_user")
 def test_api_user_management_not_implemented_maps_to_501(mock_create_user):
     mock_create_user.side_effect = NotImplementedError
 
@@ -140,7 +140,7 @@ def test_api_user_management_not_implemented_maps_to_501(mock_create_user):
     assert response.json()["detail"] == "User management not implemented yet."
 
 
-@patch("src.api.http.routes.create_group")
+@patch("src.api.http.routes.groups_routes.create_group")
 def test_api_group_management_not_implemented_maps_to_501(mock_create_group):
     mock_create_group.side_effect = NotImplementedError
 

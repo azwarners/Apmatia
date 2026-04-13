@@ -1,6 +1,6 @@
-from src.core.user_management.models import GroupRole
-from src.core.user_management.module import AccessController, GroupManager, UserManager
-from src.core.user_management.sqlite_repositories import SQLiteUserManagementBundle
+from src.lib.user_management.models import GroupRole
+from src.lib.user_management.module import AccessController, GroupManager, UserManager
+from src.lib.user_management.sqlite_repositories import SQLiteUserManagementBundle
 
 
 def _bundle(tmp_path):

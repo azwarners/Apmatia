@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.core.user_management.runtime import get_session_manager, get_user_manager
+from src.core.user_management_runtime import get_session_manager, get_user_manager
 
 
 def has_any_users() -> bool:

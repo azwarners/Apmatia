@@ -56,105 +56,125 @@ def api_version() -> dict:
 def root(request: Request):
     if not _is_authenticated(request):
         return RedirectResponse(url="/login", status_code=303)
-    return _ui_file_response("src/interfaces/web/desktop/index.html")
+    return _ui_file_response("src/interfaces/web/index.html")
 
 
 @app.get("/discussion")
 def discussion_page(request: Request):
     if not _is_authenticated(request):
         return RedirectResponse(url="/login", status_code=303)
-    return _ui_file_response("src/interfaces/web/desktop/discussion.html")
+    return _ui_file_response("src/interfaces/web/pages/discussion.html")
 
 
 @app.get("/discussion_tree")
 def discussion_tree_page(request: Request):
     if not _is_authenticated(request):
         return RedirectResponse(url="/login", status_code=303)
-    return _ui_file_response("src/interfaces/web/desktop/discussion_tree.html")
+    return _ui_file_response("src/interfaces/web/pages/discussion_tree.html")
 
 
 @app.get("/settings")
 def settings_page(request: Request):
     if not _is_authenticated(request):
         return RedirectResponse(url="/login", status_code=303)
-    return _ui_file_response("src/interfaces/web/desktop/settings.html")
+    return _ui_file_response("src/interfaces/web/pages/settings.html")
 
 
 @app.get("/login")
 def login_page():
-    return _ui_file_response("src/interfaces/web/desktop/login.html")
+    return _ui_file_response("src/interfaces/web/pages/login.html")
 
 
 @app.get("/styles.css")
 def styles():
-    return _ui_file_response("src/interfaces/web/desktop/styles.css")
+    return _ui_file_response("src/interfaces/web/styles.css")
 
 
 @app.get("/discussion.js")
 def discussion_script():
-    return _ui_file_response("src/interfaces/web/desktop/discussion.js")
+    return _ui_file_response("src/interfaces/web/js/discussion/discussion.js")
 
 
 @app.get("/discussion-tree.js")
 def discussion_tree_script():
-    return _ui_file_response("src/interfaces/web/desktop/discussion-tree.js")
+    return _ui_file_response("src/interfaces/web/js/discussion/discussion-tree.js")
 
 
 @app.get("/settings.js")
 def settings_script():
-    return _ui_file_response("src/interfaces/web/desktop/settings.js")
+    return _ui_file_response("src/interfaces/web/js/settings/settings.js")
 
 
 @app.get("/ai-settings.js")
 def ai_settings_script():
-    return _ui_file_response("src/interfaces/web/desktop/ai-settings.js")
+    return _ui_file_response("src/interfaces/web/webcomponents/ai-settings.js")
 
 
 @app.get("/discussion-settings.js")
 def discussion_settings_script():
-    return _ui_file_response("src/interfaces/web/desktop/discussion-settings.js")
+    return _ui_file_response("src/interfaces/web/webcomponents/discussion-settings.js")
 
 
 @app.get("/theme-settings.js")
 def theme_settings_script():
-    return _ui_file_response("src/interfaces/web/desktop/theme-settings.js")
+    return _ui_file_response("src/interfaces/web/webcomponents/theme-settings.js")
 
 
 @app.get("/theme-runtime.js")
 def theme_runtime_script():
-    return _ui_file_response("src/interfaces/web/desktop/theme-runtime.js")
+    return _ui_file_response("src/interfaces/web/js/settings/theme-runtime.js")
 
 
 @app.get("/about-info.js")
 def about_info_script():
-    return _ui_file_response("src/interfaces/web/desktop/about-info.js")
+    return _ui_file_response("src/interfaces/web/webcomponents/about-info.js")
 
 
 @app.get("/login.js")
 def login_script():
-    return _ui_file_response("src/interfaces/web/desktop/login.js")
+    return _ui_file_response("src/interfaces/web/js/users/login.js")
 
 
 @app.get("/auth-ui.js")
 def auth_ui_script():
-    return _ui_file_response("src/interfaces/web/desktop/auth-ui.js")
+    return _ui_file_response("src/interfaces/web/js/users/auth-ui.js")
 
 
 @app.get("/mobile-menu.js")
 def mobile_menu_script():
-    return _ui_file_response("src/interfaces/web/desktop/mobile-menu.js")
+    return _ui_file_response("src/interfaces/web/mobile-menu.js")
 
 
 @app.get("/mobile-drawer.js")
 def mobile_drawer_script():
-    return _ui_file_response("src/interfaces/web/desktop/mobile-drawer.js")
+    return _ui_file_response("src/interfaces/web/webcomponents/mobile-drawer.js")
 
 
 @app.get("/folder-browser.js")
 def folder_browser_script():
-    return _ui_file_response("src/interfaces/web/desktop/folder-browser.js")
+    return _ui_file_response("src/interfaces/web/webcomponents/folder-browser.js")
 
 
 @app.get("/folder-picker.js")
 def folder_picker_script():
-    return _ui_file_response("src/interfaces/web/desktop/folder-picker.js")
+    return _ui_file_response("src/interfaces/web/webcomponents/folder-picker.js")
+
+
+@app.get("/tree-list-item.js")
+def tree_list_item_script():
+    return _ui_file_response("src/interfaces/web/webcomponents/tree-list-item.js")
+
+
+@app.get("/tree-list.js")
+def tree_list_script():
+    return _ui_file_response("src/interfaces/web/webcomponents/tree-list.js")
+
+
+@app.get("/discussion-tree-list-items.js")
+def discussion_tree_list_items_script():
+    return _ui_file_response("src/interfaces/web/webcomponents/discussion-tree-list-items.js")
+
+
+@app.get("/discussion-tree-component.js")
+def discussion_tree_component_script():
+    return _ui_file_response("src/interfaces/web/webcomponents/discussion-tree-component.js")

@@ -1,6 +1,6 @@
 """Core user/group management design skeleton."""
 
-from src.core.user_management.models import (
+from .models import (
     Group,
     GroupId,
     GroupMembership,
@@ -10,16 +10,16 @@ from src.core.user_management.models import (
     User,
     UserId,
 )
-from src.core.user_management.module import AccessController, GroupManager, UserManager
-from src.core.user_management.repositories import (
+from .module import AccessController, GroupManager, UserManager
+from .repositories import (
     GroupMembershipRepository,
     GroupRepository,
     UserRepository,
 )
-from src.core.user_management.services import AccessControlService, GroupService, UserService
+from .services import AccessControlService, GroupService, UserService
 
 try:
-    from src.core.user_management.sqlite_repositories import (
+    from .sqlite_repositories import (
         SQLiteGroupMembershipRepository,
         SQLiteGroupRepository,
         SQLiteUserManagementBundle,

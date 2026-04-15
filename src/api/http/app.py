@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from src.api.http.routes import router
 from fastapi.responses import FileResponse, RedirectResponse
 from src.api.internal.auth import get_session
@@ -47,6 +47,20 @@ def _ui_file_response(path: str) -> FileResponse:
     return FileResponse(path, headers=NO_CACHE_HEADERS)
 
 
+def _vendor_file_response(asset_path: str) -> FileResponse:
+    base = (Path("src/interfaces/web/assets/vendor")).resolve()
+    candidate = (base / asset_path).resolve()
+    if not str(candidate).startswith(str(base)):
+        raise HTTPException(status_code=404, detail="Vendor asset not found")
+    if not candidate.is_file() and candidate.suffix == "":
+        js_candidate = candidate.with_suffix(".js")
+        if js_candidate.is_file():
+            candidate = js_candidate
+    if not candidate.is_file():
+        raise HTTPException(status_code=404, detail="Vendor asset not found")
+    return FileResponse(str(candidate), headers=NO_CACHE_HEADERS)
+
+
 @app.get("/api/version")
 def api_version() -> dict:
     return {"version": _read_version()}
@@ -71,6 +85,13 @@ def discussion_tree_page(request: Request):
     if not _is_authenticated(request):
         return RedirectResponse(url="/login", status_code=303)
     return _ui_file_response("src/interfaces/web/pages/discussion_tree.html")
+
+
+@app.get("/desktop")
+def desktop_page(request: Request):
+    if not _is_authenticated(request):
+        return RedirectResponse(url="/login", status_code=303)
+    return _ui_file_response("src/interfaces/web/pages/desktop.html")
 
 
 @app.get("/settings")
@@ -140,6 +161,26 @@ def auth_ui_script():
     return _ui_file_response("src/interfaces/web/js/users/auth-ui.js")
 
 
+@app.get("/desktop-shell.js")
+def desktop_shell_script():
+    return _ui_file_response("src/interfaces/web/js/desktop/desktop-shell.js")
+
+
+@app.get("/panel-registry.js")
+def panel_registry_script():
+    return _ui_file_response("src/interfaces/web/js/panel-registry.js")
+
+
+@app.get("/panel-permissions.js")
+def panel_permissions_script():
+    return _ui_file_response("src/interfaces/web/js/panel-permissions.js")
+
+
+@app.get("/layout-manager.js")
+def layout_manager_script():
+    return _ui_file_response("src/interfaces/web/js/layout-manager.js")
+
+
 @app.get("/mobile-menu.js")
 def mobile_menu_script():
     return _ui_file_response("src/interfaces/web/mobile-menu.js")
@@ -178,3 +219,68 @@ def discussion_tree_list_items_script():
 @app.get("/discussion-tree-component.js")
 def discussion_tree_component_script():
     return _ui_file_response("src/interfaces/web/webcomponents/discussion-tree-component.js")
+
+
+@app.get("/apm-discussion-page.js")
+def apm_discussion_page_script():
+    return _ui_file_response("src/interfaces/web/webcomponents/apm-discussion-page.js")
+
+
+@app.get("/apm-discussion-tree-page.js")
+def apm_discussion_tree_page_script():
+    return _ui_file_response("src/interfaces/web/webcomponents/apm-discussion-tree-page.js")
+
+
+@app.get("/apm-discussion-participants-panel.js")
+def apm_discussion_participants_panel_script():
+    return _ui_file_response("src/interfaces/web/webcomponents/apm-discussion-participants-panel.js")
+
+
+@app.get("/apm-discussion-settings-panel.js")
+def apm_discussion_settings_panel_script():
+    return _ui_file_response("src/interfaces/web/webcomponents/apm-discussion-settings-panel.js")
+
+
+@app.get("/apm-ai-settings-panel.js")
+def apm_ai_settings_panel_script():
+    return _ui_file_response("src/interfaces/web/webcomponents/apm-ai-settings-panel.js")
+
+
+@app.get("/apm-discussion-settings-category-panel.js")
+def apm_discussion_settings_category_panel_script():
+    return _ui_file_response("src/interfaces/web/webcomponents/apm-discussion-settings-category-panel.js")
+
+
+@app.get("/apm-theme-settings-panel.js")
+def apm_theme_settings_panel_script():
+    return _ui_file_response("src/interfaces/web/webcomponents/apm-theme-settings-panel.js")
+
+
+@app.get("/apm-about-panel.js")
+def apm_about_panel_script():
+    return _ui_file_response("src/interfaces/web/webcomponents/apm-about-panel.js")
+
+
+@app.get("/vendor/golden-layout/golden-layout.min.js")
+def vendor_golden_layout_js():
+    return _ui_file_response("src/interfaces/web/assets/vendor/golden-layout/golden-layout.min.js")
+
+
+@app.get("/vendor/golden-layout/goldenlayout-base.min.css")
+def vendor_golden_layout_base_css():
+    return _ui_file_response("src/interfaces/web/assets/vendor/golden-layout/goldenlayout-base.min.css")
+
+
+@app.get("/vendor/golden-layout/goldenlayout-dark-theme.min.css")
+def vendor_golden_layout_dark_css():
+    return _ui_file_response("src/interfaces/web/assets/vendor/golden-layout/goldenlayout-dark-theme.min.css")
+
+
+@app.get("/vendor/golden-layout/goldenlayout-light-theme.min.css")
+def vendor_golden_layout_light_css():
+    return _ui_file_response("src/interfaces/web/assets/vendor/golden-layout/goldenlayout-light-theme.min.css")
+
+
+@app.get("/vendor/golden-layout/{asset_path:path}")
+def vendor_golden_layout_asset(asset_path: str):
+    return _vendor_file_response(f"golden-layout/{asset_path}")

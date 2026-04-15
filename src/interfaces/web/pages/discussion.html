@@ -33,36 +33,15 @@
   </div>
 </div>
 <mobile-drawer-menu
-  items='[{"type":"link","label":"Main Menu","href":"/"},{"type":"link","label":"Open Discussion","href":"/discussion_tree"},{"type":"button","label":"New Discussion","action":"new-discussion","closeOnClick":true}]'
+  items='[{"type":"link","label":"Main Menu","href":"/"},{"type":"link","label":"Discussion Tree","href":"/discussion_tree"},{"type":"link","label":"Settings","href":"/settings"}]'
 ></mobile-drawer-menu>
 <div class="mobile-content">
 
-<div class="card">
-  <div class="header">
-    <h1>Discussion</h1>
-    <div class="header-links">
-      <a class="nav-link" href="/settings">Settings</a>
-      <a class="nav-link" href="/">Main Menu</a>
-      <button type="button" class="nav-link-button logout-action">Logout</button>
-    </div>
-  </div>
+<apm-discussion-page></apm-discussion-page>
 
-  <div id="conversation"></div>
-  <button id="scroll-latest-button" type="button" aria-label="Jump to latest messages">↓ Latest</button>
-  <div id="discussion-bottom" class="discussion-bottom">
-    <div class="status" id="status">Connecting...</div>
-    <div class="composer">
-      <button id="send-button" onclick="sendPrompt()">Send Prompt</button>
-      <textarea
-        id="prompt"
-        rows="3"
-        placeholder="Enter prompt (Markdown supported). Press Ctrl+Enter or Cmd+Enter to send."
-      ></textarea>
-    </div>
-  </div>
-</div>
-
-<script src="/discussion.js"></script>
+<script src="/apm-discussion-page.js"></script>
+<script src="/apm-discussion-participants-panel.js"></script>
+<script src="/apm-discussion-settings-panel.js"></script>
 <script src="/auth-ui.js"></script>
 <script src="/mobile-drawer.js"></script>
 <script src="/mobile-menu.js"></script>

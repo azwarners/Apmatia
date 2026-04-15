@@ -2,6 +2,7 @@ const treeEl = document.getElementById("discussion-tree");
 const statusEl = document.getElementById("tree-status");
 const folderNavEl = document.getElementById("folder-nav");
 const createFolderButtonEl = document.getElementById("create-folder-button");
+const trashSoonButtonEl = document.getElementById("trash-soon-button");
 
 let treeState = { current_discussion_id: null, folders: [], discussions: [] };
 const folderBrowser = new FolderBrowserState();
@@ -265,6 +266,11 @@ async function createFolder() {
 if (createFolderButtonEl) {
   createFolderButtonEl.addEventListener("click", createFolder);
 }
+if (trashSoonButtonEl) {
+  trashSoonButtonEl.addEventListener("click", () => {
+    setStatus("Trash view is not implemented yet (placeholder).");
+  });
+}
 
 if (folderNavEl) {
   folderNavEl.addEventListener("navigate-up", () => {
@@ -332,16 +338,5 @@ if (treeEl) {
     }
   });
 }
-
-document.addEventListener("mobile-drawer-action", (event) => {
-  const action = event?.detail?.action;
-  if (action === "create-folder") {
-    createFolder();
-    return;
-  }
-  if (action === "trash-soon") {
-    setStatus("Trash view is not implemented yet (placeholder).");
-  }
-});
 
 loadTree();

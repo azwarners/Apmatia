@@ -33,24 +33,11 @@
   </div>
 </div>
 <mobile-drawer-menu
-  items='[{"type":"link","label":"Main Menu","href":"/"},{"type":"link","label":"Discussion","href":"/discussion"},{"type":"link","label":"Discussion Tree","href":"/discussion_tree"},{"type":"button","label":"Create Folder","action":"create-folder","closeOnClick":true},{"type":"button","label":"Trash (Soon)","action":"trash-soon","closeOnClick":true}]'
+  items='[{"type":"link","label":"Main Menu","href":"/"},{"type":"link","label":"Discussion","href":"/discussion"},{"type":"link","label":"Discussion Tree","href":"/discussion_tree"},{"type":"link","label":"Settings","href":"/settings"}]'
 ></mobile-drawer-menu>
 <div class="mobile-content">
 
-<div class="card">
-  <div class="header">
-    <h1>Discussion Tree</h1>
-    <div class="header-links">
-      <a class="nav-link" href="/discussion">Back to Discussion</a>
-      <button id="create-folder-button" type="button">Create Folder</button>
-      <button type="button" class="nav-link-button logout-action">Logout</button>
-    </div>
-  </div>
-
-  <folder-browser-nav id="folder-nav" class="folder-nav"></folder-browser-nav>
-  <discussion-tree-list id="discussion-tree" class="tree-list"></discussion-tree-list>
-  <div class="status" id="tree-status">Loading discussions...</div>
-</div>
+<apm-discussion-tree-page></apm-discussion-tree-page>
 
 <script src="/folder-browser.js"></script>
 <script src="/folder-picker.js"></script>
@@ -58,7 +45,9 @@
 <script src="/tree-list.js"></script>
 <script src="/discussion-tree-list-items.js"></script>
 <script src="/discussion-tree-component.js"></script>
-<script src="/discussion-tree.js"></script>
+<script src="/apm-discussion-tree-page.js"></script>
+<script src="/apm-discussion-participants-panel.js"></script>
+<script src="/apm-discussion-settings-panel.js"></script>
 <script src="/auth-ui.js"></script>
 <script src="/mobile-drawer.js"></script>
 <script src="/mobile-menu.js"></script>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Apmatia Desktop</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="/theme-runtime.js"></script>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/vendor/golden-layout/goldenlayout-base.min.css">
+  <link rel="stylesheet" href="/vendor/golden-layout/goldenlayout-dark-theme.min.css">
+</head>
+
+<body class="page-desktop">
+<div class="desktop-shell">
+  <header class="desktop-menubar" role="menubar" aria-label="Desktop menu">
+    <div class="desktop-brand">Apmatia</div>
+    <button type="button" class="desktop-menu-item" data-desktop-menu="file" role="menuitem">File</button>
+    <button type="button" class="desktop-menu-item" data-desktop-menu="edit" role="menuitem">Edit</button>
+    <button type="button" class="desktop-menu-item" data-desktop-menu="view" role="menuitem">View</button>
+    <button type="button" class="desktop-menu-item" data-desktop-menu="admin" role="menuitem">Admin</button>
+    <button type="button" class="desktop-menu-item" data-desktop-menu="help" role="menuitem">Help</button>
+    <div class="desktop-menu-spacer"></div>
+    <a class="desktop-menu-link" href="/">Mobile Home</a>
+    <a class="desktop-menu-link" href="/settings">Settings</a>
+    <div id="desktop-shell-status" class="desktop-shell-status desktop-menubar-status" aria-live="polite">
+      Desktop shell ready. Checking local Golden Layout vendor assets...
+    </div>
+  </header>
+
+  <main class="desktop-workspace" aria-label="Desktop workspace">
+    <div id="desktop-layout-root" class="desktop-layout-root" data-layout-root></div>
+  </main>
+</div>
+
+<script src="/panel-registry.js"></script>
+<script src="/panel-permissions.js"></script>
+<script src="/layout-manager.js"></script>
+<script src="/apm-discussion-page.js"></script>
+<script src="/folder-browser.js"></script>
+<script src="/folder-picker.js"></script>
+<script src="/tree-list-item.js"></script>
+<script src="/tree-list.js"></script>
+<script src="/discussion-tree-list-items.js"></script>
+<script src="/discussion-tree-component.js"></script>
+<script src="/apm-discussion-tree-page.js"></script>
+<script src="/apm-discussion-participants-panel.js"></script>
+<script src="/apm-discussion-settings-panel.js"></script>
+<script src="/apm-ai-settings-panel.js"></script>
+<script src="/apm-discussion-settings-category-panel.js"></script>
+<script src="/apm-theme-settings-panel.js"></script>
+<script src="/apm-about-panel.js"></script>
+<script src="/desktop-shell.js" type="module"></script>
+</body>
+</html>

@@ -59,10 +59,6 @@ function scrollConversationToBottom(behavior = "auto") {
   updateScrollLatestVisibility();
 }
 
-function closeMobileDrawer() {
-  document.body.classList.remove("mobile-menu-open");
-}
-
 function toDisplayName(username) {
   const clean = String(username || "").trim();
   if (!clean) {
@@ -211,18 +207,6 @@ async function resetDiscussion() {
   }
 }
 
-async function startNewDiscussionFromMenu() {
-  closeMobileDrawer();
-  await resetDiscussion();
-}
-
-document.addEventListener("mobile-drawer-action", async (event) => {
-  const action = event?.detail?.action;
-  if (action === "new-discussion") {
-    await startNewDiscussionFromMenu();
-  }
-});
-
 promptEl.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
     event.preventDefault();
@@ -231,6 +215,9 @@ promptEl.addEventListener("keydown", (event) => {
 });
 
 promptEl.addEventListener("input", autoGrowPrompt);
+if (resetButtonEl) {
+  resetButtonEl.addEventListener("click", resetDiscussion);
+}
 conversationEl.addEventListener("scroll", () => {
   followLiveEdge = atLiveEdge();
   updateScrollLatestVisibility();

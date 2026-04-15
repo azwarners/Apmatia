@@ -2,6 +2,52 @@
 
 All notable changes to Apmatia are documented in this file.
 
+## 0.0.1.4 - Desktop Shell and Golden Layout Foundation
+
+- Added the first desktop shell page at `src/interfaces/web/pages/desktop.html` with:
+  - top desktop menu bar (`File`, `Edit`, `View`, `Admin`, `Help`)
+  - dedicated Golden Layout root container
+  - desktop status footer for shell/runtime feedback
+- Vendored Golden Layout locally under:
+  - `src/interfaces/web/assets/vendor/golden-layout/`
+  - including browser-ready CSS/JS assets, ESM runtime files, and license text
+  - removed desktop shell reliance on CDN-hosted Golden Layout assets
+- Added root third-party attribution for vendored dependency:
+  - `THIRD_PARTY_NOTICES.md`
+- Added initial desktop layout foundation modules:
+  - `src/interfaces/web/js/panel-registry.js`
+  - `src/interfaces/web/js/panel-permissions.js`
+  - `src/interfaces/web/js/layout-manager.js`
+- Introduced Linux-style panel metadata and resolution model for desktop UI behavior:
+  - owner/group/other permission metadata per panel
+  - effective access evaluation in owner -> group -> other order
+  - read/write helpers for menu filtering and open checks
+- Registered first real Discussion desktop panels and default workspace layout:
+  - left: Discussion Tree
+  - center: Discussion
+  - right top: Participants
+  - right bottom: Discussion Settings
+- Added permission-aware desktop behavior:
+  - View menu lists only readable panels for current user context
+  - panel opening path blocks non-readable panels even if invoked outside menu click path
+  - opened panel host receives effective access metadata for future read-only/write-aware UI
+- Desktop shell polish:
+  - fixed View panel menu hide/show behavior so it closes reliably when dismissed
+  - moved desktop status text from bottom footer into top menu bar to maximize workspace height
+  - hid duplicated in-panel component titles inside Golden Layout panels (tab title remains as the single title)
+- Refactored Discussion UI toward reusable `apm-*` Web Components for mobile + desktop reuse:
+  - `apm-discussion-tree-page`
+  - `apm-discussion-page`
+  - `apm-discussion-participants-panel`
+  - `apm-discussion-settings-panel`
+- Added first reusable settings category `apm-*` panel-capable components:
+  - `apm-ai-settings-panel`
+  - `apm-discussion-settings-category-panel`
+  - `apm-theme-settings-panel`
+  - `apm-about-panel`
+  - wired into mobile settings page and registered for desktop panel use
+  - applied initial stricter permission defaults for AI settings
+
 ## 0.0.1.3 - Layering and Boundary Enforcement
 
 - Moved reusable user/group logic into library space:

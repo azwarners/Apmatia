@@ -62,7 +62,7 @@ class ApmDiscussionPage extends HTMLElement {
   }
 
   bindEvents() {
-    const { prompt, resetButton, conversation, scrollLatestButton } = this._els;
+    const { prompt, sendButton, resetButton, conversation, scrollLatestButton } = this._els;
 
     this._handlers.keydown = (event) => {
       if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
@@ -71,6 +71,7 @@ class ApmDiscussionPage extends HTMLElement {
       }
     };
     this._handlers.input = () => this.autoGrowPrompt();
+    this._handlers.sendClick = () => this.sendPrompt();
     this._handlers.resetClick = () => this.resetDiscussion();
     this._handlers.conversationScroll = () => {
       this._state.followLiveEdge = this.atLiveEdge();
@@ -87,6 +88,7 @@ class ApmDiscussionPage extends HTMLElement {
 
     prompt.addEventListener("keydown", this._handlers.keydown);
     prompt.addEventListener("input", this._handlers.input);
+    sendButton.addEventListener("click", this._handlers.sendClick);
     resetButton.addEventListener("click", this._handlers.resetClick);
     conversation.addEventListener("scroll", this._handlers.conversationScroll);
     window.addEventListener("resize", this._handlers.resize);
@@ -95,10 +97,13 @@ class ApmDiscussionPage extends HTMLElement {
   }
 
   unbindEvents() {
-    const { prompt, resetButton, conversation, scrollLatestButton } = this._els;
+    const { prompt, sendButton, resetButton, conversation, scrollLatestButton } = this._els;
     if (prompt) {
       prompt.removeEventListener("keydown", this._handlers.keydown);
       prompt.removeEventListener("input", this._handlers.input);
+    }
+    if (sendButton) {
+      sendButton.removeEventListener("click", this._handlers.sendClick);
     }
     if (resetButton) {
       resetButton.removeEventListener("click", this._handlers.resetClick);

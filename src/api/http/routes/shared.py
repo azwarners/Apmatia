@@ -7,6 +7,15 @@ from src.api.internal.group_access import enabled_group_ids
 from src.api.internal.user_management import list_user_groups
 
 
+def _safe_int(value, default=0):
+    try:
+        if value is None:
+            return default
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def serialize_user(user: object | dict) -> dict:
     if isinstance(user, dict):
         return user
@@ -47,13 +56,15 @@ def serialize_membership(membership: object | dict) -> dict:
 
 
 def serialize_discussion(discussion: dict) -> dict:
+    group_id = _safe_int(discussion.get("group_id"), default=None)
+    folder_id = _safe_int(discussion.get("folder_id"), default=None)
     return {
         "discussion_id": str(discussion.get("discussion_id")),
         "title": str(discussion.get("title", "Untitled Discussion")),
-        "owner_user_id": int(discussion.get("owner_user_id", 0)),
-        "group_id": None if discussion.get("group_id") is None else int(discussion.get("group_id")),
+        "owner_user_id": _safe_int(discussion.get("owner_user_id"), default=0),
+        "group_id": group_id,
         "visibility": str(discussion.get("visibility", "private")),
-        "folder_id": None if discussion.get("folder_id") is None else int(discussion.get("folder_id")),
+        "folder_id": folder_id,
         "deleted_at": discussion.get("deleted_at"),
         "purge_after": discussion.get("purge_after"),
         "created_at": discussion.get("created_at"),
@@ -62,11 +73,12 @@ def serialize_discussion(discussion: dict) -> dict:
 
 
 def serialize_folder(folder: dict) -> dict:
+    parent_id = _safe_int(folder.get("parent_id"), default=None)
     return {
-        "id": int(folder.get("id", 0)),
+        "id": _safe_int(folder.get("id"), default=0),
         "name": str(folder.get("name", "")),
-        "parent_id": None if folder.get("parent_id") is None else int(folder.get("parent_id")),
-        "owner_user_id": int(folder.get("owner_user_id", 0)),
+        "parent_id": parent_id,
+        "owner_user_id": _safe_int(folder.get("owner_user_id"), default=0),
         "deleted_at": folder.get("deleted_at"),
         "purge_after": folder.get("purge_after"),
         "created_at": folder.get("created_at"),

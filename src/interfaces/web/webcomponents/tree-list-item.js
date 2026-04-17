@@ -3,7 +3,12 @@ class TreeListItem extends HTMLElement {
     super();
     this._menuEl = null;
     this._menuButtonEl = null;
-    this.dataset.treeItem = "true";
+  }
+
+  connectedCallback() {
+    if (!this.dataset.treeItem) {
+      this.dataset.treeItem = "true";
+    }
   }
 
   setMenuElements(menuEl, menuButtonEl) {

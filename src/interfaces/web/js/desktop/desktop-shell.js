@@ -1,8 +1,8 @@
 import { GoldenLayout } from "/vendor/golden-layout/esm/index.min.js";
 
-const CURRENT_USER_CONTEXT = {
-  userId: 1,
-  groupIds: [1],
+const DEFAULT_USER_CONTEXT = {
+  userId: null,
+  groupIds: [],
 };
 
 function setDesktopStatus(text) {
@@ -12,9 +12,43 @@ function setDesktopStatus(text) {
   }
 }
 
-function getPanelRuntimeState(registry, permissions, panelId) {
+async function loadCurrentUserContext() {
+  try {
+    const sessionResponse = await fetch("/api/auth/session");
+    if (!sessionResponse.ok) {
+      return { ...DEFAULT_USER_CONTEXT };
+    }
+    const session = await sessionResponse.json();
+    if (!session || !session.authenticated) {
+      return { ...DEFAULT_USER_CONTEXT };
+    }
+
+    let groupIds = [];
+    try {
+      const groupsResponse = await fetch("/api/groups");
+      if (groupsResponse.ok) {
+        const groupsPayload = await groupsResponse.json();
+        const groups = Array.isArray(groupsPayload?.groups) ? groupsPayload.groups : [];
+        groupIds = groups
+          .map((group) => Number(group?.id))
+          .filter((groupId) => Number.isInteger(groupId));
+      }
+    } catch (_error) {
+      // Fallback to no group memberships when groups endpoint is unavailable.
+    }
+
+    return {
+      userId: Number.isInteger(Number(session.user_id)) ? Number(session.user_id) : null,
+      groupIds,
+    };
+  } catch (_error) {
+    return { ...DEFAULT_USER_CONTEXT };
+  }
+}
+
+function getPanelRuntimeState(registry, permissions, panelId, userContext) {
   const panelDef = registry.getPanelById(panelId);
-  const accessMode = permissions.getEffectivePermission(panelDef, CURRENT_USER_CONTEXT);
+  const accessMode = permissions.getEffectivePermission(panelDef, userContext);
   return {
     accessMode,
     canRead: accessMode === "read" || accessMode === "write",
@@ -54,7 +88,7 @@ function filterLayoutByReadablePanels(node, canReadPanelById) {
   };
 }
 
-function initDesktopWorkspace() {
+async function initDesktopWorkspace() {
   const registry = window.ApmPanelRegistry;
   const permissions = window.ApmPanelPermissions;
   const layoutApi = window.ApmLayoutManager;
@@ -66,7 +100,7 @@ function initDesktopWorkspace() {
     return;
   }
 
-  const userContext = CURRENT_USER_CONTEXT;
+  const userContext = await loadCurrentUserContext();
   const panels = registry.listPanels();
   const readable = panels.filter((panel) => permissions.canReadPanel(panel, userContext)).length;
   const writable = panels.filter((panel) => permissions.canWritePanel(panel, userContext)).length;
@@ -95,7 +129,7 @@ function initDesktopWorkspace() {
   layoutManager.registerPanelHost(
     "apm-panel-host",
     (panelId) => registry.getPanelById(panelId),
-    (panelId) => getPanelRuntimeState(registry, permissions, panelId)
+    (panelId) => getPanelRuntimeState(registry, permissions, panelId, userContext)
   );
   layoutManager.loadLayout(filteredLayout);
   const canReadPanelById = (panelId) => permissions.canReadPanel(registry.getPanelById(panelId), userContext);
@@ -110,7 +144,7 @@ function initDesktopWorkspace() {
       setDesktopStatus(`Access denied: ${panelDef.title}`);
       return false;
     }
-    const runtimeState = getPanelRuntimeState(registry, permissions, panelId);
+    const runtimeState = getPanelRuntimeState(registry, permissions, panelId, userContext);
     return layoutManager.openPanel(panelId, panelDef.title, { componentState: runtimeState });
   }
 
@@ -132,7 +166,7 @@ function initDesktopWorkspace() {
 
     const readablePanels = panels.filter((panel) => canReadPanelById(panel.id));
     readablePanels.forEach((panel) => {
-      const runtimeState = getPanelRuntimeState(registry, permissions, panel.id);
+      const runtimeState = getPanelRuntimeState(registry, permissions, panel.id, userContext);
       const buttonEl = document.createElement("button");
       buttonEl.type = "button";
       buttonEl.className = "desktop-view-menu-item";

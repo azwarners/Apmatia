@@ -26,10 +26,7 @@ function formatCreatedAt(isoText) {
 }
 
 class DiscussionTreeListItem extends _BaseTreeListItem {
-  constructor() {
-    super();
-    this.dataset.treeItem = "true";
-  }
+  // Intentionally empty; base class handles tree-item tagging on connect.
 }
 
 class DiscussionFolderListItem extends DiscussionTreeListItem {

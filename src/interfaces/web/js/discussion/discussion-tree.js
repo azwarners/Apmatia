@@ -215,7 +215,8 @@ async function loadTree() {
       return;
     }
     if (!response.ok) {
-      setStatus("Unable to load discussions.");
+      const err = await response.json().catch(() => ({}));
+      setStatus(err.detail || `Unable to load discussions (${response.status}).`);
       return;
     }
     treeState = await response.json();

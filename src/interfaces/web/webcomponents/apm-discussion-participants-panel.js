@@ -53,6 +53,11 @@ class ApmDiscussionParticipantsPanel extends HTMLElement {
         <div class="apm-panel-body">
           ${rows || '<div class="apm-panel-empty">No participants</div>'}
         </div>
+        <div class="apm-panel-footer apm-participant-actions">
+          <button type="button" class="secondary-action apm-participant-add-user">+ User</button>
+          <button type="button" class="secondary-action apm-participant-add-agent">+ Agent</button>
+          <button type="button" class="secondary-action apm-participant-add-model">+ Model</button>
+        </div>
       </section>
     `;
 

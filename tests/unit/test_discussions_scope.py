@@ -174,3 +174,33 @@ def test_snapshot_includes_parsed_messages(tmp_path, monkeypatch):
         {"role": "User", "text": "Hello there"},
         {"role": "Assistant", "text": "Hi!\nHow can I help?"},
     ]
+
+
+def test_reset_discussion_carries_system_prompt_forward(tmp_path, monkeypatch):
+    monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
+    monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
+    discussions = importlib.import_module("src.core.discussions")
+    importlib.reload(discussions)
+
+    state = discussions.DiscussionState()
+    state.set_system_prompt(user_id=101, member_group_ids=set(), system_prompt="be concise")
+
+    new_discussion_id = state.reset_discussion(user_id=101)
+    snapshot = state.snapshot(user_id=101, member_group_ids=set())
+
+    assert snapshot.discussion_id == new_discussion_id
+    assert snapshot.system_prompt == "be concise"
+
+
+def test_list_tree_creates_current_discussion_for_new_user(tmp_path, monkeypatch):
+    monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
+    monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
+    discussions = importlib.import_module("src.core.discussions")
+    importlib.reload(discussions)
+
+    state = discussions.DiscussionState()
+    tree = state.list_tree(user_id=101, member_group_ids=set())
+
+    assert tree["current_discussion_id"] is not None
+    discussion_ids = {str(d["discussion_id"]) for d in tree["discussions"]}
+    assert str(tree["current_discussion_id"]) in discussion_ids

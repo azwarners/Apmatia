@@ -47,6 +47,15 @@ def parse_iso_datetime(value: str | None) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
+def safe_int(value: object, default: int | None = None) -> int | None:
+    try:
+        if value is None:
+            return default
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _new_discussion_id() -> str:
     return f"ID{uuid.uuid4().hex[:8]}"
 
@@ -129,6 +138,7 @@ class DiscussionState:
         title: str = "Untitled Discussion",
         group_id: int | None = None,
         folder_id: int | None = None,
+        system_prompt: str = "",
     ) -> dict:
         discussion_id = _new_discussion_id()
         visibility = "group" if group_id is not None else "private"
@@ -140,7 +150,7 @@ class DiscussionState:
             "group_id": group_id,
             "visibility": visibility,
             "folder_id": folder_id,
-            "system_prompt": "",
+            "system_prompt": system_prompt,
             "last_error": None,
             "deleted_at": None,
             "purge_after": None,
@@ -174,14 +184,14 @@ class DiscussionState:
     def _is_visible(self, discussion: dict, user_id: int, member_group_ids: set[int]) -> bool:
         if discussion.get("deleted_at") is not None:
             return False
-        owner_user_id = int(discussion.get("owner_user_id", 0))
+        owner_user_id = safe_int(discussion.get("owner_user_id"), default=0) or 0
         if owner_user_id == user_id:
             return True
 
-        group_id = discussion.get("group_id")
+        group_id = safe_int(discussion.get("group_id"), default=None)
         if group_id is None:
             return False
-        return int(group_id) in member_group_ids
+        return group_id in member_group_ids
 
     def _get_or_create_current_discussion(self, user_id: int, member_group_ids: set[int]) -> dict:
         current_discussion_id = self._get_current_discussion_id(user_id)
@@ -552,6 +562,7 @@ class DiscussionState:
 
     def list_tree(self, user_id: int, member_group_ids: set[int]) -> dict:
         self._purge_expired_trash(user_id)
+        current = self._get_or_create_current_discussion(user_id, member_group_ids)
         folders = [
             folder
             for folder in self._store.find("discussion_folders", owner_user_id=user_id)
@@ -563,7 +574,7 @@ class DiscussionState:
             for discussion in all_discussions
             if discussion.get("deleted_at") is None and self._is_visible(discussion, user_id, member_group_ids)
         ]
-        current_discussion_id = self._get_current_discussion_id(user_id)
+        current_discussion_id = str(current.get("discussion_id", "")) or self._get_current_discussion_id(user_id)
         return {
             "current_discussion_id": current_discussion_id,
             "folders": folders,
@@ -595,7 +606,11 @@ class DiscussionState:
             if current_id in self._streaming:
                 raise RuntimeError("Cannot reset while a response is still streaming.")
 
-            created = self._create_discussion(owner_user_id=user_id, title="New Discussion")
+            created = self._create_discussion(
+                owner_user_id=user_id,
+                title="New Discussion",
+                system_prompt=str(current.get("system_prompt", "")),
+            )
             self._set_current_discussion(user_id, created["discussion_id"])
             return str(created["discussion_id"])
 

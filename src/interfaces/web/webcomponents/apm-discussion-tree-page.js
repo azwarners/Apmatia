@@ -4,6 +4,7 @@ class ApmDiscussionTreePage extends HTMLElement {
     this._els = {};
     this._state = { treeState: { current_discussion_id: null, folders: [], discussions: [] } };
     this._folderBrowser = new FolderBrowserState();
+    this._pollHandle = null;
     this._boundHandlers = {};
   }
 
@@ -11,10 +12,15 @@ class ApmDiscussionTreePage extends HTMLElement {
     this.render();
     this.bindEvents();
     this.loadTree();
+    this.startPolling();
   }
 
   disconnectedCallback() {
     this.unbindEvents();
+    if (this._pollHandle) {
+      clearInterval(this._pollHandle);
+      this._pollHandle = null;
+    }
   }
 
   render() {
@@ -347,7 +353,8 @@ class ApmDiscussionTreePage extends HTMLElement {
         return;
       }
       if (!response.ok) {
-        this.setStatus("Unable to load discussions.");
+        const err = await response.json().catch(() => ({}));
+        this.setStatus(err.detail || `Unable to load discussions (${response.status}).`);
         return;
       }
       this._state.treeState = await response.json();
@@ -365,6 +372,10 @@ class ApmDiscussionTreePage extends HTMLElement {
       return;
     }
     const cleanName = name.trim();
+    if (!cleanName) {
+      this.setStatus("Folder name cannot be empty.");
+      return;
+    }
 
     if (typeof window.pickFolderParent !== "function") {
       this.setStatus("Folder picker is unavailable.");
@@ -393,6 +404,15 @@ class ApmDiscussionTreePage extends HTMLElement {
       return;
     }
     await this.loadTree();
+  }
+
+  startPolling() {
+    if (this._pollHandle) {
+      clearInterval(this._pollHandle);
+    }
+    this._pollHandle = setInterval(() => {
+      this.loadTree();
+    }, 3000);
   }
 }
 

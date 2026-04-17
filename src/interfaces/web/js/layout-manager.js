@@ -24,6 +24,10 @@
       hostPanelType: "apm-panel-host",
       resolvePanelFn: null,
       resolvePanelRuntimeStateFn: null,
+      resizeBound: null,
+      fullScreenBound: null,
+      resizeScheduled: false,
+      lastKnownSize: null,
     };
 
     function status(message) {
@@ -47,11 +51,15 @@
 
       try {
         state.layout = new state.ctor(state.rootEl);
+        bindAutoResize();
+        refreshSize();
         status("Layout manager initialized.");
         return true;
       } catch (errorA) {
         try {
           state.layout = new state.ctor({}, state.rootEl);
+          bindAutoResize();
+          refreshSize();
           status("Layout manager initialized.");
           return true;
         } catch (errorB) {
@@ -117,6 +125,60 @@
       };
     }
 
+    function refreshSize() {
+      if (!state.layout || !state.rootEl) {
+        return;
+      }
+      const rect = state.rootEl.getBoundingClientRect();
+      const width = Math.max(0, Math.floor(rect.width));
+      const height = Math.max(0, Math.floor(rect.height));
+      if (width === 0 || height === 0) {
+        return;
+      }
+      if (state.lastKnownSize && state.lastKnownSize.width === width && state.lastKnownSize.height === height) {
+        return;
+      }
+      state.lastKnownSize = { width, height };
+      if (typeof state.layout.setSize === "function") {
+        state.layout.setSize(width, height);
+        return;
+      }
+      if (typeof state.layout.updateSize === "function") {
+        state.layout.updateSize(width, height);
+      }
+    }
+
+    function scheduleRefreshSize() {
+      if (state.resizeScheduled) {
+        return;
+      }
+      state.resizeScheduled = true;
+      window.requestAnimationFrame(() => {
+        state.resizeScheduled = false;
+        refreshSize();
+      });
+    }
+
+    function bindAutoResize() {
+      if (!state.rootEl || (!state.layout && !init())) {
+        return;
+      }
+      if (!state.resizeBound) {
+        state.resizeBound = () => {
+          scheduleRefreshSize();
+        };
+      }
+      if (!state.fullScreenBound) {
+        state.fullScreenBound = () => {
+          scheduleRefreshSize();
+        };
+      }
+
+      window.addEventListener("resize", state.resizeBound);
+      document.addEventListener("fullscreenchange", state.fullScreenBound);
+
+    }
+
     function toGoldenSize(value) {
       const numeric = Number(value);
       if (!Number.isFinite(numeric) || numeric <= 0) {
@@ -178,6 +240,7 @@
           state.layout.loadLayout({
             root: rootNode,
           });
+          scheduleRefreshSize();
         } catch (error) {
           const detail = error && error.message ? error.message : "Unknown error";
           status(`Layout manager failed to load layout: ${detail}`);
@@ -211,6 +274,7 @@
           componentState,
           title || panelDef.title || panelId
         );
+        scheduleRefreshSize();
         status(`Opened panel: ${title || panelDef.title || panelId}.`);
         return true;
       }

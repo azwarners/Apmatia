@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any, Callable
 
 
 ROLE_PREFIX_RE = re.compile(r"(?m)^(User|Assistant|Agent)(?:\s*\((?P<speaker>[^)]+)\))?:\s?")
@@ -24,19 +25,69 @@ def build_chat_messages(
     existing_content: str,
     system_prompt: str,
     current_prompt: str,
-) -> list[dict[str, str]]:
-    messages: list[dict[str, str]] = []
+    *,
+    current_attachments: list[dict[str, Any]] | None = None,
+    attachment_resolver: Callable[[dict[str, Any]], list[dict[str, Any]]] | None = None,
+) -> list[dict[str, Any]]:
+    messages: list[dict[str, Any]] = []
 
     if system_prompt.strip():
         messages.append({"role": "system", "content": system_prompt.strip()})
 
-    messages.extend(parse_conversation_messages(existing_content))
-    messages.append({"role": "user", "content": current_prompt})
+    for message in parse_conversation_messages(existing_content):
+        messages.append(
+            {
+                "role": message["role"],
+                "content": _build_message_content(
+                    str(message.get("content", "")),
+                    metadata=message.get("metadata"),
+                    attachment_resolver=attachment_resolver,
+                ),
+            }
+        )
+
+    messages.append(
+        {
+            "role": "user",
+            "content": _build_message_content(
+                current_prompt,
+                metadata={"attachments": current_attachments or []},
+                attachment_resolver=attachment_resolver,
+            ),
+        }
+    )
     return messages
 
 
-def parse_conversation_messages(content: str) -> list[dict[str, str]]:
-    messages: list[dict[str, str]] = []
+def _build_message_content(
+    text: str,
+    *,
+    metadata: dict[str, Any] | None,
+    attachment_resolver: Callable[[dict[str, Any]], list[dict[str, Any]]] | None,
+) -> str | list[dict[str, Any]]:
+    clean_text = str(text or "").strip()
+    attachments: list[dict[str, Any]] = []
+
+    if attachment_resolver is not None and isinstance(metadata, dict):
+        raw_attachments = metadata.get("attachments")
+        if isinstance(raw_attachments, list):
+            for attachment in raw_attachments:
+                if not isinstance(attachment, dict):
+                    continue
+                attachments.extend(attachment_resolver(attachment))
+
+    if not attachments:
+        return clean_text
+
+    content_parts: list[dict[str, Any]] = []
+    if clean_text:
+        content_parts.append({"type": "text", "text": clean_text})
+    content_parts.extend(attachments)
+    return content_parts
+
+
+def parse_conversation_messages(content: str) -> list[dict[str, Any]]:
+    messages: list[dict[str, Any]] = []
     matches = list(ROLE_PREFIX_RE.finditer(content))
     if not matches:
         return messages

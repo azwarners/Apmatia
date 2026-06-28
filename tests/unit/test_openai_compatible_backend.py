@@ -141,3 +141,65 @@ def test_backend_falls_back_to_completions_when_chat_endpoint_rejects_request(mo
         "http://127.0.0.1:8080/v1/completions",
     ]
     assert result == ["fallback ok"]
+
+
+def test_backend_sends_multimodal_chat_messages(monkeypatch):
+    captured = {}
+
+    class FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        encoding = None
+
+        def iter_lines(self, decode_unicode=True):
+            assert decode_unicode is False
+            yield b'data: {"choices":[{"delta":{"content":"vision ok"}}]}'
+            yield b"data: [DONE]"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+    def fake_post(url, json=None, headers=None, stream=None, timeout=None):
+        captured["url"] = url
+        captured["json"] = json
+        return FakeResponse()
+
+    monkeypatch.setattr("requests.post", fake_post)
+
+    with patch(
+        "ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
+        return_value=False,
+    ):
+        backend = OpenAICompatibleBackend(base_url="http://127.0.0.1:8080")
+    result = list(
+        backend.stream(
+            PromptRequest(
+                prompt_id="test",
+                prompt_text="inspect the screenshot",
+                model_name="demo",
+                metadata={
+                    "chat_messages": [
+                        {"role": "system", "content": "You are helpful."},
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "inspect the screenshot"},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": "data:image/png;base64,Zm9v"},
+                                },
+                            ],
+                        },
+                    ]
+                },
+            )
+        )
+    )
+
+    assert captured["url"] == "http://127.0.0.1:8080/v1/chat/completions"
+    assert captured["json"]["messages"][1]["content"][1]["image_url"]["url"].startswith("data:image/png;base64,")
+    assert result == ["vision ok"]

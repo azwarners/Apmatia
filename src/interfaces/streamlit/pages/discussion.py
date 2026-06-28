@@ -1,7 +1,9 @@
 """Discussion page for sending prompts through the discussion backend."""
 from __future__ import annotations
 
+import base64
 import json
+from typing import Any
 
 import streamlit as st
 
@@ -28,6 +30,9 @@ from src.interfaces.streamlit.components.message_card import (
     apply_message_card_css,
     render_message_text_block,
     render_message_card,
+)
+from src.interfaces.streamlit.components.clipboard_button import (
+    render_clipboard_image_paste_bridge,
 )
 
 
@@ -110,6 +115,44 @@ def _speaker_agent(
         if name == target:
             return agent
     return None
+
+
+def _render_message_attachments(message: dict[str, object]) -> None:
+    metadata = message.get("metadata")
+    if not isinstance(metadata, dict):
+        return
+
+    raw_attachments = metadata.get("attachments")
+    if not isinstance(raw_attachments, list) or not raw_attachments:
+        return
+
+    for attachment in raw_attachments:
+        if not isinstance(attachment, dict):
+            continue
+        data_url = str(attachment.get("data_url") or "").strip()
+        if not data_url:
+            continue
+        filename = str(attachment.get("filename") or "image").strip() or "image"
+        st.image(data_url, caption=filename, use_container_width=True)
+
+
+def _uploaded_images_to_payload(uploaded_files: list[Any] | None) -> list[dict[str, str]]:
+    payload: list[dict[str, str]] = []
+    if not uploaded_files:
+        return payload
+
+    for uploaded_file in uploaded_files:
+        name = str(getattr(uploaded_file, "name", "") or "image")
+        mime_type = str(getattr(uploaded_file, "type", "") or "image/png")
+        data = uploaded_file.getvalue()
+        payload.append(
+            {
+                "filename": name,
+                "mime_type": mime_type,
+                "data_base64": base64.b64encode(data).decode("ascii"),
+            }
+        )
+    return payload
 
 
 MODE_DESCRIPTIONS = {
@@ -380,6 +423,7 @@ def _render_message_card(
                         st.rerun()
         else:
             render_message_text_block(text)
+            _render_message_attachments(message)
         stats_caption = _format_llama_server_phase(message_status)
         if stats_caption:
             st.caption(stats_caption)
@@ -937,6 +981,13 @@ def render() -> None:
 
     st.divider()
     prompt_key = f"discussion_prompt_{selected_discussion_id}"
+    attachment_key = f"discussion_prompt_attachments_{selected_discussion_id}"
+    reset_key = f"discussion_prompt_reset_{selected_discussion_id}"
+
+    if st.session_state.pop(reset_key, False):
+        st.session_state.pop(prompt_key, None)
+        st.session_state.pop(attachment_key, None)
+
     if prompt_key not in st.session_state:
         st.session_state[prompt_key] = ""
     with st.form("apmatia_discussion_prompt_form"):
@@ -947,6 +998,18 @@ def render() -> None:
             height=140,
             placeholder=prompt_placeholder,
             disabled=is_streaming and not is_chat_paused,
+        )
+        uploaded_files = st.file_uploader(
+            "Screenshots or images",
+            type=["png", "jpg", "jpeg", "webp", "gif"],
+            accept_multiple_files=True,
+            key=attachment_key,
+            help="Attach screenshots or other images so the selected model can inspect them. You can also paste images from the clipboard.",
+        )
+        st.caption("Tip: press Ctrl+V or Cmd+V to paste screenshots directly into the browser.")
+        render_clipboard_image_paste_bridge(
+            f"discussion-paste-{selected_discussion_id}",
+            target_selector='input[type="file"]',
         )
         submitted = st.form_submit_button("Send message", disabled=is_streaming and not is_chat_paused)
 
@@ -959,11 +1022,15 @@ def render() -> None:
 
     st.session_state["discussion_selected_agent_id"] = selected_agent.get("id")
     try:
-        prompt_discussion(prompt=prompt, agent_id=int(selected_agent.get("id")))
+        prompt_discussion(
+            prompt=prompt,
+            agent_id=int(selected_agent.get("id")),
+            attachments=_uploaded_images_to_payload(uploaded_files),
+        )
     except ApiError as error:
         st.error(f"Unable to send message: {error.detail}")
         return
 
-    st.session_state[prompt_key] = ""
+    st.session_state[reset_key] = True
     st.success("Message sent. Refreshing discussion.")
     st.rerun()

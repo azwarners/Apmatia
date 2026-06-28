@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import base64
+import binascii
+import mimetypes
 import os
 import re
 import threading
@@ -51,6 +54,7 @@ DATA_DIR = Path(
 DISCUSSIONS_DIR = DATA_DIR / "discussions"
 DISCUSSIONS_DB = DATA_DIR / "discussions.db"
 TRASH_RETENTION_DAYS = 90
+MAX_PROMPT_ATTACHMENT_BYTES = 10 * 1024 * 1024
 _UNSET = object()
 _MESSAGE_ROLE_RE = re.compile(r"^(User|Assistant|Agent)(?:\s*\((?P<speaker>[^)]+)\))?:\s?")
 _MESSAGE_METADATA_RE = re.compile(r"^<!--\s*apmatia-metadata:\s*(?P<payload>.+?)\s*-->$")
@@ -86,6 +90,32 @@ def safe_int(value: object, default: int | None = None) -> int | None:
         return default
 
 
+def _chat_messages_include_images(chat_messages: list[dict[str, Any]] | None) -> bool:
+    if not isinstance(chat_messages, list):
+        return False
+    for message in chat_messages:
+        if not isinstance(message, dict):
+            continue
+        content = message.get("content")
+        if not isinstance(content, list):
+            continue
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "image_url":
+                return True
+    return False
+
+
+def _chat_message_text_length(message: dict[str, Any]) -> int:
+    content = message.get("content", "")
+    if isinstance(content, list):
+        total = 0
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "text":
+                total += len(str(part.get("text", "")))
+        return total
+    return len(str(content))
+
+
 def _new_discussion_id() -> str:
     return f"ID{uuid.uuid4().hex[:8]}"
 
@@ -105,6 +135,13 @@ class DiscussionSnapshot:
     messages: list[dict[str, str]]
     activity: dict[str, Any] | None
     llama_server_status: dict[str, Any] | None
+
+
+@dataclass(slots=True)
+class PromptAttachment:
+    filename: str
+    mime_type: str
+    data_base64: str
 
 
 @dataclass(slots=True)
@@ -183,6 +220,7 @@ class DiscussionState:
         self._streaming: set[str] = set()
         self._stop_events: dict[str, threading.Event] = {}
         self._activity: dict[str, dict[str, Any]] = {}
+        self._pending_prompt_attachments: dict[str, list[dict[str, Any]]] = {}
 
     @property
     def _ensure_store(self) -> SQLiteStore:
@@ -278,7 +316,7 @@ class DiscussionState:
             "updated_at": discussion.updated_at.isoformat(),
         }
 
-    def _parse_messages(self, content: str) -> list[dict[str, str]]:
+    def _parse_messages(self, content: str) -> list[dict[str, Any]]:
         lines = str(content or "").split("\n")
         messages: list[dict[str, Any]] = []
         current: dict[str, Any] | None = None
@@ -334,6 +372,117 @@ class DiscussionState:
                 cleaned_message["metadata"] = dict(metadata)
             cleaned.append(cleaned_message)
         return cleaned
+
+    def _discussion_directory(self, discussion_id: str) -> Path:
+        return DISCUSSIONS_DIR / discussion_id
+
+    def _discussion_attachment_directory(self, discussion_id: str) -> Path:
+        return self._discussion_directory(discussion_id) / "attachments"
+
+    def _store_prompt_attachments(
+        self,
+        discussion_id: str,
+        attachments: list[dict[str, Any]] | None,
+    ) -> list[dict[str, Any]]:
+        stored: list[dict[str, Any]] = []
+        if not attachments:
+            return stored
+
+        attachment_dir = self._discussion_attachment_directory(discussion_id)
+        attachment_dir.mkdir(parents=True, exist_ok=True)
+
+        for index, attachment in enumerate(attachments):
+            if not isinstance(attachment, dict):
+                continue
+
+            mime_type = str(attachment.get("mime_type") or "").strip().lower()
+            if not mime_type.startswith("image/"):
+                raise ValueError("Only image attachments are supported.")
+
+            filename = str(attachment.get("filename") or f"attachment-{index + 1}").strip()
+            if not filename:
+                filename = f"attachment-{index + 1}"
+            data_base64 = str(attachment.get("data_base64") or "").strip()
+            if not data_base64:
+                raise ValueError("Attachment data cannot be empty.")
+
+            try:
+                raw_bytes = base64.b64decode(data_base64, validate=True)
+            except (binascii.Error, ValueError) as error:
+                raise ValueError("Attachment data is not valid base64.") from error
+
+            if len(raw_bytes) > MAX_PROMPT_ATTACHMENT_BYTES:
+                raise ValueError("Attachment is too large.")
+
+            extension = mimetypes.guess_extension(mime_type) or Path(filename).suffix or ".png"
+            safe_filename = re.sub(r"[^A-Za-z0-9._-]+", "_", Path(filename).name).strip("._") or "attachment"
+            file_name = f"{uuid.uuid4().hex[:12]}-{safe_filename}{extension}"
+            file_path = attachment_dir / file_name
+            file_path.write_bytes(raw_bytes)
+
+            stored.append(
+                {
+                    "filename": filename,
+                    "mime_type": mime_type,
+                    "path": str(file_path.relative_to(self._discussion_directory(discussion_id))),
+                }
+            )
+
+        return stored
+
+    def _attachment_content_parts(
+        self,
+        discussion_id: str,
+        attachment: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        if not isinstance(attachment, dict):
+            return []
+
+        if attachment.get("data_url"):
+            data_url = str(attachment.get("data_url"))
+            if data_url:
+                return [{"type": "image_url", "image_url": {"url": data_url}}]
+
+        relative_path = str(attachment.get("path") or "").strip()
+        if not relative_path:
+            return []
+
+        file_path = self._discussion_directory(discussion_id) / relative_path
+        if not file_path.exists():
+            return []
+
+        mime_type = str(attachment.get("mime_type") or "image/png").strip() or "image/png"
+        encoded = base64.b64encode(file_path.read_bytes()).decode("ascii")
+        return [{"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{encoded}"}}]
+
+    def _hydrate_message_attachments(
+        self,
+        discussion_id: str,
+        message: dict[str, Any],
+    ) -> dict[str, Any]:
+        hydrated = dict(message)
+        metadata = message.get("metadata")
+        if not isinstance(metadata, dict):
+            return hydrated
+
+        raw_attachments = metadata.get("attachments")
+        if not isinstance(raw_attachments, list) or not raw_attachments:
+            return hydrated
+
+        attachments: list[dict[str, Any]] = []
+        for attachment in raw_attachments:
+            if not isinstance(attachment, dict):
+                continue
+            updated_attachment = dict(attachment)
+            content_parts = self._attachment_content_parts(discussion_id, updated_attachment)
+            if content_parts:
+                updated_attachment["data_url"] = content_parts[0]["image_url"]["url"]
+            attachments.append(updated_attachment)
+
+        hydrated_metadata = dict(metadata)
+        hydrated_metadata["attachments"] = attachments
+        hydrated["metadata"] = hydrated_metadata
+        return hydrated
 
     def _append_text(self, discussion_id: str, text: str) -> None:
         path = self._discussion_path(discussion_id)
@@ -411,12 +560,16 @@ class DiscussionState:
         agent: Agent,
         speaker_name: str,
         llm_config: LLM | None,
-        chat_messages: list[dict[str, str]],
+        chat_messages: list[dict[str, Any]],
         prompt: str,
     ) -> dict[str, Any]:
         system_prompt = ""
         if chat_messages and isinstance(chat_messages[0], dict):
-            system_prompt = str(chat_messages[0].get("content", ""))
+            first_content = chat_messages[0].get("content", "")
+            if isinstance(first_content, list):
+                system_prompt = ""
+            else:
+                system_prompt = str(first_content or "")
         prompt_text = str(prompt or "")
         visible_messages = max(0, len(chat_messages) - 1)
         summary = {
@@ -429,7 +582,7 @@ class DiscussionState:
                 "messages": visible_messages,
                 "prompt_characters": len(prompt_text),
                 "system_characters": len(system_prompt),
-                "transcript_characters": sum(len(str(message.get("content", ""))) for message in chat_messages),
+                "transcript_characters": sum(_chat_message_text_length(message) for message in chat_messages),
             },
             "stream": {
                 "chunk_count": 0,
@@ -460,12 +613,17 @@ class DiscussionState:
         *,
         discussion_id: str,
         prompt: str,
-        chat_messages: list[dict[str, str]],
+        chat_messages: list[dict[str, Any]],
         llm_config: LLM | None,
         stop_event: threading.Event | None,
         on_chunk: Any | None = None,
         on_event: Any | None = None,
     ) -> str:
+        if _chat_messages_include_images(chat_messages) and llm_config is not None:
+            backend_name = str(getattr(llm_config, "backend", "") or "").strip().lower()
+            if backend_name and backend_name not in {"openai_compatible", "openai", "openai-compatible"}:
+                raise ValueError("The selected model backend does not support image attachments.")
+
         return prompt_llm(
             prompt=prompt,
             output_dir=str(DISCUSSIONS_DIR),
@@ -483,14 +641,27 @@ class DiscussionState:
             on_event=on_event,
         )
 
-    def _append_message(self, discussion_id: str, role: str, text: str) -> None:
+    def _append_message(
+        self,
+        discussion_id: str,
+        role: str,
+        text: str,
+        *,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         clean_text = str(text).strip()
         if not clean_text:
             return
         path = self._discussion_path(discussion_id)
         existing = path.read_text(encoding="utf-8") if path.exists() else ""
         prefix = "\n\n" if existing.rstrip() else ""
-        self._append_text(discussion_id, f"{prefix}{role}: {clean_text}")
+        block = f"{prefix}{role}: {clean_text}"
+        if isinstance(metadata, dict) and metadata:
+            block = (
+                f"{block}\n\n"
+                f"<!-- apmatia-metadata: {json.dumps(metadata, ensure_ascii=False, sort_keys=True)} -->"
+            )
+        self._append_text(discussion_id, block)
 
     def _append_group_agent_message(
         self,
@@ -536,6 +707,11 @@ class DiscussionState:
         with self._lock:
             activity = self._activity.get(discussion_id)
             return None if activity is None else dict(activity)
+
+    def _get_pending_prompt_attachments(self, discussion_id: str) -> list[dict[str, Any]]:
+        with self._lock:
+            attachments = self._pending_prompt_attachments.pop(discussion_id, [])
+            return [dict(attachment) for attachment in attachments]
 
     def _resolve_llama_server_log_source(self) -> str | None:
         configured_log_dir = str(
@@ -901,12 +1077,14 @@ class DiscussionState:
         *,
         discussion_id: str,
         prompt: str,
+        attachments: list[dict[str, Any]] | None,
         discussion: Discussion,
         agent_id: int | None,
         stop_event: threading.Event | None,
     ) -> None:
         existing_content = self._discussion_path(discussion_id).read_text(encoding="utf-8") if self._discussion_path(discussion_id).exists() else ""
         base_system_prompt = discussion.system_prompt
+        current_attachments = attachments or []
         wiki_context = ""
         if discussion.focused_wiki_id:
             wiki = get_wiki_manager().get_wiki(str(discussion.focused_wiki_id))
@@ -978,6 +1156,11 @@ class DiscussionState:
                     speaker_name=turn.speaker_name,
                     original_prompt=prompt,
                     coordinator_agent_id=plan.coordinator_agent_id,
+                ),
+                current_attachments=current_attachments,
+                attachment_resolver=lambda attachment, discussion_id=discussion_id: self._attachment_content_parts(
+                    discussion_id,
+                    attachment,
                 ),
             )
             assistant_writer = self._new_assistant_stream_writer(
@@ -1109,10 +1292,13 @@ class DiscussionState:
             if not discussion:
                 raise RuntimeError(f"Discussion not found: {discussion_id}")
 
+            current_attachments = self._get_pending_prompt_attachments(discussion_id)
+
             if normalize_group_chat_mode(discussion.chat_mode) != "single":
                 self._run_group_chat_turns(
                     discussion_id=discussion_id,
                     prompt=prompt,
+                    attachments=current_attachments,
                     discussion=discussion,
                     agent_id=agent_id,
                     stop_event=stop_event,
@@ -1149,8 +1335,20 @@ class DiscussionState:
                 existing_content=existing_content,
                 system_prompt=system_prompt,
                 current_prompt=prompt,
+                current_attachments=current_attachments,
+                attachment_resolver=lambda attachment, discussion_id=discussion_id: self._attachment_content_parts(
+                    discussion_id,
+                    attachment,
+                ),
             )
-            self._append_message(discussion_id, "User", prompt)
+            self._append_message(
+                discussion_id,
+                "User",
+                prompt,
+                metadata={"attachments": current_attachments}
+                if current_attachments
+                else None,
+            )
             llm_config = self._resolve_agent_llm_config(agent_id) if agent_id is not None else None
             if agent is not None and speaker_name is not None:
                 self._set_activity(
@@ -1230,7 +1428,7 @@ class DiscussionState:
         *,
         discussion_id: str,
         prompt: str,
-        chat_messages: list[dict[str, str]],
+        chat_messages: list[dict[str, Any]],
         llm_config: LLM | None,
         stop_event: threading.Event | None,
         assistant_writer: "_AssistantTranscriptWriter",
@@ -1723,6 +1921,7 @@ class DiscussionState:
         prompt: str,
         member_group_ids: set[int],
         agent_id: int | None = None,
+        attachments: list[dict[str, Any]] | None = None,
     ) -> str:
         with self._lock:
             discussion = self._get_or_create_current_discussion(user_id, member_group_ids)
@@ -1730,6 +1929,10 @@ class DiscussionState:
             if discussion_id in self._streaming:
                 raise RuntimeError("A discussion response is already streaming.")
             self._record_agent_participation(discussion_id, agent_id)
+
+            stored_attachments = self._store_prompt_attachments(discussion_id, attachments)
+            if stored_attachments:
+                self._pending_prompt_attachments[discussion_id] = stored_attachments
 
             stop_event = threading.Event()
             self._stop_events[discussion_id] = stop_event
@@ -1771,7 +1974,10 @@ class DiscussionState:
         discussion_id = current.discussion_id
         path = self._discussion_path(discussion_id)
         content = path.read_text(encoding="utf-8") if path.exists() else ""
-        messages = self._parse_messages(content)
+        messages = [
+            self._hydrate_message_attachments(discussion_id, message)
+            for message in self._parse_messages(content)
+        ]
         turns = self._llama_server_turns()
         assistant_messages = [message for message in messages if str(message.get("role", "")).strip().lower() != "user"]
         if turns and assistant_messages:

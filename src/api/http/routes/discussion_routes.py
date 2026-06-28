@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from src.api.internal import discussions
 from src.api.internal.group_access import is_group_member
 from src.api.internal.user_management import list_user_groups
@@ -15,9 +15,16 @@ from .shared import (
 router = APIRouter()
 
 
+class PromptAttachmentPayload(BaseModel):
+    filename: str | None = None
+    mime_type: str = Field(..., description="Image mime type, such as image/png")
+    data_base64: str = Field(..., description="Base64-encoded image bytes")
+
+
 class PromptPayload(BaseModel):
     prompt: str
     agent_id: int | None = None
+    attachments: list[PromptAttachmentPayload] | None = None
 
 
 class SystemPromptPayload(BaseModel):
@@ -109,7 +116,13 @@ def discussion_prompt(request: Request, payload: PromptPayload):
             prompt=prompt,
             member_group_ids=group_ids,
             agent_id=payload.agent_id,
+            attachments=[
+                attachment.model_dump() if hasattr(attachment, "model_dump") else attachment.dict()
+                for attachment in (payload.attachments or [])
+            ],
         )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
     except RuntimeError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
 

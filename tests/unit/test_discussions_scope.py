@@ -1,4 +1,5 @@
 import importlib
+import base64
 
 import pytest
 from types import SimpleNamespace
@@ -179,6 +180,41 @@ def test_discussion_can_store_focused_wiki_id(tmp_path, monkeypatch):
 
     assert created["focused_wiki_id"] == "wiki_focus01"
     assert updated["focused_wiki_id"] == "wiki_focus02"
+
+
+def test_discussion_can_persist_and_hydrate_prompt_attachments(tmp_path, monkeypatch):
+    monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
+    monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
+    discussions = importlib.import_module("src.lib.discussions")
+    importlib.reload(discussions)
+
+    state = discussions.DiscussionState()
+    created = state.create_discussion(owner_user_id=101, title="Screenshot Thread")
+    discussion_id = str(created["discussion_id"])
+    png_bytes = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2W7p8AAAAASUVORK5CYII="
+    )
+    attachment_payload = {
+        "filename": "screenshot.png",
+        "mime_type": "image/png",
+        "data_base64": base64.b64encode(png_bytes).decode("ascii"),
+    }
+
+    stored = state._store_prompt_attachments(discussion_id, [attachment_payload])
+    assert stored[0]["mime_type"] == "image/png"
+    assert stored[0]["path"].startswith("attachments/")
+
+    hydrated = state._hydrate_message_attachments(
+        discussion_id,
+        {
+            "role": "User",
+            "text": "Please inspect this.",
+            "metadata": {"attachments": stored},
+        },
+    )
+
+    attachments = hydrated["metadata"]["attachments"]
+    assert attachments[0]["data_url"].startswith("data:image/png;base64,")
 
 
 def test_delete_discussion_moves_discussion_to_trash(tmp_path, monkeypatch):

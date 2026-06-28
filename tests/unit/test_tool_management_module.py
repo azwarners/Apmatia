@@ -14,6 +14,7 @@ from src.lib.memory_management.tooling import build_memory_tool_providers, memor
 from src.lib.tool_management.models import ToolCall
 from src.lib.tool_management.module import ToolManager
 from src.lib.tool_management.repositories import AgentToolAssignmentRepository, ToolDefinitionRepository
+from src.lib.system_audit.tooling import build_system_audit_tool_providers, system_audit_tool_definitions
 from src.lib.wiki_management.module import WikiManager
 from src.lib.wiki_management.repositories import WikiNodeRepository, WikiRepository
 from src.lib.wiki_management.tooling import build_wiki_tool_providers, wiki_tool_definitions
@@ -294,6 +295,39 @@ def test_get_current_time_returns_structured_result(tool_manager):
     assert result.status == "success"
     assert isinstance(result.result, dict)
     assert isinstance(result.result["current_time"], str)
+
+
+def test_system_audit_command_executes_with_allowlist():
+    agent_service = InMemoryAgentService()
+    tool_manager = ToolManager(
+        InMemoryToolDefinitionRepository(),
+        InMemoryAssignmentRepository(),
+        agent_service,
+        builtin_providers=build_system_audit_tool_providers(agent_service),
+        builtin_definitions=system_audit_tool_definitions(),
+    )
+
+    audit_tool = next(tool for tool in tool_manager.list_tool_definitions() if tool.name == "apmatia_system_audit")
+    tool_manager.assign_tool_to_agent(1, audit_tool.id)
+
+    fake_completed = SimpleNamespace(returncode=0, stdout="Linux test\n", stderr="")
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr("src.lib.system_audit.tooling.shutil.which", lambda command: f"/bin/{command}")
+        monkeypatch.setattr("src.lib.system_audit.tooling.subprocess.run", lambda *args, **kwargs: fake_completed)
+        result = tool_manager.execute_tool_call(
+            ToolCall(
+                tool_id=audit_tool.id,
+                requester_agent_id=1,
+                arguments={"command": "uname", "args": ["-a"]},
+            )
+        )
+
+    assert result.status == "success"
+    assert result.result["command"] == "uname"
+    assert result.result["args"] == ["-a"]
+    assert result.result["stdout"] == "Linux test\n"
+    assert result.result["returncode"] == 0
 
 
 def test_memory_create_and_search_tool_execute():

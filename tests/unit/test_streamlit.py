@@ -913,6 +913,7 @@ def test_discussion_page_uses_agent_and_discussion_backend(mock_streamlit):
     }
     mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
     mock_streamlit.text_area.return_value = "Write a status update."
+    mock_streamlit.file_uploader.return_value = []
     mock_streamlit.form_submit_button.return_value = True
     mock_streamlit.button.return_value = False
     mock_streamlit.session_state["discussion_prompt_IDabc123"] = "Write a status update."
@@ -937,12 +938,22 @@ def test_discussion_page_uses_agent_and_discussion_backend(mock_streamlit):
     payload = mock_prompt.call_args.kwargs
     assert payload["agent_id"] == 7
     assert payload["prompt"] == "Write a status update."
-    assert mock_streamlit.session_state["discussion_prompt_IDabc123"] == ""
+    assert payload["attachments"] == []
+    assert mock_streamlit.session_state["discussion_prompt_reset_IDabc123"] is True
     mock_streamlit.title.assert_called_with("Discussion")
     mock_streamlit.caption.assert_any_call(
         "Using Default via openai_compatible at http://localhost:5001."
     )
+    mock_streamlit.caption.assert_any_call(
+        "Tip: press Ctrl+V or Cmd+V to paste screenshots directly into the browser."
+    )
     mock_streamlit.markdown.assert_any_call("Hello")
+
+    mock_streamlit.form_submit_button.return_value = False
+    discussion_page.render()
+
+    assert mock_streamlit.session_state["discussion_prompt_IDabc123"] == ""
+    assert "discussion_prompt_reset_IDabc123" not in mock_streamlit.session_state
 
 
 def test_discussion_page_can_update_participants(mock_streamlit):
@@ -1506,6 +1517,21 @@ def test_clipboard_button_component_renders_main_dom_copy_control(mock_streamlit
     assert 'aria-label="Copy message"' in rendered_html
     assert 'data-copy="SGVsbG8="' in rendered_html
     assert "navigator.clipboard.writeText(text)" in rendered_html
+
+
+def test_clipboard_image_paste_bridge_renders_paste_listener(mock_streamlit):
+    """The clipboard bridge listens for paste events and appends images to the uploader."""
+    import src.interfaces.streamlit.components.clipboard_button as clipboard_button
+
+    clipboard_button = importlib.reload(clipboard_button)
+    clipboard_button.render_clipboard_image_paste_bridge("discussion-attachments")
+
+    rendered_html = "\n".join(call.args[0] for call in mock_streamlit.html.call_args_list)
+    assert "addEventListener(\"paste\", handler, true)" in rendered_html
+    assert "DataTransfer" in rendered_html
+    assert "input.files = dataTransfer.files" in rendered_html
+    assert "clipboardData" in rendered_html
+    assert "pasted-screenshot" in rendered_html
 
 
 def test_message_card_css_hides_streamlit_code_copy_button(mock_streamlit):

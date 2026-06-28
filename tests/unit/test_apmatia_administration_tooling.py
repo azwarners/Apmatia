@@ -8,6 +8,7 @@ from src.lib.apmatia_administration.tooling import (
     apmatia_administration_tool_definitions,
     build_apmatia_administration_tool_providers,
 )
+from src.lib.tool_management.models import ToolDefinition
 
 
 class InMemoryAgentService(AgentService):
@@ -109,13 +110,20 @@ class InMemoryAgentService(AgentService):
 
 def test_admin_tool_definition_includes_prompt_fields():
     definitions = apmatia_administration_tool_definitions()
-    definition = definitions[0]
+    names = [definition["name"] for definition in definitions]
 
-    assert definition["name"] == "apmatia_create_agent"
-    assert "personality" in definition["input_schema"]["properties"]
-    assert "raw_prompt_override" in definition["input_schema"]["properties"]
-    assert definitions[1]["name"] == "clone_agent_as"
-    assert "source_agent_id" in definitions[1]["input_schema"]["properties"]
+    assert "apmatia_create_agent" in names
+    assert "clone_agent_as" in names
+    assert "apmatia_create_tool" in names
+
+    create_agent = next(definition for definition in definitions if definition["name"] == "apmatia_create_agent")
+    clone_agent = next(definition for definition in definitions if definition["name"] == "clone_agent_as")
+    create_tool = next(definition for definition in definitions if definition["name"] == "apmatia_create_tool")
+
+    assert "personality" in create_agent["input_schema"]["properties"]
+    assert "raw_prompt_override" in create_agent["input_schema"]["properties"]
+    assert "source_agent_id" in clone_agent["input_schema"]["properties"]
+    assert "provider_id" in create_tool["input_schema"]["properties"]
 
 
 def test_admin_tool_provider_creates_agent_with_prompt_fields():
@@ -140,6 +148,48 @@ def test_admin_tool_provider_creates_agent_with_prompt_fields():
     assert result["agent"]["owner_user_id"] == 99
     assert result["agent"]["owner_group_id"] == 12
     assert result["agent"]["mode"] == 0o640
+
+
+def test_admin_tool_provider_creates_tool_with_owner_context():
+    agent_service = InMemoryAgentService()
+    provider = ApmatiaAdministrationToolProvider(
+        provider_id="builtin.apmatia_create_tool",
+        action="create_tool",
+        agent_service=agent_service,
+    )
+    created_tool = ToolDefinition(
+        id=17,
+        owner_user_id=99,
+        owner_group_id=12,
+        mode=0o640,
+        name="example_tool",
+        description="Example tool",
+        input_schema={"type": "object"},
+        output_schema={"type": "object"},
+        provider_id="builtin.echo",
+        enabled=True,
+        confirmation_required=False,
+        read_only=True,
+        metadata={"builtin": True},
+    )
+    mock_tool_manager = type("FakeToolManager", (), {"create_tool_definition": lambda self, **kwargs: created_tool})()
+
+    with patch("src.core.tool_management_runtime.get_tool_manager", return_value=mock_tool_manager):
+        result = provider.execute(
+            {
+                "name": "example_tool",
+                "description": "Example tool",
+                "provider_id": "builtin.echo",
+                "input_schema": {"type": "object"},
+            },
+            tool_call=type("ToolCall", (), {"requester_agent_id": 1})(),
+        )
+
+    assert result["tool"]["name"] == "example_tool"
+    assert result["tool"]["provider_id"] == "builtin.echo"
+    assert result["tool"]["owner_user_id"] == 99
+    assert result["tool"]["owner_group_id"] == 12
+    assert result["tool"]["mode"] == 0o640
 
 
 def test_admin_tool_provider_promotes_read_only_caller_mode_for_new_agents():
@@ -214,6 +264,7 @@ def test_admin_tool_provider_inherits_owner_context_from_discussion_when_caller_
 def test_admin_tool_provider_factory_returns_builtin_provider():
     providers = build_apmatia_administration_tool_providers(InMemoryAgentService())
 
-    assert len(providers) == 2
+    assert len(providers) == 3
     assert providers[0].provider_id == "builtin.apmatia_create_agent"
-    assert providers[1].provider_id == "builtin.apmatia_clone_agent_as"
+    assert providers[1].provider_id == "builtin.apmatia_create_tool"
+    assert providers[2].provider_id == "builtin.apmatia_clone_agent_as"

@@ -75,6 +75,10 @@ _TOOL_TEMPLATES = {
             "skills": "Agent design, prompt shaping, and Apmatia administration.",
         },
         "read_only": False,
+        "help_text": (
+            "Use this when you want a new agent object. The fields describe who owns the agent, "
+            "what prompt it starts with, and which tools it can use."
+        ),
     },
     "clone_agent_as": {
         "name": "clone_agent_as",
@@ -100,6 +104,7 @@ _TOOL_TEMPLATES = {
             "name": "Clone of existing agent",
         },
         "read_only": False,
+        "help_text": "Use this when you want a copy of an existing agent without rebuilding the prompt surface from scratch.",
     },
     "echo": {
         "name": "echo",
@@ -119,6 +124,7 @@ _TOOL_TEMPLATES = {
         },
         "arguments": {"text": "Hello from Apmatia"},
         "read_only": True,
+        "help_text": "Use this as a tiny smoke test or as the simplest possible tool shape.",
     },
     "get_current_time": {
         "name": "get_current_time",
@@ -137,6 +143,154 @@ _TOOL_TEMPLATES = {
         },
         "arguments": {},
         "read_only": True,
+        "help_text": "Use this when an agent only needs a clock and should not mutate anything.",
+    },
+    "apmatia_create_tool": {
+        "name": "apmatia_create_tool",
+        "description": "Create a new tool definition for an existing provider.",
+        "provider_id": "builtin.apmatia_create_tool",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "provider_id": {"type": "string"},
+                "input_schema": {"type": "object"},
+                "output_schema": {"type": ["object", "null"]},
+                "enabled": {"type": "boolean"},
+                "confirmation_required": {"type": "boolean"},
+                "read_only": {"type": "boolean"},
+                "metadata": {"type": "object"},
+                "owner_user_id": {"type": "integer"},
+                "owner_group_id": {"type": "integer"},
+                "mode": {"type": "integer"},
+            },
+            "required": ["name", "provider_id", "input_schema"],
+            "additionalProperties": False,
+        },
+        "output_schema": {
+            "type": "object",
+            "properties": {"tool": {"type": "object"}},
+            "required": ["tool"],
+            "additionalProperties": True,
+        },
+        "arguments": {
+            "name": "smoke_test_tool",
+            "description": "Create a simple tool definition through Apmatia administration.",
+            "provider_id": "builtin.echo",
+            "input_schema": {
+                "type": "object",
+                "properties": {"text": {"type": "string"}},
+                "required": ["text"],
+                "additionalProperties": False,
+            },
+            "output_schema": {
+                "type": "object",
+                "properties": {"text": {"type": "string"}},
+                "required": ["text"],
+                "additionalProperties": False,
+            },
+            "enabled": True,
+            "confirmation_required": False,
+            "read_only": True,
+            "metadata": {"builtin": True},
+        },
+        "read_only": False,
+        "help_text": (
+            "Use this when you want a new tool definition to exist in Apmatia. "
+            "The provider ID points at the implementation, while the JSON schema describes the contract."
+        ),
+    },
+    "apmatia_system_audit": {
+        "name": "apmatia_system_audit",
+        "description": "Run a curated read-only system audit command from the approved allowlist.",
+        "provider_id": "builtin.apmatia_system_audit",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "enum": [
+                        "apt",
+                        "auditctl",
+                        "blkid",
+                        "cat",
+                        "crontab",
+                        "curl",
+                        "dmesg",
+                        "df",
+                        "dpkg",
+                        "du",
+                        "ethtool",
+                        "fail2ban-client",
+                        "find",
+                        "free",
+                        "getenforce",
+                        "grep",
+                        "groups",
+                        "head",
+                        "hostname",
+                        "id",
+                        "ip",
+                        "iptables",
+                        "journalctl",
+                        "last",
+                        "lscpu",
+                        "lsof",
+                        "ls",
+                        "lsblk",
+                        "lspci",
+                        "netstat",
+                        "nmap",
+                        "nstat",
+                        "openssl",
+                        "pgrep",
+                        "ping",
+                        "pip",
+                        "ps",
+                        "selinuxenabled",
+                        "ss",
+                        "ssl-cert-check",
+                        "stat",
+                        "systemctl",
+                        "tail",
+                        "tcpdump",
+                        "top",
+                        "ufw",
+                        "uname",
+                        "uptime",
+                        "who",
+                        "whoami",
+                    ],
+                },
+                "args": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["command"],
+            "additionalProperties": False,
+        },
+        "output_schema": {
+            "type": "object",
+            "properties": {
+                "command": {"type": "string"},
+                "args": {"type": "array", "items": {"type": "string"}},
+                "returncode": {"type": "integer"},
+                "stdout": {"type": "string"},
+                "stderr": {"type": "string"},
+                "truncated_stdout": {"type": "boolean"},
+                "truncated_stderr": {"type": "boolean"},
+            },
+            "required": ["command", "args", "returncode", "stdout", "stderr", "truncated_stdout", "truncated_stderr"],
+            "additionalProperties": False,
+        },
+        "arguments": {
+            "command": "uname",
+            "args": ["-a"],
+        },
+        "read_only": True,
+        "help_text": (
+            "Use this for safe host inspection. It can run only a curated allowlist of read-only commands and "
+            "never invokes a shell, so it cannot chain arbitrary commands or use sudo."
+        ),
     },
 }
 
@@ -162,6 +316,8 @@ def _tool_label(tool: dict[str, Any]) -> str:
 def _tool_group_label(tool: dict[str, Any]) -> str:
     provider_id = str(tool.get("provider_id") or "")
     if provider_id.startswith("builtin.apmatia_"):
+        if provider_id.startswith("builtin.apmatia_system_"):
+            return "System audit tools"
         return "Administration tools"
     if provider_id.startswith("builtin.memory_"):
         return "Memory tools"
@@ -171,7 +327,13 @@ def _tool_group_label(tool: dict[str, Any]) -> str:
 
 
 def _tool_group_sort_key(tool: dict[str, Any]) -> tuple[str, str, int]:
-    group_order = {"Administration tools": 0, "Memory tools": 1, "Wiki tools": 2, "Other tools": 3}
+    group_order = {
+        "Administration tools": 0,
+        "System audit tools": 1,
+        "Memory tools": 2,
+        "Wiki tools": 3,
+        "Other tools": 4,
+    }
     group = _tool_group_label(tool)
     return (
         str(group_order.get(group, 99)),
@@ -231,7 +393,7 @@ def _tool_form_defaults(tool: dict[str, Any] | None, template: dict[str, Any]) -
         "read_only": bool(tool.get("read_only", True)),
         "metadata": tool.get("metadata", {}),
         "input_schema": tool.get("input_schema", {}),
-        "output_schema": tool.get("output_schema"),
+        "output_schema": tool.get("output_schema") or {},
     }
 
 
@@ -245,6 +407,11 @@ def render() -> None:
 
     st.title("Tool Management")
     st.caption("Create tool definitions, grant them to agents, and run safe demo calls through the local API.")
+    st.info(
+        "A tool definition is the recipe Apmatia uses to turn a provider into something an agent can call. "
+        "Start with a template, keep the advanced JSON mostly untouched unless you are changing the contract, "
+        "and use the assignment section to decide who gets access."
+    )
 
     if "tool_template_name" not in st.session_state:
         st.session_state["tool_template_name"] = "echo"
@@ -403,28 +570,70 @@ def render() -> None:
 
     st.divider()
     st.subheader("Edit tool definition" if is_editing else "Tool definition")
+    st.caption(
+        "This form has two layers: the plain-English fields near the top and the advanced JSON contract below. "
+        "If you are not changing the implementation shape, you probably only need the top section."
+    )
+    st.info(template.get("help_text", template["description"]))
     with st.form("apmatia_tool_definition_form"):
         left, right = st.columns(2)
         with left:
-            name = st.text_input("Name", value=str(form_defaults["name"]))
-            description = st.text_area("Description", value=str(form_defaults["description"]), height=110)
-            provider_id = st.text_input("Provider ID", value=str(form_defaults["provider_id"]))
+            name = st.text_input(
+                "Name",
+                value=str(form_defaults["name"]),
+                help="The unique human-readable name for this tool. Keep it short and memorable.",
+            )
+            description = st.text_area(
+                "Description",
+                value=str(form_defaults["description"]),
+                height=110,
+                help="Explain what the tool does in plain language so future you and your agents can recognize it quickly.",
+            )
+            provider_id = st.text_input(
+                "Provider ID",
+                value=str(form_defaults["provider_id"]),
+                help="The implementation that actually runs when this tool is called. This usually points at a builtin or plugin provider.",
+            )
         with right:
-            enabled = st.checkbox("Enabled", value=bool(form_defaults["enabled"]))
-            confirmation_required = st.checkbox("Confirmation required", value=bool(form_defaults["confirmation_required"]))
-            read_only = st.checkbox("Read only", value=bool(form_defaults["read_only"]))
-            metadata = st.text_area("Metadata (JSON object)", value=_json_text(form_defaults["metadata"]), height=110)
+            enabled = st.checkbox(
+                "Enabled",
+                value=bool(form_defaults["enabled"]),
+                help="Turn this off if you want to keep the definition around without letting agents use it.",
+            )
+            confirmation_required = st.checkbox(
+                "Confirmation required",
+                value=bool(form_defaults["confirmation_required"]),
+                help="Require an approval step before the tool can run. Good for risky or irreversible actions.",
+            )
+            read_only = st.checkbox(
+                "Read only",
+                value=bool(form_defaults["read_only"]),
+                help="Mark this if the tool should not change state. Read-only tools are safer and easier to reason about.",
+            )
 
-        input_schema = st.text_area(
-            "Input schema (JSON object)",
-            value=_json_text(form_defaults["input_schema"]),
-            height=180,
-        )
-        output_schema = st.text_area(
-            "Output schema (JSON object, optional)",
-            value=_json_text(form_defaults["output_schema"]),
-            height=180,
-        )
+        with st.expander("Advanced schema and metadata", expanded=False):
+            st.caption(
+                "This section describes the contract between the tool caller and the provider. "
+                "If you are just exploring, you can leave these values as the template filled them in."
+            )
+            metadata = st.text_area(
+                "Metadata (JSON object)",
+                value=_json_text(form_defaults["metadata"]),
+                height=110,
+                help="Free-form notes for humans and automation. It does not affect execution logic.",
+            )
+            input_schema = st.text_area(
+                "Input schema (JSON object)",
+                value=_json_text(form_defaults["input_schema"]),
+                height=180,
+                help="Describe the arguments the tool accepts. This is the part agents use to know what to send.",
+            )
+            output_schema = st.text_area(
+                "Output schema (JSON object, optional)",
+                value=_json_text(form_defaults["output_schema"]),
+                height=180,
+                help="Describe what the tool returns. Leave it as {} if you do not need to be precise here.",
+            )
         save_submitted = st.form_submit_button("Save changes" if is_editing else "Create tool definition")
         cancel_submitted = st.form_submit_button("Cancel edit") if is_editing else False
 

@@ -5,6 +5,8 @@ from src.api.internal.auth import login_user, logout_session, register_user
 from .shared import serialize_user, session_payload
 
 router = APIRouter()
+AUTH_SESSION_COOKIE_NAME = "apmatia_session"
+AUTH_SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
 
 
 class AuthPayload(BaseModel):
@@ -31,10 +33,12 @@ def api_auth_register(payload: AuthPayload, response: Response):
         raise HTTPException(status_code=500, detail="Registration succeeded but login failed.")
 
     response.set_cookie(
-        key="apmatia_session",
+        key=AUTH_SESSION_COOKIE_NAME,
         value=session.token,
         httponly=True,
         samesite="lax",
+        max_age=AUTH_SESSION_COOKIE_MAX_AGE_SECONDS,
+        path="/",
     )
     return {"status": "registered", "user": serialize_user(user)}
 
@@ -50,17 +54,19 @@ def api_auth_login(payload: AuthPayload, response: Response):
         raise HTTPException(status_code=401, detail="Invalid credentials.")
 
     response.set_cookie(
-        key="apmatia_session",
+        key=AUTH_SESSION_COOKIE_NAME,
         value=session.token,
         httponly=True,
         samesite="lax",
+        max_age=AUTH_SESSION_COOKIE_MAX_AGE_SECONDS,
+        path="/",
     )
     return {"status": "authenticated", "username": session.username}
 
 
 @router.post("/auth/logout")
 def api_auth_logout(request: Request, response: Response):
-    token = request.cookies.get("apmatia_session")
+    token = request.cookies.get(AUTH_SESSION_COOKIE_NAME)
     logout_session(token)
-    response.delete_cookie("apmatia_session")
+    response.delete_cookie(AUTH_SESSION_COOKIE_NAME, path="/")
     return {"status": "logged_out"}

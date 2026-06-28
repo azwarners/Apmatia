@@ -1,0 +1,157 @@
+# Architecture
+
+Apmatia is built around a strict, API-first layered architecture. Business logic lives in small libraries, the application layer stays thin, and every interface reaches the system through the API boundary.
+
+## Core Principle
+
+All functionality flows in one direction:
+
+```text
+Libraries -> Core -> API (internal) -> Interfaces
+```
+
+No layer is allowed to bypass another.
+
+## Execution Flow
+
+All interactive usage follows the same path:
+
+```text
+Interface -> API (internal) -> Core -> Library -> External Service
+```
+
+For HTTP callers, the transport layer sits in front of the same internal contract:
+
+```text
+HTTP -> API (http) -> API (internal) -> Core -> Library
+```
+
+This keeps behavior consistent across the CLI, the FastAPI surface, and the Streamlit application.
+
+## Layers
+
+### 1. Libraries (Business Logic)
+
+**Location:** `src/lib/`
+
+Libraries contain the real domain behavior for Apmatia. They implement features, encapsulate persistence details, integrate with model backends, and stay reusable outside the main application.
+
+They do not know about HTTP, FastAPI, Streamlit, or the CLI.
+
+`apmatia/src/lib:`
+
+- `agent_management`
+
+  Provides the agent domain model, repository interfaces, SQLite-backed repositories, and lifecycle services for creating, updating, listing, and deleting agents. This is the business layer behind the agent management screen and API endpoints.
+
+- `apmatia_core`
+
+  Provides the shared object and permission primitives used across Apmatia. In practice this is the common foundation for UID/GID-style ownership and access checks that other libraries and orchestration code build on.
+
+- `discussions`
+
+  Provides discussion-oriented logic, including prompt construction, discussion templating helpers, and the bridge from a saved discussion state to an LLM request. This is the library that turns a user prompt plus context into an executable model interaction.
+
+- `model_management`
+
+  Provides CRUD behavior for saved LLM configurations. It normalizes model records and persists reusable backend definitions into shared application configuration so discussions and agents can select models consistently.
+
+- `persistence`
+
+  Provides lightweight persistence primitives, especially SQLite-backed storage and logging helpers. This package exists so higher layers can rely on a focused storage library instead of mixing data access details into orchestration code.
+
+- `user_management`
+
+  Provides the reusable user, group, membership, and authentication domain. It owns password hashing, membership rules, repository contracts, and SQLite repositories so Apmatia can support authentication and access control without baking those concerns directly into the app layer.
+
+- `ysparr`
+
+  Provides the underlying generative execution engine used by Apmatia to talk to text-generation backends. It supplies modality-specific execution, backend adapters such as KoboldCpp and OpenAI-compatible endpoints, and output persistence for model runs.
+
+### 2. Core (Orchestration)
+
+**Location:** `src/core/`
+
+Core coordinates one or more libraries into application behavior. It loads config, wires repositories and services together, applies app-specific rules, and shapes library behavior into complete workflows.
+
+It does not expose interfaces or own transport details.
+
+### 3. API (Internal)
+
+**Location:** `src/api/internal/`
+
+This is the canonical programmatic interface for Apmatia. Interfaces and transports use this layer instead of reaching into core or libraries directly.
+
+It exposes application capabilities as stable functions and keeps the rest of the system behind a single contract.
+
+### 4. API (HTTP)
+
+**Location:** `src/api/http/`
+
+This layer exposes the internal API over FastAPI. It defines routes, request models, response shapes, session requirements, and serialization concerns.
+
+It does not implement business logic or call libraries directly.
+
+### 5. Interfaces
+
+**Location:** `src/interfaces/`
+
+Interfaces are clients of the API boundary.
+
+- `src/interfaces/cli/` provides a command-line entrypoint for direct local use.
+- `src/interfaces/streamlit/` provides the primary interactive UI in Python via Streamlit.
+
+The Streamlit app is organized as a small interface client:
+
+- `app.py` handles layout, auth gating, theme application, custom sidebar navigation, and the shared header menu safeguards.
+- `api_client.py` is the interface-side adapter that talks to the FastAPI app contract.
+- `pages/` contains focused UI pages for discussion, model management, agent management, login, and settings.
+
+The key architectural point is that the Streamlit interface stays thin. It renders controls and state, but the actual application behavior still flows through the API and then into core and libraries.
+
+## Rules
+
+- Core is only called by the internal API.
+- Libraries are only called by core.
+- Interfaces never call core or libraries directly.
+- The HTTP layer never calls libraries directly.
+
+## Configuration Flow
+
+Configuration is loaded from the persistent config store first, with environment variables acting as bootstrap defaults when needed.
+
+```text
+config.json (~/.config/apmatia/config.json) -> core/api -> lib/interfaces
+                ^
+          optional env bootstrap
+```
+
+This gives Apmatia persistent local settings without hardcoding secrets into source files.
+
+Model configuration, prompting defaults, and UI preferences are all saved through the same API-controlled configuration path. The Streamlit settings page persists those values through `/api/settings`.
+
+## Discussion Data Lifecycle
+
+Discussion and folder deletion follows a soft-delete lifecycle:
+
+1. Delete actions mark records as trashed with retention metadata.
+2. Trashed items disappear from normal discussion and tree views.
+3. Restore endpoints can recover items during the retention window.
+4. Expired trash is purged automatically after 90 days.
+
+This keeps accidental deletions reversible without cluttering active views.
+
+## Extending the System
+
+To add a new feature:
+
+1. Create or extend a library in `src/lib/`.
+2. Add orchestration in `src/core/`.
+3. Expose it through `src/api/internal/`.
+4. Optionally surface it through FastAPI, Streamlit, the CLI, or another interface.
+
+That sequence preserves the API-first boundary and keeps interfaces thin.
+
+## Summary
+
+Apmatia scales by keeping logic in focused libraries, orchestration in core, and presentation in interface clients. The UI layer remains thin because interfaces consume the API rather than the core directly.

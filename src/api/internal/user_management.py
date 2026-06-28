@@ -42,6 +42,10 @@ def create_group(name: str, created_by_user_id: UserId, description: str = ""):
     )
 
 
+def edit_group(group_id: int, name: str | None = None, description: str | None = None):
+    return get_group_manager().edit_group(group_id=group_id, name=name, description=description)
+
+
 def delete_group(group_id: int) -> bool:
     return get_group_manager().delete_group(group_id=group_id)
 
@@ -52,6 +56,10 @@ def list_groups():
 
 def add_member(group_id: int, user_id: UserId, role: GroupRole = GroupRole.MEMBER):
     return get_group_manager().add_member(group_id=group_id, user_id=user_id, role=role)
+
+
+def set_membership_enabled(membership_id: int, enabled: bool):
+    return get_group_manager().set_membership_enabled(membership_id=membership_id, enabled=enabled)
 
 
 def list_group_members(group_id: int):

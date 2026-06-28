@@ -10,11 +10,9 @@ def get_settings_payload() -> dict:
     return _get_settings_payload()
 
 
-def save_settings_payload(*,
-    user_id: int,
-    model_url: str,
-    max_response_size: int,
-    system_prompt: str,
+def save_settings_payload(
+    *,
+    llama_server_log_dir: str,
     theme: str,
     font_family: str,
     font_size: int,
@@ -22,10 +20,7 @@ def save_settings_payload(*,
     title_bar_font_size: int,
 ) -> None:
     _save_settings_payload(
-        user_id=user_id,
-        model_url=model_url,
-        max_response_size=max_response_size,
-        system_prompt=system_prompt,
+        llama_server_log_dir=llama_server_log_dir,
         theme=theme,
         font_family=font_family,
         font_size=font_size,

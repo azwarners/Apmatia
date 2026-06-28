@@ -1,0 +1,95 @@
+Building Apmatia core container...
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.07kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.2s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/library/python:3.14-slim
+#4 DONE 0.2s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 2B done
+#5 DONE 0.0s
+
+#6 [deps 1/4] FROM docker.io/library/python:3.14-slim@sha256:63a4c7f612a00f92042cbdcc7cdc6a306f38485af0a200b9c89de7d9b1607d15
+#6 resolve docker.io/library/python:3.14-slim@sha256:63a4c7f612a00f92042cbdcc7cdc6a306f38485af0a200b9c89de7d9b1607d15 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 54.02kB 0.0s done
+#7 DONE 0.0s
+
+#8 [stage-1  3/13] COPY --from=deps /usr/local /usr/local
+#8 CACHED
+
+#9 [stage-1  2/13] WORKDIR /app
+#9 CACHED
+
+#10 [stage-1  5/13] COPY Dockerfile ./
+#10 CACHED
+
+#11 [stage-1  8/13] COPY docs/VERSION ./VERSION
+#11 CACHED
+
+#12 [deps 2/4] WORKDIR /tmp/apmatia-deps
+#12 CACHED
+
+#13 [stage-1  6/13] COPY .streamlit/ .streamlit/
+#13 CACHED
+
+#14 [deps 4/4] RUN --mount=type=cache,target=/root/.cache/pip     pip install -r requirements.txt -r requirements-dev.txt
+#14 CACHED
+
+#15 [stage-1  9/13] COPY start.sh ./
+#15 CACHED
+
+#16 [stage-1  4/13] COPY .pytest.ini ./
+#16 CACHED
+
+#17 [deps 3/4] COPY requirements.txt requirements-dev.txt ./
+#17 CACHED
+
+#18 [stage-1 10/13] COPY scripts/ scripts/
+#18 CACHED
+
+#19 [stage-1  7/13] COPY assets/ assets/
+#19 CACHED
+
+#20 [stage-1 11/13] COPY src/ src/
+#20 CACHED
+
+#21 [stage-1 12/13] COPY tests/ tests/
+#21 DONE 0.0s
+
+#22 [stage-1 13/13] RUN chmod +x scripts/entrypoint.sh && mkdir -p /home/apmatia && chmod 0777 /home/apmatia
+#22 DONE 0.2s
+
+#23 exporting to image
+#23 exporting layers 0.1s done
+#23 exporting manifest sha256:a34c52cf2065f9876053a8e8fe98e881c741c36bb46585e4265ce11a54c40cd2 done
+#23 exporting config sha256:b662a07681004f58f5c1a48143f31476a5e97541013d04dee91c173f94301d9a done
+#23 exporting attestation manifest sha256:3efb1a67e1f3b77525aff5524f07dc0afaf4feeeb6f88f70bcf43fc91b748b69 0.0s done
+#23 exporting manifest list sha256:945b5c6a79a6ce5552f907ceb546c15ff380f878fe7c60c6ec2179dd4c079be4 done
+#23 naming to docker.io/library/apmatia:latest done
+#23 unpacking to docker.io/library/apmatia:latest 0.1s done
+#23 DONE 0.4s
+Stopping existing container...
+apmatia
+apmatia
+Starting apmatia...
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1]

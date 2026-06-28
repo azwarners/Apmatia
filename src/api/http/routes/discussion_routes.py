@@ -17,6 +17,7 @@ router = APIRouter()
 
 class PromptPayload(BaseModel):
     prompt: str
+    agent_id: int | None = None
 
 
 class SystemPromptPayload(BaseModel):
@@ -37,12 +38,39 @@ class CreateDiscussionPayload(BaseModel):
     title: str
     group_id: int | None = None
     folder_id: int | None = None
+    focused_wiki_id: str | None = None
+    agent_id: int | None = None
+    participant_agent_ids: list[int] | None = None
+    chat_mode: str = "single"
+    chat_pause_seconds: float | None = None
+    chat_coordinator_agent_id: int | None = None
 
 
 class UpdateDiscussionPayload(BaseModel):
     title: str | None = None
     group_id: int | None = None
     folder_id: int | None = None
+    focused_wiki_id: str | None = None
+    participant_agent_ids: list[int] | None = None
+    chat_mode: str | None = None
+    chat_pause_seconds: float | None = None
+    chat_is_paused: bool | None = None
+    chat_turn_index: int | None = None
+    chat_coordinator_agent_id: int | None = None
+
+
+class ChatModePayload(BaseModel):
+    chat_mode: str
+    chat_pause_seconds: float | None = None
+    chat_coordinator_agent_id: int | None = None
+
+
+class OpenDiscussionPayload(BaseModel):
+    discussion_id: str
+
+
+class UpdateMessagePayload(BaseModel):
+    text: str
 
 
 @router.get("/discussion/state")
@@ -54,9 +82,16 @@ def discussion_snapshot(request: Request):
         "discussion_id": snapshot.discussion_id,
         "is_streaming": snapshot.is_streaming,
         "last_error": snapshot.last_error,
+        "chat_mode": snapshot.chat_mode,
+        "chat_pause_seconds": snapshot.chat_pause_seconds,
+        "chat_is_paused": snapshot.chat_is_paused,
+        "chat_turn_index": snapshot.chat_turn_index,
+        "chat_coordinator_agent_id": snapshot.chat_coordinator_agent_id,
         "system_prompt": snapshot.system_prompt,
         "content": snapshot.content,
         "messages": snapshot.messages,
+        "activity": snapshot.activity,
+        "llama_server_status": snapshot.llama_server_status,
     }
 
 
@@ -73,11 +108,28 @@ def discussion_prompt(request: Request, payload: PromptPayload):
             user_id=session.user_id,
             prompt=prompt,
             member_group_ids=group_ids,
+            agent_id=payload.agent_id,
         )
     except RuntimeError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
 
     return {"status": "started", "discussion_id": discussion_id}
+
+
+@router.post("/discussion/stop")
+def discussion_stop(request: Request):
+    session = require_session(request)
+    group_ids = member_group_ids(session.user_id)
+
+    try:
+        discussion_id = discussions.stop_prompt(
+            user_id=session.user_id,
+            member_group_ids=group_ids,
+        )
+    except RuntimeError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+    return {"status": "stopped", "discussion_id": discussion_id}
 
 
 @router.post("/discussion/reset")
@@ -90,6 +142,57 @@ def reset_discussion(request: Request):
         raise HTTPException(status_code=409, detail=str(error)) from error
 
     return {"status": "reset", "discussion_id": discussion_id}
+
+
+@router.post("/discussions/open")
+def open_discussion_entry(request: Request, payload: OpenDiscussionPayload):
+    session = require_session(request)
+    group_ids = member_group_ids(session.user_id)
+
+    try:
+        discussions.open_discussion(
+            user_id=session.user_id,
+            discussion_id=payload.discussion_id,
+            member_group_ids=group_ids,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+    return {"status": "opened", "discussion_id": payload.discussion_id}
+
+
+@router.patch("/discussions/{discussion_id}/messages/{message_index}")
+def update_discussion_message(
+    request: Request,
+    discussion_id: str,
+    message_index: int,
+    payload: UpdateMessagePayload,
+):
+    session = require_session(request)
+    try:
+        result = discussions.update_message(
+            owner_user_id=session.user_id,
+            discussion_id=discussion_id,
+            message_index=message_index,
+            text=payload.text,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {"status": "updated", "result": result}
+
+
+@router.delete("/discussions/{discussion_id}/messages/{message_index}")
+def delete_discussion_message(request: Request, discussion_id: str, message_index: int):
+    session = require_session(request)
+    try:
+        result = discussions.delete_message(
+            owner_user_id=session.user_id,
+            discussion_id=discussion_id,
+            message_index=message_index,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {"status": "deleted", "result": result}
 
 
 @router.post("/discussion/system_prompt")
@@ -195,6 +298,19 @@ def restore_discussion(request: Request, discussion_id: str):
     return {"status": "restored", "result": result}
 
 
+@router.delete("/discussions/{discussion_id}")
+def delete_discussion(request: Request, discussion_id: str):
+    session = require_session(request)
+    try:
+        result = discussions.delete_discussion(
+            owner_user_id=session.user_id,
+            discussion_id=discussion_id,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {"status": "deleted", "result": result}
+
+
 @router.get("/discussions/trash")
 def discussions_trash(request: Request):
     session = require_session(request)
@@ -221,6 +337,12 @@ def create_discussion_entry(request: Request, payload: CreateDiscussionPayload):
             title=payload.title,
             group_id=payload.group_id,
             folder_id=payload.folder_id,
+            focused_wiki_id=payload.focused_wiki_id,
+            agent_id=payload.agent_id,
+            participant_agent_ids=payload.participant_agent_ids,
+            chat_mode=payload.chat_mode,
+            chat_pause_seconds=payload.chat_pause_seconds,
+            chat_coordinator_agent_id=payload.chat_coordinator_agent_id,
         )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
@@ -238,6 +360,20 @@ def update_discussion_entry(request: Request, discussion_id: str, payload: Updat
         updates["group_id"] = payload.group_id
     if "folder_id" in provided_fields:
         updates["folder_id"] = payload.folder_id
+    if "focused_wiki_id" in provided_fields:
+        updates["focused_wiki_id"] = payload.focused_wiki_id
+    if "participant_agent_ids" in provided_fields:
+        updates["participant_agent_ids"] = payload.participant_agent_ids
+    if "chat_mode" in provided_fields:
+        updates["chat_mode"] = payload.chat_mode
+    if "chat_pause_seconds" in provided_fields:
+        updates["chat_pause_seconds"] = payload.chat_pause_seconds
+    if "chat_is_paused" in provided_fields:
+        updates["chat_is_paused"] = payload.chat_is_paused
+    if "chat_turn_index" in provided_fields:
+        updates["chat_turn_index"] = payload.chat_turn_index
+    if "chat_coordinator_agent_id" in provided_fields:
+        updates["chat_coordinator_agent_id"] = payload.chat_coordinator_agent_id
     if not updates:
         raise HTTPException(status_code=400, detail="No discussion updates provided.")
 
@@ -256,6 +392,46 @@ def update_discussion_entry(request: Request, discussion_id: str, payload: Updat
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     return {"status": "updated", "discussion": serialize_discussion(discussion)}
+
+
+@router.post("/discussions/{discussion_id}/group-chat")
+def set_discussion_group_chat_mode(request: Request, discussion_id: str, payload: ChatModePayload):
+    session = require_session(request)
+    group_ids = member_group_ids(session.user_id)
+    try:
+        discussion = discussions.set_chat_mode(
+            user_id=session.user_id,
+            discussion_id=discussion_id,
+            member_group_ids=group_ids,
+            chat_mode=payload.chat_mode,
+            chat_pause_seconds=payload.chat_pause_seconds,
+            chat_coordinator_agent_id=payload.chat_coordinator_agent_id,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {"status": "updated", "discussion": serialize_discussion(discussion)}
+
+
+@router.post("/discussion/group-chat/pause")
+def pause_discussion_group_chat(request: Request):
+    session = require_session(request)
+    group_ids = member_group_ids(session.user_id)
+    try:
+        discussion_id = discussions.pause_group_chat(user_id=session.user_id, member_group_ids=group_ids)
+    except RuntimeError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return {"status": "paused", "discussion_id": discussion_id}
+
+
+@router.post("/discussion/group-chat/resume")
+def resume_discussion_group_chat(request: Request):
+    session = require_session(request)
+    group_ids = member_group_ids(session.user_id)
+    try:
+        discussion_id = discussions.resume_group_chat(user_id=session.user_id, member_group_ids=group_ids)
+    except RuntimeError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return {"status": "resumed", "discussion_id": discussion_id}
 
 
 @router.post("/discussions/{discussion_id}/open")

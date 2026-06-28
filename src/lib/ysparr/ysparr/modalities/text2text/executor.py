@@ -18,14 +18,22 @@ def execute(request: PromptRequest, backend, storage) -> ExecutionResult:
 
     output_path = storage.initialize(request)
 
+    stopped = False
+
     try:
         for chunk in backend.stream(request):
+            if request.stop_event is not None and request.stop_event.is_set():
+                stopped = True
+                break
             storage.append(request, chunk)
+            if request.stop_event is not None and request.stop_event.is_set():
+                stopped = True
+                break
     finally:
         storage.finalize(request)
 
     return ExecutionResult(
         prompt_id=request.prompt_id,
-        status="completed",
+        status="stopped" if stopped else "completed",
         output_path=output_path,
     )

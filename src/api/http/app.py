@@ -3,7 +3,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from src.api.http.routes import router
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from src.api.internal.auth import get_session
 
 NO_CACHE_HEADERS = {
@@ -11,6 +11,8 @@ NO_CACHE_HEADERS = {
     "Pragma": "no-cache",
     "Expires": "0",
 }
+REPO_ROOT = Path(__file__).resolve().parents[3]
+LEGACY_WEB_ROOT = REPO_ROOT / "src" / "interfaces" / "web"
 
 
 def _ensure_runtime_dirs() -> None:
@@ -23,10 +25,14 @@ def _ensure_runtime_dirs() -> None:
 
 
 def _read_version() -> str:
-    version_path = Path(__file__).resolve().parents[3] / "VERSION"
-    if not version_path.exists():
-        return "unknown"
-    return version_path.read_text(encoding="utf-8").strip() or "unknown"
+    candidate_paths = [
+        REPO_ROOT / "VERSION",
+        REPO_ROOT / "docs" / "VERSION",
+    ]
+    for version_path in candidate_paths:
+        if version_path.exists():
+            return version_path.read_text(encoding="utf-8").strip() or "unknown"
+    return "unknown"
 
 
 def create_app():
@@ -44,7 +50,34 @@ def _is_authenticated(request: Request) -> bool:
 
 
 def _ui_file_response(path: str) -> FileResponse:
-    return FileResponse(path, headers=NO_CACHE_HEADERS)
+    return FileResponse(str(REPO_ROOT / path), headers=NO_CACHE_HEADERS)
+
+
+def _legacy_web_ui_available() -> bool:
+    return LEGACY_WEB_ROOT.exists()
+
+
+def _development_landing_response() -> HTMLResponse:
+    version = _read_version()
+    body = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Apmatia</title>
+</head>
+<body>
+  <main>
+    <h1>Apmatia is running</h1>
+    <p>Version: {version}</p>
+    <p>The legacy browser UI is not included in this build.</p>
+    <p>Core API: <a href="/api/version">/api/version</a></p>
+    <p>API docs: <a href="/docs">/docs</a></p>
+    <p>Interactive interface: start Streamlit and open <code>http://127.0.0.1:8501</code>.</p>
+  </main>
+</body>
+</html>
+"""
+    return HTMLResponse(body, headers=NO_CACHE_HEADERS)
 
 
 def _vendor_file_response(asset_path: str) -> FileResponse:
@@ -68,6 +101,8 @@ def api_version() -> dict:
 
 @app.get("/")
 def root(request: Request):
+    if not _legacy_web_ui_available():
+        return _development_landing_response()
     if not _is_authenticated(request):
         return RedirectResponse(url="/login", status_code=303)
     return _ui_file_response("src/interfaces/web/index.html")
@@ -103,6 +138,8 @@ def settings_page(request: Request):
 
 @app.get("/login")
 def login_page():
+    if not _legacy_web_ui_available():
+        return _development_landing_response()
     return _ui_file_response("src/interfaces/web/pages/login.html")
 
 
@@ -259,28 +296,3 @@ def apm_theme_settings_panel_script():
 @app.get("/apm-about-panel.js")
 def apm_about_panel_script():
     return _ui_file_response("src/interfaces/web/webcomponents/apm-about-panel.js")
-
-
-@app.get("/vendor/golden-layout/golden-layout.min.js")
-def vendor_golden_layout_js():
-    return _ui_file_response("src/interfaces/web/assets/vendor/golden-layout/golden-layout.min.js")
-
-
-@app.get("/vendor/golden-layout/goldenlayout-base.min.css")
-def vendor_golden_layout_base_css():
-    return _ui_file_response("src/interfaces/web/assets/vendor/golden-layout/goldenlayout-base.min.css")
-
-
-@app.get("/vendor/golden-layout/goldenlayout-dark-theme.min.css")
-def vendor_golden_layout_dark_css():
-    return _ui_file_response("src/interfaces/web/assets/vendor/golden-layout/goldenlayout-dark-theme.min.css")
-
-
-@app.get("/vendor/golden-layout/goldenlayout-light-theme.min.css")
-def vendor_golden_layout_light_css():
-    return _ui_file_response("src/interfaces/web/assets/vendor/golden-layout/goldenlayout-light-theme.min.css")
-
-
-@app.get("/vendor/golden-layout/{asset_path:path}")
-def vendor_golden_layout_asset(asset_path: str):
-    return _vendor_file_response(f"golden-layout/{asset_path}")

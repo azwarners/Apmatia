@@ -38,6 +38,8 @@ class KoboldCppBackend:
         max_tokens = int(parameters.get("max_tokens", 8192))
         temperature = float(parameters.get("temperature", 0.7))
         stop = parameters.get("stop", ["\nUser:"])
+        metadata = request.metadata if isinstance(request.metadata, dict) else {}
+        on_event = metadata.get("on_event")
 
         payload = {
             "prompt": prompt_text,
@@ -50,17 +52,38 @@ class KoboldCppBackend:
         try:
             with requests.post(url, json=payload, stream=True) as response:
                 response.raise_for_status()
+                response.encoding = "utf-8"
 
-                for line in response.iter_lines(decode_unicode=True):
+                for line in response.iter_lines(decode_unicode=False):
+                    if request.stop_event is not None and request.stop_event.is_set():
+                        response.close()
+                        break
                     if not line:
                         continue
 
+                    data = self._decode_event(line)
                     text = self._extract_text(line)
                     if text:
                         yield text
+                    if callable(on_event):
+                        on_event(
+                            {
+                                "provider": "koboldcpp",
+                                "raw": data if data is not None else {"line": line.decode("utf-8", errors="replace") if isinstance(line, bytes) else line},
+                                "text": text,
+                                "stats": data if isinstance(data, dict) else {},
+                            }
+                        )
 
         except requests.RequestException as error:
             raise ExecutionError("KoboldCpp request failed") from error
+
+    def stop(self, prompt_id: str) -> None:
+        url = f"{self.base_url}/api/extra/abort"
+        try:
+            requests.post(url, json={"id": prompt_id}, timeout=5)
+        except requests.RequestException as error:
+            raise ExecutionError("KoboldCpp stop request failed") from error
 
     def _resolve_prompt_text(self, request: PromptRequest) -> str:
         metadata = request.metadata if isinstance(request.metadata, dict) else {}
@@ -79,7 +102,9 @@ class KoboldCppBackend:
             extra_context=extra_context if isinstance(extra_context, dict) else None,
         )
 
-    def _extract_text(self, line: str) -> str:
+    def _extract_text(self, line: bytes | str) -> str:
+        if isinstance(line, bytes):
+            line = line.decode("utf-8", errors="replace")
         payload = line.removeprefix("data:").strip()
         if not payload:
             return ""
@@ -108,3 +133,16 @@ class KoboldCppBackend:
                 return content
 
         return ""
+
+    def _decode_event(self, line: bytes | str) -> dict[str, object] | None:
+        if isinstance(line, bytes):
+            line = line.decode("utf-8", errors="replace")
+        payload = line.removeprefix("data:").strip()
+        if not payload:
+            return None
+
+        try:
+            data = json.loads(payload)
+        except json.JSONDecodeError:
+            return None
+        return data if isinstance(data, dict) else None

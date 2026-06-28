@@ -1,0 +1,26 @@
+{
+  "llm": {
+    "model_name": "custom",
+    "max_tokens": 8192,
+    "backend": "openai_compatible",
+    "openai_compatible": {
+      "base_url": "http://localhost:5001",
+      "api_key": null,
+      "model_name": null
+    },
+    "koboldcpp": {
+      "base_url": "http://localhost:5001"
+    }
+  },
+  "discussion": {
+    "current_discussion_id": null,
+    "system_prompt": ""
+  },
+  "ui": {
+    "theme": "dark",
+    "font_family": "system-ui",
+    "font_size": 16,
+    "title_bar_height": 56,
+    "title_bar_font_size": 20
+  }
+}

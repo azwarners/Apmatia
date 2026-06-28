@@ -1,12 +1,12 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from src.core.prompt_LLM import prompt_llm
+from src.lib.discussions.prompt_llm import prompt_llm
 
 
-@patch("src.core.prompt_LLM.KoboldCppBackend")
-@patch("src.core.prompt_LLM.TextFileStorage")
-@patch("src.core.prompt_LLM.execute")
+@patch("src.lib.discussions.prompt_llm.KoboldCppBackend")
+@patch("src.lib.discussions.prompt_llm.TextFileStorage")
+@patch("src.lib.discussions.prompt_llm.execute")
 def test_core_prompt(mock_execute, mock_storage_class, mock_backend_class, tmp_path):
     output_file = tmp_path / "output.txt"
     output_file.write_text("chunk one\nchunk two", encoding="utf-8")

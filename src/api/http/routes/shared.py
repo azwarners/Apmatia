@@ -55,16 +55,56 @@ def serialize_membership(membership: object | dict) -> dict:
     }
 
 
-def serialize_discussion(discussion: dict) -> dict:
+def serialize_discussion(discussion: object | dict) -> dict:
+    if not isinstance(discussion, dict):
+        group_id = _safe_int(getattr(discussion, "group_id", None), default=None)
+        folder_id = _safe_int(getattr(discussion, "folder_id", None), default=None)
+        discussion_id = getattr(discussion, "discussion_id", None)
+        if discussion_id is None:
+            discussion_id = getattr(discussion, "id", None)
+        return {
+            "discussion_id": str(discussion_id),
+            "title": str(getattr(discussion, "title", "Untitled Discussion")),
+            "owner_user_id": _safe_int(getattr(discussion, "owner_user_id", None), default=0),
+            "group_id": group_id,
+            "visibility": str(getattr(discussion, "visibility", "private")),
+            "folder_id": folder_id,
+            "focused_wiki_id": getattr(discussion, "focused_wiki_id", None),
+            "participant_agent_ids": list(getattr(discussion, "participant_agent_ids", []) or []),
+            "chat_mode": str(getattr(discussion, "chat_mode", "single")),
+            "chat_pause_seconds": getattr(discussion, "chat_pause_seconds", None),
+            "chat_is_paused": bool(getattr(discussion, "chat_is_paused", False)),
+            "chat_turn_index": _safe_int(getattr(discussion, "chat_turn_index", 0), default=0),
+            "chat_coordinator_agent_id": _safe_int(
+                getattr(discussion, "chat_coordinator_agent_id", None), default=None
+            ),
+            "deleted_at": getattr(discussion, "deleted_at", None),
+            "purge_after": getattr(discussion, "purge_after", None),
+            "created_at": None
+            if getattr(discussion, "created_at", None) is None
+            else getattr(discussion, "created_at").isoformat(),
+            "updated_at": None
+            if getattr(discussion, "updated_at", None) is None
+            else getattr(discussion, "updated_at").isoformat(),
+        }
+
     group_id = _safe_int(discussion.get("group_id"), default=None)
     folder_id = _safe_int(discussion.get("folder_id"), default=None)
+    discussion_id = discussion.get("discussion_id", discussion.get("id"))
     return {
-        "discussion_id": str(discussion.get("discussion_id")),
+        "discussion_id": str(discussion_id),
         "title": str(discussion.get("title", "Untitled Discussion")),
         "owner_user_id": _safe_int(discussion.get("owner_user_id"), default=0),
         "group_id": group_id,
         "visibility": str(discussion.get("visibility", "private")),
         "folder_id": folder_id,
+        "focused_wiki_id": discussion.get("focused_wiki_id"),
+        "participant_agent_ids": list(discussion.get("participant_agent_ids") or []),
+        "chat_mode": str(discussion.get("chat_mode", "single")),
+        "chat_pause_seconds": discussion.get("chat_pause_seconds"),
+        "chat_is_paused": bool(discussion.get("chat_is_paused", False)),
+        "chat_turn_index": _safe_int(discussion.get("chat_turn_index"), default=0),
+        "chat_coordinator_agent_id": _safe_int(discussion.get("chat_coordinator_agent_id"), default=None),
         "deleted_at": discussion.get("deleted_at"),
         "purge_after": discussion.get("purge_after"),
         "created_at": discussion.get("created_at"),

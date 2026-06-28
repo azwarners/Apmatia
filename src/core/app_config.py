@@ -16,7 +16,12 @@ LEGACY_STATE_FILE = LEGACY_APP_DIR / "state.json"
 def _resolve_config_dir() -> Path:
     env_override = os.getenv("APMATIA_CONFIG_DIR")
     if env_override:
-        return Path(env_override).expanduser()
+        config_dir = Path(env_override).expanduser()
+        try:
+            config_dir.mkdir(parents=True, exist_ok=True)
+        except (OSError, PermissionError):
+            pass  # Skip creating dir if no permissions (e.g., during tests)
+        return config_dir
 
     preferred = PREFERRED_CONFIG_DIR
     try:
@@ -50,6 +55,9 @@ def _default_config() -> dict[str, Any]:
         "discussion": {
             "current_discussion_id": None,
             "system_prompt": "",
+        },
+        "llama_server": {
+            "log_dir": "",
         },
         "ui": {
             "theme": "dark",
@@ -89,6 +97,7 @@ def _seed_from_env(config: dict[str, Any]) -> dict[str, Any]:
         "OPENAI_COMPAT_API_KEY": ("llm", "openai_compatible", "api_key"),
         "OPENAI_COMPAT_MODEL": ("llm", "openai_compatible", "model_name"),
         "KOBOLDCPP_URL": ("llm", "koboldcpp", "base_url"),
+        "APMATIA_LLAMA_SERVER_LOG_DIR": ("llama_server", "log_dir"),
     }
 
     seeded = dict(config)

@@ -56,11 +56,20 @@ def test_group_and_membership_flow(tmp_path):
     assert new_membership.id is not None
     assert new_membership.user_id == member.id
 
+    updated_group = groups.edit_group(group.id or 0, name="team-renamed", description="updated team")
+    assert updated_group.name == "team-renamed"
+    assert updated_group.description == "updated team"
+
     assert acl.can_read_group(group.id or 0, member.id or 0) is True
     assert acl.can_write_group(group.id or 0, member.id or 0) is True
+
+    toggled_membership = groups.set_membership_enabled(new_membership.id or 0, False)
+    assert toggled_membership.is_enabled is False
+
+    assert acl.can_read_group(group.id or 0, member.id or 0) is False
+    assert acl.can_write_group(group.id or 0, member.id or 0) is False
     assert acl.can_read_private(owner.id or 0, owner.id or 0) is True
     assert acl.can_read_private(owner.id or 0, member.id or 0) is False
 
     assert groups.delete_group(group.id or 0) is True
     assert groups.delete_group(group.id or 0) is False
-

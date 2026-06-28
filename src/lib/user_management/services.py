@@ -42,6 +42,15 @@ class GroupService(Protocol):
         """Create and return a group record."""
         raise NotImplementedError
 
+    def edit_group(
+        self,
+        group_id: GroupId,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Group:
+        """Edit a group and return the updated record."""
+        raise NotImplementedError
+
     def delete_group(self, group_id: GroupId) -> bool:
         """Delete a group by ID. Return True if removed."""
         raise NotImplementedError

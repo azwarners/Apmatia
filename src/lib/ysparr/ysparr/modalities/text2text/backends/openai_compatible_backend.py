@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
+import re
+from ipaddress import ip_address
 from typing import Any, Dict, Iterable, List
+from urllib.parse import urlparse, urlunparse
 
 import requests
 
@@ -35,6 +39,7 @@ class OpenAICompatibleBackend:
                 "OpenAI-compatible base_url not provided and not found in config"
             )
         self.base_url = self.base_url.rstrip("/")
+        self.base_url = _resolve_docker_host_loopback(self.base_url)
 
         self.api_key = (
             api_key
@@ -53,14 +58,35 @@ class OpenAICompatibleBackend:
         chat_messages = metadata.get("chat_messages")
 
         if isinstance(chat_messages, list):
-            endpoint = "/v1/chat/completions"
-            payload = self._build_chat_payload(request, chat_messages)
+            try:
+                yield from self._stream_request(
+                    request=request,
+                    endpoint="/v1/chat/completions",
+                    payload=self._build_chat_payload(request, chat_messages),
+                )
+                return
+            except ExecutionError as error:
+                if not _should_fallback_to_completion(error):
+                    raise
+            yield from self._stream_request(
+                request=request,
+                endpoint="/v1/completions",
+                payload=self._build_completion_payload(request),
+            )
+            return
         else:
-            endpoint = "/v1/completions"
-            payload = self._build_completion_payload(request)
+            yield from self._stream_request(
+                request=request,
+                endpoint="/v1/completions",
+                payload=self._build_completion_payload(request),
+            )
+            return
 
+    def _stream_request(self, *, request: PromptRequest, endpoint: str, payload: Dict[str, Any]) -> Iterable[str]:
         url = f"{self.base_url}{endpoint}"
         headers = self._build_headers()
+        metadata = request.metadata if isinstance(request.metadata, dict) else {}
+        on_event = metadata.get("on_event")
 
         try:
             with requests.post(
@@ -71,16 +97,36 @@ class OpenAICompatibleBackend:
                 timeout=self.timeout_seconds,
             ) as response:
                 response.raise_for_status()
-                for line in response.iter_lines(decode_unicode=True):
+                response.encoding = "utf-8"
+                for line in response.iter_lines(decode_unicode=False):
+                    if request.stop_event is not None and request.stop_event.is_set():
+                        response.close()
+                        break
                     if not line:
                         continue
-                    text = self._extract_text(line)
+                    data = self._decode_event(line)
+                    if data is None:
+                        continue
+                    text = self._extract_text(data)
                     if text:
                         yield text
+                    if callable(on_event):
+                        on_event(
+                            {
+                                "provider": "openai_compatible",
+                                "endpoint": endpoint,
+                                "raw": data,
+                                "text": text,
+                                "stats": data.get("usage") if isinstance(data.get("usage"), dict) else {},
+                            }
+                        )
         except requests.RequestException as error:
             raise ExecutionError(
                 f"OpenAI-compatible request failed: {error}"
             ) from error
+
+    def stop(self, prompt_id: str) -> None:
+        return None
 
     def _build_headers(self) -> Dict[str, str]:
         headers: Dict[str, str] = {"Content-Type": "application/json"}
@@ -138,16 +184,24 @@ class OpenAICompatibleBackend:
         }
         return {k: v for k, v in parameters.items() if k in allowed_keys}
 
-    def _extract_text(self, line: str) -> str:
+    def _decode_event(self, line: bytes | str) -> dict[str, Any] | None:
+        if isinstance(line, bytes):
+            line = line.decode("utf-8", errors="replace")
         payload = line.removeprefix("data:").strip()
         if not payload or payload == "[DONE]":
-            return ""
+            return None
 
         try:
             data = json.loads(payload)
         except json.JSONDecodeError:
-            return ""
+            return None
 
+        if not isinstance(data, dict):
+            return None
+
+        return data
+
+    def _extract_text(self, data: dict[str, Any]) -> str:
         if not isinstance(data, dict):
             return ""
 
@@ -179,3 +233,69 @@ class OpenAICompatibleBackend:
                 return content
 
         return ""
+
+
+def _should_fallback_to_completion(error: ExecutionError) -> bool:
+    message = str(error)
+    return bool(
+        re.search(r"\b(400|404)\b", message)
+        or "chat/completions" in message
+        or "not found" in message.lower()
+        or "bad request" in message.lower()
+    )
+
+
+def _resolve_docker_host_loopback(base_url: str) -> str:
+    """Route localhost targets to the host gateway when running inside Docker."""
+    if not _running_in_docker():
+        return base_url
+
+    parsed = urlparse(base_url)
+    hostname = parsed.hostname
+    if hostname is None:
+        return base_url
+
+    try:
+        if not ip_address(hostname).is_loopback and hostname != "localhost":
+            return base_url
+    except ValueError:
+        if hostname != "localhost":
+            return base_url
+
+    gateway_host = _docker_gateway_host() or "host.docker.internal"
+    netloc = gateway_host
+    if parsed.port is not None:
+        netloc = f"{netloc}:{parsed.port}"
+    if parsed.username:
+        auth = parsed.username
+        if parsed.password:
+            auth = f"{auth}:{parsed.password}"
+        netloc = f"{auth}@{netloc}"
+
+    return urlunparse(parsed._replace(netloc=netloc))
+
+
+def _running_in_docker() -> bool:
+    return os.path.exists("/.dockerenv") or os.getenv("APMATIA_IN_DOCKER") == "1"
+
+
+def _docker_gateway_host() -> str | None:
+    """Return the host-side gateway IP for the default Docker route, if available."""
+    try:
+        with open("/proc/net/route", encoding="utf-8") as route_file:
+            for line in route_file.readlines()[1:]:
+                parts = line.split()
+                if len(parts) < 3:
+                    continue
+                destination = parts[1]
+                gateway_hex = parts[2]
+                flags_hex = parts[3] if len(parts) > 3 else "0"
+                if destination != "00000000":
+                    continue
+                if int(flags_hex, 16) & 2 == 0:
+                    continue
+                gateway_bytes = bytes.fromhex(gateway_hex)
+                return ".".join(str(byte) for byte in gateway_bytes[::-1])
+    except (OSError, ValueError):
+        return None
+    return None

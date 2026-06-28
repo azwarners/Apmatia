@@ -8,11 +8,13 @@ from ysparr.modalities.text2text.backends.koboldcpp_backend import KoboldCppBack
 class FakeResponse:
     def __init__(self, lines):
         self._lines = lines
+        self.encoding = None
 
     def raise_for_status(self):
         pass
 
     def iter_lines(self, decode_unicode=True):
+        assert decode_unicode is False
         for line in self._lines:
             yield line
 
@@ -28,7 +30,7 @@ def test_stream_uses_rendered_chat_template(monkeypatch):
 
     def fake_post(url, json=None, stream=None):
         captured_payload.update(json or {})
-        return FakeResponse(["ok"])
+        return FakeResponse([b"ok"])
 
     monkeypatch.setattr("requests.post", fake_post)
 
@@ -60,7 +62,7 @@ def test_stream_falls_back_to_prompt_text_without_template(monkeypatch):
 
     def fake_post(url, json=None, stream=None):
         captured_payload.update(json or {})
-        return FakeResponse(["ok"])
+        return FakeResponse([b"ok"])
 
     monkeypatch.setattr("requests.post", fake_post)
 
@@ -78,7 +80,7 @@ def test_stream_falls_back_to_prompt_text_without_template(monkeypatch):
 
 def test_stream_raises_for_invalid_chat_template(monkeypatch):
     def fake_post(*args, **kwargs):
-        return FakeResponse(["ok"])
+        return FakeResponse([b"ok"])
 
     monkeypatch.setattr("requests.post", fake_post)
 

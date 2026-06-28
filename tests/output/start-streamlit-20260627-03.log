@@ -1,0 +1,104 @@
+Building Apmatia Streamlit interface container...
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.07kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.2s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/library/python:3.14-slim
+#4 DONE 0.2s
+
+#5 [deps 1/4] FROM docker.io/library/python:3.14-slim@sha256:63a4c7f612a00f92042cbdcc7cdc6a306f38485af0a200b9c89de7d9b1607d15
+#5 resolve docker.io/library/python:3.14-slim@sha256:63a4c7f612a00f92042cbdcc7cdc6a306f38485af0a200b9c89de7d9b1607d15 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 3.75MB 0.1s done
+#7 DONE 0.1s
+
+#8 [stage-1 11/13] COPY src/ src/
+#8 CACHED
+
+#9 [stage-1  5/13] COPY Dockerfile ./
+#9 CACHED
+
+#10 [stage-1  8/13] COPY docs/VERSION ./VERSION
+#10 CACHED
+
+#11 [stage-1  4/13] COPY .pytest.ini ./
+#11 CACHED
+
+#12 [deps 2/4] WORKDIR /tmp/apmatia-deps
+#12 CACHED
+
+#13 [stage-1  3/13] COPY --from=deps /usr/local /usr/local
+#13 CACHED
+
+#14 [deps 3/4] COPY requirements.txt requirements-dev.txt ./
+#14 CACHED
+
+#15 [stage-1  2/13] WORKDIR /app
+#15 CACHED
+
+#16 [stage-1 11/13] COPY src/ src/
+#16 CACHED
+
+#17 [stage-1 10/13] COPY scripts/ scripts/
+#17 CACHED
+
+#18 [deps 4/4] RUN --mount=type=cache,target=/root/.cache/pip     pip install -r requirements.txt -r requirements-dev.txt
+#18 CACHED
+
+#19 [stage-1  7/13] COPY assets/ assets/
+#19 CACHED
+
+#20 [stage-1  6/13] COPY .streamlit/ .streamlit/
+#20 CACHED
+
+#21 [stage-1  9/13] COPY start.sh ./
+#21 CACHED
+
+#22 [stage-1 12/13] COPY tests/ tests/
+#22 DONE 0.1s
+
+#23 [stage-1 13/13] RUN chmod +x scripts/entrypoint.sh && mkdir -p /home/apmatia && chmod 0777 /home/apmatia
+#23 DONE 0.3s
+
+#24 exporting to image
+#24 exporting layers 0.1s done
+#24 exporting manifest sha256:c2452b2e1ea3a3b8dfb571d83146fb7498fa21d3ba55d1f3dea4e06cc64a593e done
+#24 exporting config sha256:e91cf00f04070edac0c66349f12ad91245e28aa7fa0e52b26ffada9174dd8f7d done
+#24 exporting attestation manifest sha256:2f8b2dffbbaee2b70a353919d4662a8a7ec0e955d9498e1265d6990bd4afb44f 0.0s done
+#24 exporting manifest list sha256:df9582afcffe20c23198afa0f2ed229d4d8c20fbacd7a10980cda868fafeba11 done
+#24 naming to docker.io/library/apmatia-streamlit:latest done
+#24 unpacking to docker.io/library/apmatia-streamlit:latest 0.1s done
+#24 DONE 0.2s
+Stopping existing container...
+apmatia-streamlit
+apmatia-streamlit
+Starting apmatia-streamlit...
+
+Collecting usage statistics. To deactivate, set browser.gatherUsageStats to false.
+
+2026-06-27 08:51:22.858 Uvicorn server started on 0.0.0.0:8501
+
+  You can now view your Streamlit app in your browser.
+
+  Local URL: http://localhost:8501
+  Network URL: http://172.17.0.4:8501
+  External URL: http://75.204.52.146:8501
+
+/usr/local/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+  Stopping...

@@ -16,6 +16,7 @@ DATA_DIR = Path(
     os.getenv("APMATIA_DATA_DIR", str(Path.home() / ".local" / "share" / "apmatia"))
 ).expanduser()
 USER_DB_PATH = DATA_DIR / "users.db"
+SESSION_DB_PATH = DATA_DIR / "auth_sessions.json"
 
 
 _bundle: "SQLiteUserManagementBundle | None" = None
@@ -38,7 +39,7 @@ def _ensure_runtime() -> None:
         _bundle = SQLiteUserManagementBundle(USER_DB_PATH)
         _user_manager = UserManager(_bundle.users)
         _group_manager = GroupManager(_bundle.groups, _bundle.memberships)
-        _session_manager = SessionManager()
+        _session_manager = SessionManager(SESSION_DB_PATH)
 
 
 def get_user_manager() -> UserManager:

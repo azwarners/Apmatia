@@ -1,0 +1,145 @@
+Building test container...
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.07kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.8s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/library/python:3.14-slim
+#4 DONE 0.6s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 2B done
+#5 DONE 0.0s
+
+#6 [deps 1/4] FROM docker.io/library/python:3.14-slim@sha256:63a4c7f612a00f92042cbdcc7cdc6a306f38485af0a200b9c89de7d9b1607d15
+#6 resolve docker.io/library/python:3.14-slim@sha256:63a4c7f612a00f92042cbdcc7cdc6a306f38485af0a200b9c89de7d9b1607d15 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 67.31kB 0.0s done
+#7 DONE 0.0s
+
+#8 [stage-1  7/13] COPY assets/ assets/
+#8 CACHED
+
+#9 [deps 2/4] WORKDIR /tmp/apmatia-deps
+#9 CACHED
+
+#10 [stage-1  5/13] COPY Dockerfile ./
+#10 CACHED
+
+#11 [deps 3/4] COPY requirements.txt requirements-dev.txt ./
+#11 CACHED
+
+#12 [stage-1  3/13] COPY --from=deps /usr/local /usr/local
+#12 CACHED
+
+#13 [stage-1  4/13] COPY .pytest.ini ./
+#13 CACHED
+
+#14 [stage-1  8/13] COPY docs/VERSION ./VERSION
+#14 CACHED
+
+#15 [stage-1  6/13] COPY .streamlit/ .streamlit/
+#15 CACHED
+
+#16 [stage-1  9/13] COPY start.sh ./
+#16 CACHED
+
+#17 [stage-1  2/13] WORKDIR /app
+#17 CACHED
+
+#18 [deps 4/4] RUN --mount=type=cache,target=/root/.cache/pip     pip install -r requirements.txt -r requirements-dev.txt
+#18 CACHED
+
+#19 [stage-1 10/13] COPY scripts/ scripts/
+#19 CACHED
+
+#20 [stage-1 11/13] COPY src/ src/
+#20 DONE 0.1s
+
+#21 [stage-1 12/13] COPY tests/ tests/
+#21 DONE 0.1s
+
+#22 [stage-1 13/13] RUN chmod +x scripts/entrypoint.sh && mkdir -p /home/apmatia && chmod 0777 /home/apmatia
+#22 DONE 0.2s
+
+#23 exporting to image
+#23 exporting layers
+#23 exporting layers 0.2s done
+#23 exporting manifest sha256:8e26b05824feff2fe64b2284ce80b342f0f3a4afa13896705a3f8fff54eeea5e done
+#23 exporting config sha256:59a44d3be0cd3087d42381d00972d168d89fabdfcb61a59dc3377ec69a154885 done
+#23 exporting attestation manifest sha256:18f9c4c9d46a3d13aba0b0246900d2fa7170c4a2b609f484ac58c48974b53901 0.0s done
+#23 exporting manifest list sha256:a23b95083167b8e475f1ced8748882d3399250866c12dfb6c5daa76cc196bb1c done
+#23 naming to docker.io/library/apmatia-test:latest done
+#23 unpacking to docker.io/library/apmatia-test:latest 0.1s done
+#23 DONE 0.4s
+Running tests in container...
+============================= test session starts ==============================
+platform linux -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0
+rootdir: /app
+configfile: .pytest.ini
+plugins: anyio-4.14.1
+collected 303 items
+
+tests/unit/test_agent_management_models.py .....                         [  1%]
+tests/unit/test_agent_management_module.py ..............                [  6%]
+tests/unit/test_agent_management_sqlite.py ................              [ 11%]
+tests/unit/test_agent_prompt_routes.py ..                                [ 12%]
+tests/unit/test_agent_prompts.py ....                                    [ 13%]
+tests/unit/test_agent_routes.py ....                                     [ 14%]
+tests/unit/test_apmatia_administration_tooling.py .....                  [ 16%]
+tests/unit/test_apmatia_core_models.py ....                              [ 17%]
+tests/unit/test_core.py .                                                [ 18%]
+tests/unit/test_core_app_config.py ..................................... [ 30%]
+.                                                                        [ 30%]
+tests/unit/test_core_discussion_templates.py ................            [ 35%]
+tests/unit/test_core_group_access.py ...                                 [ 36%]
+tests/unit/test_core_settings_service.py ...........                     [ 40%]
+tests/unit/test_core_user_management_runtime.py .                        [ 40%]
+tests/unit/test_discussion_stop.py ...                                   [ 41%]
+tests/unit/test_discussion_tool_calls.py ......                          [ 43%]
+tests/unit/test_discussions_scope.py ........................            [ 51%]
+tests/unit/test_internal_agent_management.py ...........                 [ 55%]
+tests/unit/test_internal_agent_prompts.py ..                             [ 56%]
+tests/unit/test_internal_api.py .......                                  [ 58%]
+tests/unit/test_internal_memory_management.py ..                         [ 59%]
+tests/unit/test_internal_tools.py ....                                   [ 60%]
+tests/unit/test_internal_user_management_api.py ...                      [ 61%]
+tests/unit/test_internal_wiki_management.py ..                           [ 62%]
+tests/unit/test_koboldcpp_chat_template.py ...                           [ 63%]
+tests/unit/test_memory_management_models.py ..                           [ 63%]
+tests/unit/test_memory_management_module.py .....                        [ 65%]
+tests/unit/test_memory_management_sqlite.py ...                          [ 66%]
+tests/unit/test_model_management_module.py ...                           [ 67%]
+tests/unit/test_openai_compatible_backend.py .....                       [ 68%]
+tests/unit/test_streamlit.py ........................................... [ 83%]
+....                                                                     [ 84%]
+tests/unit/test_tool_management_module.py ...............                [ 89%]
+tests/unit/test_tool_management_sqlite.py ..                             [ 90%]
+tests/unit/test_user_management_auth.py ...                              [ 91%]
+tests/unit/test_user_management_auth_flow.py ...                         [ 92%]
+tests/unit/test_user_management_core.py ..                               [ 92%]
+tests/unit/test_wiki_management_models.py ...                            [ 93%]
+tests/unit/test_wiki_management_module.py ......                         [ 95%]
+tests/unit/test_wiki_management_sqlite.py .                              [ 96%]
+tests/integration/test_agent_management_sqlite_integration.py .......... [ 99%]
+                                                                         [ 99%]
+tests/integration/test_cli.py .                                          [ 99%]
+tests/integration/test_memory_tool_sqlite_integration.py .               [100%]
+
+=============================== warnings summary ===============================
+../usr/local/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /usr/local/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 303 passed, 1 warning in 4.32s ========================

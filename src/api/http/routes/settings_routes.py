@@ -8,9 +8,7 @@ router = APIRouter()
 
 
 class SettingsPayload(BaseModel):
-    model_url: str
-    max_response_size: int
-    system_prompt: str
+    llama_server_log_dir: str = ""
     theme: str = "dark"
     font_family: str = "system-ui"
     font_size: int = 16
@@ -26,13 +24,10 @@ def get_settings(request: Request):
 
 @router.post("/settings")
 def save_settings(request: Request, payload: SettingsPayload):
-    session = require_session(request)
+    require_session(request)
     try:
         save_settings_payload(
-            user_id=session.user_id,
-            model_url=payload.model_url,
-            max_response_size=payload.max_response_size,
-            system_prompt=payload.system_prompt,
+            llama_server_log_dir=payload.llama_server_log_dir,
             theme=payload.theme,
             font_family=payload.font_family,
             font_size=payload.font_size,

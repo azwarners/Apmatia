@@ -168,6 +168,36 @@ class GroupManager(GroupService):
         self._membership_repo.create(owner_membership)
         return created
 
+    def edit_group(
+        self,
+        group_id: int,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Group:
+        group = self._group_repo.get_by_id(group_id)
+        if group is None:
+            raise ValueError(f"Group not found: {group_id}")
+
+        next_name = group.name
+        if name is not None:
+            clean_name = name.strip()
+            if not clean_name:
+                raise ValueError("Group name cannot be empty.")
+            existing = self._group_repo.get_by_name(clean_name)
+            if existing and existing.id != group_id:
+                raise ValueError(f"Group already exists: {clean_name}")
+            next_name = clean_name
+
+        next_description = group.description if description is None else description.strip()
+        updated = replace(
+            group,
+            name=next_name,
+            description=next_description,
+            updated_at=utc_now(),
+        )
+        self._group_repo.update(updated)
+        return updated
+
     def delete_group(self, group_id: int) -> bool:
         return self._group_repo.delete(group_id)
 

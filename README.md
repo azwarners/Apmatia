@@ -1,246 +1,133 @@
 # Apmatia
 
-**Apmatia Packs Minimal AI Tools Into an Application**
+Apmatia is an API-first, self-hosted application framework for modular AI workflows. It is built from small Python libraries, keeps orchestration in a thin core layer, and serves both programmatic and interactive use through the same API boundary.
 
-Apmatia is an API-first, self-hosted application framework for building modular AI-powered systems using lightweight, composable libraries.
+## What It Is
 
----
+Apmatia is designed to make AI features feel like application features instead of isolated scripts.
 
-## 🧠 What This Is
+Its architecture enforces a single path:
 
-Apmatia is a structured system for integrating AI capabilities into real applications without bloated frameworks.
-
-It enforces a clean architecture where:
-
-- **Libraries** contain all functionality (e.g., ysparr, user_management)
-
-- **Core** orchestrates libraries
-
-- **API (internal)** is the single programmatic interface
-
-- **API (HTTP)** exposes the system
-
-- **Interfaces (CLI, web, etc.)** consume the same API
-
----
-
-## 🔁 Execution Flow
-
-All requests follow a single path:
-
-```
-Interface → API (internal) → Core → Library → External Service (LLM)
+```text
+Interface -> API (internal) -> Core -> Library -> External Service
 ```
 
-This guarantees:
+That gives the project a few important properties:
 
-- consistent behavior across interfaces
+- business logic lives in reusable libraries under `src/lib/`
+- interfaces stay thin and do not call core directly
+- the CLI, HTTP API, and Streamlit UI all share the same behavior
 
-- no duplicated logic
+## Current Interfaces
 
-- clean extensibility
+- FastAPI core service on `0.0.0.0:8000`
+- Streamlit UI on `0.0.0.0:8501`
+- CLI entrypoint in `src/interfaces/cli/main.py`
 
----
+## Current Capabilities
 
-## 🚀 Features
+- discussion workflows backed by reusable libraries
+- saved LLM configurations for OpenAI-compatible and KoboldCpp backends
+- agent management backed by a dedicated library
+- user, group, and session-backed authentication flows
+- soft-delete discussion and folder lifecycle with restore support
+- shared settings for prompting and UI appearance
 
-- FastAPI-based HTTP server
+## Project Structure
 
-- CLI interface using the same execution path
-
-- Docker-first deployment
-
-- Modular library integration (ysparr)
-
-- Local LLM support via KoboldCpp
-
-- Config file-based configuration
-
-- Reusable user/group management library (`src/lib/user_management`) with app-specific runtime wiring in core
-
-- Web UI with modular Web Components and reusable mobile components
-
-- Mobile-first Discussion experience:
-  - fixed bottom composer/status bar
-  - live streaming output with controlled follow mode
-  - jump-to-latest control
-  - chat bubble rendering and authenticated user label
-
-- Discussion Tree folder browser:
-  - current-folder navigation model (instead of deep nested indentation)
-  - fixed folder navigation bar on mobile
-  - per-item action menus for discussions and folders
-  - hierarchical folder picker for create/move flows
-
-- Soft-delete trash model with restore APIs and 90-day retention
-
-- Pytest test suite (unit + integration)
-
----
-
-## 🧠 Current Integration
-
-Apmatia currently integrates:
-
-- **OpenAI Compatible backend** → OpenAI-style API endpoint support (self-hosted or hosted providers)
-
-- **KoboldCpp backend** → local LLM backend
-
-- **ysparr** → minimal execution library
-
-- **user_management** → reusable user/group domain and persistence library
-
----
-
-## ⚙️ Configuration
-
-Apmatia stores runtime config in:
-
+```text
+src/
+├── api/
+│   ├── http/        # FastAPI transport layer
+│   └── internal/    # canonical application interface
+├── core/            # orchestration and runtime wiring
+├── interfaces/
+│   ├── cli/
+│   └── streamlit/
+└── lib/             # reusable business logic libraries
 ```
+
+The most important rule is simple: interfaces use the API, and only the API talks to the core.
+
+## Libraries
+
+Top-level libraries in `src/lib/` currently include:
+
+- `agent_management` for agent lifecycle operations and persistence contracts
+- `apmatia_core` for shared object and permission primitives
+- `discussions` for prompt shaping and discussion-oriented model execution
+- `model_management` for saved LLM configuration records
+- `persistence` for lightweight SQLite-oriented storage helpers
+- `user_management` for users, groups, memberships, and authentication
+- `ysparr` for backend-agnostic generative execution
+
+## Configuration
+
+Persistent runtime configuration lives in:
+
+```text
 ~/.config/apmatia/config.json
 ```
 
-This is now the primary configuration source.
+Environment variables can still act as bootstrap defaults, but the config file is the main runtime source of truth.
 
-`.env` is optional and only used as a fallback/bootstrap source. If set, values are saved into the config store.
+Settings saved through the API and Streamlit UI include:
 
-Common config keys in `config.json`:
+- backend selection
+- model URL and provider model name
+- API key for OpenAI-compatible providers
+- max response size
+- default system prompt
+- UI theme and typography preferences
 
-```json
-{
-  "llm": {
-    "backend": "openai_compatible",
-    "max_tokens": 8192,
-    "openai_compatible": {
-      "base_url": "http://localhost:5001",
-      "api_key": null,
-      "model_name": null
-    },
-    "koboldcpp": {
-      "base_url": "http://localhost:5001"
-    }
-  },
-  "discussion": {
-    "system_prompt": ""
-  },
-  "ui": {
-    "theme": "dark",
-    "font_family": "system-ui",
-    "font_size": 16
-  }
-}
+## Running Apmatia
+
+### Start the core API
+
+```bash
+./start.sh core
 ```
 
-You can edit these values in the web app at `/settings`.
-Settings are grouped by collapsible categories and backed by reusable Web Components:
+This starts the FastAPI service on `http://127.0.0.1:8000` and publishes it on the LAN.
 
-- `AI Settings`
-- `Discussion Settings`
-- `Theme Settings`
+### Start the Streamlit interface
 
----
-
-## ▶️ Run the Application
-
-```
-./start.sh
+```bash
+./start.sh streamlit
 ```
 
-Startup prints the current app version from `VERSION`:
+This starts the Streamlit interface on `http://127.0.0.1:8501` and publishes it on the LAN.
 
-```
-Starting Apmatia version: 0.0.1.3
-```
+During development, run both the core service and the Streamlit app locally.
 
-Then open:
+## CLI Usage
 
-```
-http://localhost:8000
-```
-
----
-
-## 💻 CLI Usage
-
-```
+```bash
 python -m src.interfaces.cli.main "Say hello"
 ```
 
----
+## Testing
 
-## 🧪 Run Tests (Docker)
+Run the test suite with:
 
-```
-docker compose run --rm app pytest
-```
-
----
-
-## 📝 Versioning and Changelog
-
-- Current version: `VERSION`
-- API version probe: `/api/version`
-- Release notes: `CHANGELOG.md`
-
----
-
-## 🗑️ Trash and Restore (API)
-
-Discussion/folder deletes use soft-delete with a 90-day retention window.
-
-Available endpoints:
-
-- `GET /api/discussions/trash`
-- `DELETE /api/discussions/folders/{folder_id}` (supports `?force=true`)
-- `POST /api/discussions/folders/{folder_id}/restore`
-- `POST /api/discussions/{discussion_id}/restore`
-
----
-
-## 🏗️ Project Structure
-
-```
-src/
-├── lib/         → business logic libraries (ysparr, user_management, persistence)
-├── core/        → orchestration
-│   └── user_management_runtime.py → Apmatia runtime wiring for user_management
-├── api/internal → canonical interface
-├── api/http     → HTTP layer
-├── interfaces/  → CLI + web
+```bash
+./test.sh
 ```
 
----
+## Versioning and Release Notes
 
-## 🏭 Philosophy
+- version file: `docs/VERSION`
+- changelog: `docs/CHANGELOG.md`
+- HTTP version probe: `GET /api/version`
 
-- One execution path
+Version `0.0.1.5` records the current Streamlit interface rollout.
 
-- No duplicated logic
+## API Notes
 
-- Libraries are independent
+The FastAPI layer remains the transport-facing API surface. The Streamlit app stays on the interface side of the boundary and uses the same API contract rather than reaching into core logic directly.
 
-- Interfaces are clients
+## Additional Documentation
 
-- Keep everything minimal
-
----
-
-## 🚧 Roadmap
-
-- Model manager
-
-- Multi-model routing
-
-- Multi-user hardening (authz policies, schema migrations, admin workflows)
-
----
-
-## 💬 Summary
-
-Apmatia is a lightweight foundation for building AI-powered systems that:
-
-- stay modular
-
-- avoid framework lock-in
-
-- scale cleanly
+- architecture: `docs/ARCHITECTURE.md`
+- changelog: `docs/CHANGELOG.md`
+- third-party notices: `docs/THIRD_PARTY_NOTICES.md`

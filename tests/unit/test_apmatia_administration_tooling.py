@@ -116,6 +116,8 @@ def test_admin_tool_definition_includes_prompt_fields():
     assert "raw_prompt_override" in definition["input_schema"]["properties"]
     assert definitions[1]["name"] == "clone_agent_as"
     assert "source_agent_id" in definitions[1]["input_schema"]["properties"]
+    assert definitions[2]["name"] == "set_agent_mode"
+    assert definitions[2]["input_schema"]["properties"]["mode"]["enum"] == ["discussion", "agentic"]
 
 
 def test_admin_tool_provider_creates_agent_with_prompt_fields():
@@ -214,6 +216,34 @@ def test_admin_tool_provider_inherits_owner_context_from_discussion_when_caller_
 def test_admin_tool_provider_factory_returns_builtin_provider():
     providers = build_apmatia_administration_tool_providers(InMemoryAgentService())
 
-    assert len(providers) == 2
+    assert len(providers) == 3
     assert providers[0].provider_id == "builtin.apmatia_create_agent"
     assert providers[1].provider_id == "builtin.apmatia_clone_agent_as"
+    assert providers[2].provider_id == "builtin.apmatia_set_agent_mode"
+
+
+def test_admin_tool_provider_switches_agent_mode():
+    agent_service = InMemoryAgentService()
+    provider = ApmatiaAdministrationToolProvider(
+        provider_id="builtin.apmatia_set_agent_mode",
+        action="set_agent_mode",
+        agent_service=agent_service,
+    )
+
+    with patch("src.lib.discussions.discussion_state") as mock_discussion_state:
+        mock_discussion_state.set_agent_mode.return_value = {
+            "previous_mode": "discussion",
+            "current_mode": "agentic",
+            "status": "updated",
+        }
+        result = provider.execute(
+            {"mode": "agentic"},
+            tool_call=type("ToolCall", (), {"requester_agent_id": 1, "discussion_id": "disc-1"})(),
+        )
+
+    assert result == {
+        "previous_mode": "discussion",
+        "current_mode": "agentic",
+        "status": "updated",
+    }
+    mock_discussion_state.set_agent_mode.assert_called_once_with(discussion_id="disc-1", mode="agentic")

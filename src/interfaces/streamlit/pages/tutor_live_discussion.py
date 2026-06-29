@@ -49,9 +49,23 @@ def render() -> None:
     if initial_is_streaming:
         fragment_factory = getattr(st, "fragment", None)
         if getattr(fragment_factory, "__module__", "").startswith("streamlit"):
+            activity_message_index = discussion_page._activity_message_index(
+                snapshot.get("messages", []),
+                snapshot.get("activity") if isinstance(snapshot.get("activity"), dict) else None,
+            )
+            discussion_page._render_message_history(
+                snapshot,
+                username=username,
+                agent_name=agent_name,
+                active_message_index=activity_message_index,
+            )
             @fragment_factory(run_every=0.5)
             def _streaming_fragment() -> dict[str, object]:
-                current_snapshot = discussion_page._render_streaming_messages(username=username, agent_name=agent_name)
+                current_snapshot = discussion_page._render_streaming_messages(
+                    username=username,
+                    agent_name=agent_name,
+                    include_history=False,
+                )
                 if current_snapshot.get("is_streaming"):
                     st.caption(f"{agent_name} is typing...")
                 else:
@@ -60,7 +74,11 @@ def render() -> None:
 
             snapshot = _streaming_fragment()
         else:
-            snapshot = discussion_page._render_streaming_messages(username=username, agent_name=agent_name)
+            snapshot = discussion_page._render_streaming_messages(
+                username=username,
+                agent_name=agent_name,
+                include_history=True,
+            )
             st.caption(f"{agent_name} is typing...")
     else:
         discussion_page._render_messages(snapshot, username=username, agent_name=agent_name)

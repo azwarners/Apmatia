@@ -37,6 +37,10 @@ from .workspace_editor import (
     WorkspaceWriteResult,
 )
 from .workspace import (
+    WorkspaceRootError,
+    WorkspaceRootNotFoundError,
+    WorkspaceRootPermissionError,
+    ensure_module_workspace_root,
     resolve_module_bundle_root,
     resolve_module_target_dir,
     resolve_module_target_root,
@@ -74,7 +78,11 @@ __all__ = [
     "WorkspaceFileNotFoundError",
     "WorkspaceModuleNotFoundError",
     "WorkspacePathError",
+    "WorkspaceRootError",
+    "WorkspaceRootNotFoundError",
+    "WorkspaceRootPermissionError",
     "WorkspaceWriteResult",
+    "ensure_module_workspace_root",
     "resolve_module_bundle_root",
     "resolve_module_target_dir",
     "resolve_module_target_root",

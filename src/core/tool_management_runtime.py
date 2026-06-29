@@ -11,6 +11,7 @@ from src.lib.apmatia_administration.tooling import (
     apmatia_administration_tool_definitions,
     build_apmatia_administration_tool_providers,
 )
+from src.lib.system_audit.tooling import build_system_audit_tool_providers, system_audit_tool_definitions
 from src.lib.memory_management.tooling import build_memory_tool_providers, memory_tool_definitions
 from src.lib.tool_management.module import ToolManager
 from src.lib.tool_management.workspace_modules import (
@@ -51,12 +52,14 @@ def _ensure_runtime() -> None:
             agent_manager,
             builtin_providers=[
                 *build_apmatia_administration_tool_providers(agent_manager),
+                *build_system_audit_tool_providers(agent_manager),
                 *build_memory_tool_providers(get_memory_manager(), agent_manager),
                 *build_wiki_tool_providers(get_wiki_manager(), agent_manager),
                 *build_workspace_module_tool_providers(),
             ],
             builtin_definitions=[
                 *apmatia_administration_tool_definitions(),
+                *system_audit_tool_definitions(),
                 *memory_tool_definitions(),
                 *wiki_tool_definitions(),
                 *workspace_module_tool_definitions(),

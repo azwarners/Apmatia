@@ -161,6 +161,15 @@ def handle_module_show(args: argparse.Namespace) -> int:
     print(f"Version: {manifest.version}")
     print(f"Description: {manifest.description or ''}")
     print(f"Author: {manifest.author or ''}")
+    print("Metadata:")
+    print(f"  Category: {manifest.metadata.get('category', '')}")
+    print(f"  Tags: {_join_strings(manifest.metadata.get('tags', []))}")
+    print("Dependencies:")
+    print(f"  Python: {manifest.dependencies.get('python', '')}")
+    print(f"  Python Packages: {_join_strings(manifest.dependencies.get('python_packages', []))}")
+    print(f"  System Packages: {_join_strings(manifest.dependencies.get('system_packages', []))}")
+    print(f"  Modules: {_join_strings(manifest.dependencies.get('modules', []))}")
+    print(f"  Tools: {_join_strings(manifest.dependencies.get('tools', []))}")
     print(f"Actions: {', '.join(inspection.actions) if inspection.actions else ''}")
     print(f"Tools: {', '.join(inspection.tools) if inspection.tools else ''}")
     print(f"Commands: {', '.join(inspection.commands) if inspection.commands else ''}")
@@ -323,3 +332,11 @@ def _print_module_plan_text(plan) -> None:
             print(f"- {warning}")
     if plan.suggested_next_command:
         print(f"Suggested next command: {plan.suggested_next_command}")
+
+
+def _join_strings(values) -> str:
+    if isinstance(values, (list, tuple)):
+        return ", ".join(str(value) for value in values)
+    if values in (None, ""):
+        return ""
+    return str(values)

@@ -81,6 +81,14 @@ def test_generated_manifest_is_parseable(tmp_path: Path):
     assert manifest["module"]["module_id"] == "productivity"
     assert manifest["module"]["name"] == "Productivity"
     assert manifest["module"]["author"] == "Nick"
+    assert manifest["metadata"] == {"category": "", "tags": []}
+    assert manifest["dependencies"] == {
+        "python": "",
+        "python_packages": [],
+        "system_packages": [],
+        "modules": [],
+        "tools": [],
+    }
 
 
 def test_invalid_module_slugs_are_rejected(tmp_path: Path):

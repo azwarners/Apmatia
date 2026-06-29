@@ -11,6 +11,8 @@ Modules are the preferred way to package a feature when that feature can be isol
 
 Bundled modules are part of the application. Workspace modules are safe drafts that can be planned, scaffolded, inspected, edited, and validated before promotion.
 
+The workspace root defaults to `~/.apmatia/workspace/modules/` and can be overridden with `APMATIA_WORKSPACE_ROOT`. If the environment variable is unavailable on the host, Apmatia also checks `~/.config/apmatia/config.json` for `workspace.root` before falling back to the legacy home-directory path. In local development, the repo mounts `./workspace` into the container so draft modules persist across restarts.
+
 ## What A Module Contains
 
 A module packages a feature and registers it into the application registry.
@@ -33,7 +35,14 @@ Modules should not contain transport logic. They should define capabilities, not
 4. Validate the module.
 5. Promote the module when it is ready.
 
-For bundled modules, use the default module location. For draft work, use the workspace flag so the new module is created under `workspace/modules/<slug>/`.
+For bundled modules, use the default module location. For draft work, use the workspace flag so the new module is created under `workspace/modules/<slug>/` or whichever path `APMATIA_WORKSPACE_ROOT` points to.
+
+In practice, the planning step should answer four questions before you write code:
+
+- what problem the module solves
+- what the module name and slug should be
+- which actions, tools, commands, and views belong in the module
+- whether the work should stay in `workspace/modules/` or be promoted into `src/modules/`
 
 ## CLI Commands
 
@@ -59,6 +68,17 @@ apmatia module files productivity --workspace
 apmatia module read productivity actions.py --workspace
 cat new_actions.py | apmatia module write productivity actions.py --workspace --stdin
 ```
+
+If you are using tool calls instead of the CLI, the same workflow maps to these workspace tools:
+
+- `plan_workspace_module`
+- `create_workspace_module`
+- `list_workspace_module_files`
+- `read_workspace_module_file`
+- `write_workspace_module_file`
+- `validate_workspace_module`
+
+Those tools all operate inside a draft module directory under `workspace/modules/<slug>/`.
 
 ## Scaffold Output
 
@@ -101,6 +121,22 @@ Safety rules:
 
 Use the workspace editor or the CLI wrappers to read, write, list, and delete draft files safely.
 
+Typical draft module layout:
+
+```text
+workspace/modules/<slug>/
+├── __init__.py
+├── manifest.toml
+├── module.py
+├── actions.py
+├── tools.py
+├── commands.py
+├── views.py
+├── README.md
+└── tests/
+    └── test_<slug>_module.py
+```
+
 ## Promotion Mindset
 
 The long-term path is:
@@ -111,6 +147,10 @@ The long-term path is:
 4. promote or copy the module into the bundled module set when it is ready
 
 The project should gradually move feature code into modules where it makes sense, while keeping shared implementation detail in libraries.
+
+If you are running inside Docker, make sure the workspace volume is mounted and `APMATIA_WORKSPACE_ROOT` points at the mounted location. That keeps draft modules persistent and makes workspace tools fail fast when the mount is missing or unwritable.
+
+When promoting a module, copy or move the finalized module from `workspace/modules/<slug>/` into `src/modules/<slug>/` and re-run validation against the bundled location.
 
 ## Related Docs
 

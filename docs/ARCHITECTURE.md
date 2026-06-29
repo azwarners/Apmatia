@@ -154,6 +154,17 @@ Discussion and folder deletion follows a soft-delete lifecycle:
 
 This keeps accidental deletions reversible without cluttering active views.
 
+## Tool Result Persistence
+
+Tool results are displayed back into the discussion flow and are also written to the tool-call audit log, but Apmatia does not maintain a separate durable tool-result store as part of the discussion transcript model.
+
+Practical guidance:
+
+- treat tool outputs as turn-local context unless they are explicitly saved elsewhere
+- use memory or wiki tools when a result should survive beyond the current conversation
+- use the audit log for debugging and historical inspection of tool calls
+- if a workflow needs cross-session retrieval of tool outputs, persist a concise summary into memory or another dedicated store rather than relying on the ephemeral result payload alone
+
 ## Extending the System
 
 To add a new feature:

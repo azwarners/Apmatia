@@ -102,6 +102,39 @@ def apmatia_administration_tool_definitions() -> list[dict[str, Any]]:
             "read_only": False,
             "metadata": {"builtin": True, "library": "apmatia_administration"},
         },
+        {
+            "name": "set_agent_mode",
+            "description": (
+                "Switch the current discussion between discussion mode and agentic mode. "
+                "Agentic mode enables gentle nudges after tool calls so the agent can keep working autonomously."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "mode": {
+                        "type": "string",
+                        "enum": ["discussion", "agentic"],
+                    },
+                },
+                "required": ["mode"],
+                "additionalProperties": False,
+            },
+            "output_schema": {
+                "type": "object",
+                "properties": {
+                    "previous_mode": {"type": "string"},
+                    "current_mode": {"type": "string"},
+                    "status": {"type": "string"},
+                },
+                "required": ["previous_mode", "current_mode", "status"],
+                "additionalProperties": False,
+            },
+            "provider_id": "builtin.apmatia_set_agent_mode",
+            "enabled": True,
+            "confirmation_required": False,
+            "read_only": False,
+            "metadata": {"builtin": True, "library": "apmatia_administration"},
+        },
     ]
 
 
@@ -160,6 +193,23 @@ class ApmatiaAdministrationToolProvider:
                 "agent": _agent_summary(cloned_agent),
             }
 
+        if self.action == "set_agent_mode":
+            from src.lib.discussions import discussion_state
+
+            discussion_id = str(getattr(tool_call, "discussion_id", "") or "").strip()
+            if not discussion_id:
+                raise ValueError("Tool call discussion_id is required.")
+            requested_mode = str(arguments.get("mode", "")).strip().lower()
+            if requested_mode not in {"discussion", "agentic"}:
+                raise ValueError("mode must be either 'discussion' or 'agentic'.")
+
+            refreshed = discussion_state.set_agent_mode(discussion_id=discussion_id, mode=requested_mode)
+            return {
+                "previous_mode": str(refreshed.get("previous_mode") or "discussion"),
+                "current_mode": str(refreshed.get("current_mode") or requested_mode),
+                "status": str(refreshed.get("status") or "updated"),
+            }
+
         raise ValueError(f"Unsupported administration action: {self.action}")
 
 
@@ -173,6 +223,11 @@ def build_apmatia_administration_tool_providers(agent_service: AgentService) -> 
         ApmatiaAdministrationToolProvider(
             provider_id="builtin.apmatia_clone_agent_as",
             action="clone_agent",
+            agent_service=agent_service,
+        ),
+        ApmatiaAdministrationToolProvider(
+            provider_id="builtin.apmatia_set_agent_mode",
+            action="set_agent_mode",
             agent_service=agent_service,
         ),
     ]

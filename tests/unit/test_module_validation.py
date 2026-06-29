@@ -26,6 +26,55 @@ def test_validate_module_passes_for_valid_scaffold(tmp_path: Path):
     assert result.registered["modules"] == ["productivity"]
 
 
+def test_validate_module_passes_with_dependency_metadata(tmp_path: Path):
+    create_module_scaffold(
+        module_slug="system_administration",
+        display_name="System Administration",
+        description="Tools for system health.",
+        author="Nick Warner",
+        base_dir=tmp_path,
+    )
+    manifest_path = tmp_path / "src/modules/system_administration/manifest.toml"
+    manifest_path.write_text(
+        """
+[module]
+module_id = "system_administration"
+name = "System Administration"
+version = "0.1.0"
+description = "Tools for system health."
+author = "Nick Warner"
+
+[metadata]
+category = "system"
+tags = ["linux", "administration", "monitoring"]
+
+[dependencies]
+python = ">=3.10"
+python_packages = ["psutil"]
+system_packages = ["procps"]
+modules = ["system_audit"]
+tools = ["system_audit.inspect"]
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    result = validate_module("system_administration", base_dir=tmp_path)
+
+    assert result.passed is True
+    assert result.manifest is not None
+    assert result.manifest.metadata == {
+        "category": "system",
+        "tags": ["linux", "administration", "monitoring"],
+    }
+    assert result.manifest.dependencies == {
+        "python": ">=3.10",
+        "python_packages": ["psutil"],
+        "system_packages": ["procps"],
+        "modules": ["system_audit"],
+        "tools": ["system_audit.inspect"],
+    }
+
+
 def test_validate_module_missing_required_file_fails(tmp_path: Path):
     create_module_scaffold(
         module_slug="productivity",
@@ -108,6 +157,48 @@ def test_validate_module_register_raising_fails(tmp_path: Path):
     assert result.passed is False
     assert any(not check.passed and check.name == "register(registry) succeeds" for check in result.checks)
     assert any("raised an exception" in error for error in result.errors)
+
+
+def test_validate_module_rejects_malformed_dependency_metadata(tmp_path: Path):
+    create_module_scaffold(
+        module_slug="productivity",
+        display_name="Productivity",
+        base_dir=tmp_path,
+    )
+    manifest_path = tmp_path / "src/modules/productivity/manifest.toml"
+    manifest_path.write_text(
+        """
+[module]
+module_id = "productivity"
+name = "Productivity"
+version = "0.1.0"
+description = ""
+author = ""
+
+[metadata]
+category = ["wrong"]
+tags = ["ok", 1]
+
+[dependencies]
+python = [">=3.10"]
+python_packages = ["psutil", 2]
+system_packages = "procps"
+modules = [1]
+tools = ["system_audit.inspect", 2]
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    result = validate_module("productivity", base_dir=tmp_path)
+
+    assert result.passed is False
+    assert any(not check.passed and check.name == "metadata.category is a string" for check in result.checks)
+    assert any(not check.passed and check.name == "metadata.tags is a list of strings" for check in result.checks)
+    assert any(not check.passed and check.name == "dependencies.python is a string" for check in result.checks)
+    assert any(not check.passed and check.name == "dependencies.python_packages is a list of strings" for check in result.checks)
+    assert any(not check.passed and check.name == "dependencies.system_packages is a list of strings" for check in result.checks)
+    assert any(not check.passed and check.name == "dependencies.modules is a list of strings" for check in result.checks)
+    assert any(not check.passed and check.name == "dependencies.tools is a list of strings" for check in result.checks)
 
 
 def test_module_validation_does_not_require_streamlit(tmp_path: Path):

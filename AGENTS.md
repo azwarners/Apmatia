@@ -17,3 +17,9 @@ For the Streamlit app, do not rely on Streamlit's default multipage sidebar. The
 For browser clipboard actions in Streamlit, do not rely on iframe components or native `st.code` copy buttons. Use the reusable main-DOM helper in `src/interfaces/streamlit/components/clipboard_button.py` via `st.html(..., unsafe_allow_javascript=True)`, and hide the native Streamlit code-copy control when rendering custom message actions.
 
 For the Streamlit app's custom upper-right menu, remember that Streamlit still renders a top header layer even when the toolbar is minimized. That invisible layer can cover or intercept custom controls placed at the top edge. Preserve the CSS safeguards in `src/interfaces/streamlit/app.py` that give `.apm-header-menu` a higher stacking order than `[data-testid="stHeader"]` and disable pointer events on the Streamlit header. When adding items to this menu, change only the menu contents unless the trigger/header stacking behavior is intentionally being revisited.
+
+When reporting changes back to the user, always include the full absolute path of at least one relevant file so it is obvious which repo instance and directory were touched. Prefer verbose path references when mentioning files in responses, especially after work that could otherwise be confused with a different checkout.
+
+Do not use relative paths like `apmatia/...`, `./...`, or bare filenames when describing changed files to the user. Use absolute paths such as `/home/nick/ServerData/repos/apmatia/...` so there is no ambiguity about which checkout is being discussed.
+
+Do not rely on UI hover labels, file cards, shortened link text, or repo-relative display names to establish the file path. When a file is mentioned in a response, the absolute path must be written explicitly in the message body itself.

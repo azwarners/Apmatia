@@ -153,6 +153,8 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[0]["module"]["description"] == "Minimal bundled example module."
     assert payload[0]["source"] == "bundled"
     assert payload[0]["is_workspace"] is False
+    assert payload[0]["module"]["metadata"] == {}
+    assert payload[0]["module"]["dependencies"] == {}
     assert payload[0]["actions"] == ["example.action"]
     assert payload[0]["commands"] == ["example.command"]
     assert payload[0]["views"] == ["example.view"]
@@ -169,6 +171,10 @@ def test_cli_module_show_displays_example_module_details(capsys):
     assert "Version: 0.1.0" in captured.out
     assert "Description: Minimal bundled example module." in captured.out
     assert "Author:" in captured.out
+    assert "Metadata:" in captured.out
+    assert "  Category:" in captured.out
+    assert "Dependencies:" in captured.out
+    assert "  Python:" in captured.out
     assert "Actions: example.action" in captured.out
     assert "Commands: example.command" in captured.out
     assert "Views: example.view" in captured.out
@@ -188,6 +194,8 @@ def test_cli_module_show_json_output_is_valid_json(capsys):
     assert payload["module"]["author"] == ""
     assert payload["source"] == "bundled"
     assert payload["is_workspace"] is False
+    assert payload["module"]["metadata"] == {}
+    assert payload["module"]["dependencies"] == {}
     assert payload["actions"] == ["example.action"]
     assert payload["commands"] == ["example.command"]
     assert payload["views"] == ["example.view"]
@@ -243,6 +251,14 @@ def test_cli_module_list_workspace_json_output_is_valid_json(tmp_path, capsys):
     assert payload[0]["source"] == "workspace"
     assert payload[0]["is_workspace"] is True
     assert payload[0]["module"]["name"] == "Productivity"
+    assert payload[0]["module"]["metadata"] == {"category": "", "tags": []}
+    assert payload[0]["module"]["dependencies"] == {
+        "python": "",
+        "python_packages": [],
+        "system_packages": [],
+        "modules": [],
+        "tools": [],
+    }
 
 
 def test_cli_module_show_workspace_displays_workspace_module_details(tmp_path, capsys):
@@ -256,6 +272,29 @@ def test_cli_module_show_workspace_displays_workspace_module_details(tmp_path, c
         base_dir=tmp_path,
         workspace=True,
     )
+    manifest_path = tmp_path / "workspace/modules/productivity/manifest.toml"
+    manifest_path.write_text(
+        """
+[module]
+module_id = "productivity"
+name = "Productivity"
+version = "0.1.0"
+description = "Tasks, projects, and productivity helpers."
+author = "Nick Warner"
+
+[metadata]
+category = "system"
+tags = ["linux", "administration", "monitoring"]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []
+""".lstrip(),
+        encoding="utf-8",
+    )
 
     exit_code = main(["module", "show", "productivity", "--workspace", "--base-dir", str(tmp_path)])
 
@@ -264,6 +303,13 @@ def test_cli_module_show_workspace_displays_workspace_module_details(tmp_path, c
     assert exit_code == 0
     assert "Source: workspace" in captured.out
     assert "Module: productivity" in captured.out
+    assert "Metadata:" in captured.out
+    assert "  Category: system" in captured.out
+    assert "  Tags: linux, administration, monitoring" in captured.out
+    assert "Dependencies:" in captured.out
+    assert "  Python: >=3.10" in captured.out
+    assert "Actions:" in captured.out
+    assert "Views:" in captured.out
     assert "Name: Productivity" in captured.out
     assert "Description: Tasks, projects, and productivity helpers." in captured.out
     assert "Author: Nick Warner" in captured.out

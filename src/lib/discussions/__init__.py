@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import base64
+import json
 import os
 import re
 import threading
 import uuid
 from dataclasses import dataclass
-import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -51,6 +52,7 @@ DATA_DIR = Path(
 DISCUSSIONS_DIR = DATA_DIR / "discussions"
 DISCUSSIONS_DB = DATA_DIR / "discussions.db"
 TRASH_RETENTION_DAYS = 90
+MAX_PROMPT_ATTACHMENT_BYTES = 10 * 1024 * 1024
 _UNSET = object()
 _MESSAGE_ROLE_RE = re.compile(r"^(User|Assistant|Agent)(?:\s*\((?P<speaker>[^)]+)\))?:\s?")
 _MESSAGE_METADATA_RE = re.compile(r"^<!--\s*apmatia-metadata:\s*(?P<payload>.+?)\s*-->$")
@@ -90,11 +92,19 @@ def _new_discussion_id() -> str:
     return f"ID{uuid.uuid4().hex[:8]}"
 
 
+def _normalize_agent_mode(value: object | None) -> str:
+    candidate = "discussion" if value is None else str(value).strip().lower()
+    if candidate in {"discussion", "agentic"}:
+        return candidate
+    return "discussion"
+
+
 @dataclass(slots=True)
 class DiscussionSnapshot:
     discussion_id: str
     is_streaming: bool
     last_error: str | None
+    agent_mode: str
     chat_mode: str
     chat_pause_seconds: float | None
     chat_is_paused: bool
@@ -115,6 +125,7 @@ class Discussion(ApmatiaObject):
     folder_id: int | None = None
     focused_wiki_id: str | None = None
     participant_agent_ids: list[int] | None = None
+    agent_mode: str = "discussion"
     chat_mode: str = "single"
     chat_pause_seconds: float | None = None
     chat_is_paused: bool = False
@@ -139,6 +150,7 @@ class Discussion(ApmatiaObject):
             if agent_id is not None and agent_id not in seen_ids:
                 self.participant_agent_ids.append(agent_id)
                 seen_ids.add(agent_id)
+        self.agent_mode = _normalize_agent_mode(self.agent_mode)
         self.chat_mode = normalize_group_chat_mode(self.chat_mode)
         self.chat_pause_seconds = None if self.chat_pause_seconds is None else float(self.chat_pause_seconds)
         self.chat_is_paused = bool(self.chat_is_paused)
@@ -183,6 +195,7 @@ class DiscussionState:
         self._streaming: set[str] = set()
         self._stop_events: dict[str, threading.Event] = {}
         self._activity: dict[str, dict[str, Any]] = {}
+        self._pending_prompt_attachments: dict[str, list[dict[str, Any]]] = {}
 
     @property
     def _ensure_store(self) -> SQLiteStore:
@@ -195,6 +208,143 @@ class DiscussionState:
 
     def _discussion_path(self, discussion_id: str) -> Path:
         return DISCUSSIONS_DIR / f"{discussion_id}.txt"
+
+    def _discussion_attachment_directory(self, discussion_id: str) -> Path:
+        return DISCUSSIONS_DIR / discussion_id / "attachments"
+
+    def _store_prompt_attachments(
+        self,
+        discussion_id: str,
+        attachments: list[dict[str, Any]] | None,
+    ) -> list[dict[str, Any]]:
+        if not attachments:
+            return []
+
+        stored_attachments: list[dict[str, Any]] = []
+        attachment_dir = self._discussion_attachment_directory(discussion_id)
+        attachment_dir.mkdir(parents=True, exist_ok=True)
+
+        for index, attachment in enumerate(attachments):
+            if not isinstance(attachment, dict):
+                raise ValueError("Invalid attachment payload.")
+
+            mime_type = str(attachment.get("mime_type") or "").strip().lower()
+            if not mime_type.startswith("image/"):
+                raise ValueError("Only image attachments are supported.")
+
+            data_base64 = str(attachment.get("data_base64") or "").strip()
+            if not data_base64:
+                raise ValueError("Attachment data cannot be empty.")
+            try:
+                binary = base64.b64decode(data_base64, validate=True)
+            except ValueError as error:
+                raise ValueError("Attachment data is not valid base64.") from error
+            if len(binary) > MAX_PROMPT_ATTACHMENT_BYTES:
+                raise ValueError("Attachment exceeds the maximum supported size.")
+
+            filename = str(attachment.get("filename") or f"attachment-{index + 1}").strip()
+            if not filename:
+                filename = f"attachment-{index + 1}"
+
+            extension = mime_type.split("/", 1)[-1] or "bin"
+            stored_name = f"{uuid.uuid4().hex}.{extension}"
+            stored_path = attachment_dir / stored_name
+            stored_path.write_bytes(binary)
+
+            stored_attachments.append(
+                {
+                    "filename": filename,
+                    "mime_type": mime_type,
+                    "path": f"attachments/{stored_name}",
+                    "size_bytes": len(binary),
+                }
+            )
+
+        return stored_attachments
+
+    def _attachment_data_url(self, discussion_id: str, attachment: dict[str, Any]) -> str | None:
+        data_url = str(attachment.get("data_url") or "").strip()
+        if data_url:
+            return data_url
+
+        mime_type = str(attachment.get("mime_type") or "").strip()
+        if not mime_type:
+            return None
+
+        path_value = str(attachment.get("path") or "").strip()
+        if not path_value:
+            return None
+
+        stored_path = self._discussion_attachment_directory(discussion_id) / Path(path_value).name
+        if not stored_path.exists():
+            return None
+
+        binary = stored_path.read_bytes()
+        encoded = base64.b64encode(binary).decode("ascii")
+        return f"data:{mime_type};base64,{encoded}"
+
+    def _attachment_content_parts(self, discussion_id: str, attachment: dict[str, Any]) -> dict[str, Any] | None:
+        data_url = self._attachment_data_url(discussion_id, attachment)
+        if not data_url:
+            return None
+        return {"type": "image_url", "image_url": {"url": data_url}}
+
+    def _hydrate_message_attachments(
+        self,
+        discussion_id: str,
+        message: dict[str, Any],
+    ) -> dict[str, Any]:
+        metadata = message.get("metadata")
+        if not isinstance(metadata, dict):
+            return message
+
+        raw_attachments = metadata.get("attachments")
+        if not isinstance(raw_attachments, list) or not raw_attachments:
+            return message
+
+        hydrated_attachments: list[dict[str, Any]] = []
+        for attachment in raw_attachments:
+            if not isinstance(attachment, dict):
+                continue
+            updated_attachment = dict(attachment)
+            data_url = self._attachment_data_url(discussion_id, updated_attachment)
+            if data_url:
+                updated_attachment["data_url"] = data_url
+            hydrated_attachments.append(updated_attachment)
+
+        if hydrated_attachments:
+            updated_message = dict(message)
+            hydrated_metadata = dict(metadata)
+            hydrated_metadata["attachments"] = hydrated_attachments
+            updated_message["metadata"] = hydrated_metadata
+            return updated_message
+        return message
+
+    def _get_pending_prompt_attachments(self, discussion_id: str) -> list[dict[str, Any]]:
+        with self._lock:
+            attachments = self._pending_prompt_attachments.pop(discussion_id, [])
+            return [dict(attachment) for attachment in attachments]
+
+    def _chat_messages_include_images(self, chat_messages: list[dict[str, Any]]) -> bool:
+        for message in chat_messages:
+            content = message.get("content")
+            if isinstance(content, list):
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "image_url":
+                        return True
+            elif isinstance(content, dict) and content.get("type") == "image_url":
+                return True
+        return False
+
+    def _chat_message_text_length(self, message: dict[str, Any]) -> int:
+        content = message.get("content")
+        if isinstance(content, str):
+            return len(content)
+        if isinstance(content, list):
+            return sum(len(str(part.get("text", ""))) for part in content if isinstance(part, dict))
+        if isinstance(content, dict):
+            return len(str(content.get("text", "")))
+        return 0
 
     def _discussion_from_row(self, row: dict | None) -> Discussion | None:
         if row is None:
@@ -217,6 +367,7 @@ class DiscussionState:
             folder_id=safe_int(row.get("folder_id"), default=None),
             focused_wiki_id=None if row.get("focused_wiki_id") is None else str(row.get("focused_wiki_id")),
             participant_agent_ids=list(row.get("participant_agent_ids") or []),
+            agent_mode=_normalize_agent_mode(row.get("agent_mode")),
             chat_mode=str(row.get("chat_mode") or "single"),
             chat_pause_seconds=row.get("chat_pause_seconds"),
             chat_is_paused=bool(row.get("chat_is_paused", False)),
@@ -240,6 +391,7 @@ class DiscussionState:
             "folder_id": discussion.folder_id,
             "focused_wiki_id": discussion.focused_wiki_id,
             "participant_agent_ids": list(discussion.participant_agent_ids),
+            "agent_mode": discussion.agent_mode,
             "chat_mode": discussion.chat_mode,
             "chat_pause_seconds": discussion.chat_pause_seconds,
             "chat_is_paused": discussion.chat_is_paused,
@@ -265,6 +417,7 @@ class DiscussionState:
             "folder_id": discussion.folder_id,
             "focused_wiki_id": discussion.focused_wiki_id,
             "participant_agent_ids": list(discussion.participant_agent_ids),
+            "agent_mode": discussion.agent_mode,
             "chat_mode": discussion.chat_mode,
             "chat_pause_seconds": discussion.chat_pause_seconds,
             "chat_is_paused": discussion.chat_is_paused,
@@ -411,7 +564,7 @@ class DiscussionState:
         agent: Agent,
         speaker_name: str,
         llm_config: LLM | None,
-        chat_messages: list[dict[str, str]],
+        chat_messages: list[dict[str, Any]],
         prompt: str,
     ) -> dict[str, Any]:
         system_prompt = ""
@@ -429,7 +582,7 @@ class DiscussionState:
                 "messages": visible_messages,
                 "prompt_characters": len(prompt_text),
                 "system_characters": len(system_prompt),
-                "transcript_characters": sum(len(str(message.get("content", ""))) for message in chat_messages),
+                "transcript_characters": sum(self._chat_message_text_length(message) for message in chat_messages),
             },
             "stream": {
                 "chunk_count": 0,
@@ -460,12 +613,20 @@ class DiscussionState:
         *,
         discussion_id: str,
         prompt: str,
-        chat_messages: list[dict[str, str]],
+        chat_messages: list[dict[str, Any]],
         llm_config: LLM | None,
         stop_event: threading.Event | None,
         on_chunk: Any | None = None,
         on_event: Any | None = None,
     ) -> str:
+        backend_name = str(getattr(llm_config, "backend", "") or "openai_compatible").strip().lower()
+        if self._chat_messages_include_images(chat_messages) and backend_name not in {
+            "openai",
+            "openai_compatible",
+            "openai-compatible",
+        }:
+            raise ValueError("The selected model backend does not support image attachments.")
+
         return prompt_llm(
             prompt=prompt,
             output_dir=str(DISCUSSIONS_DIR),
@@ -483,14 +644,27 @@ class DiscussionState:
             on_event=on_event,
         )
 
-    def _append_message(self, discussion_id: str, role: str, text: str) -> None:
+    def _append_message(
+        self,
+        discussion_id: str,
+        role: str,
+        text: str,
+        *,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         clean_text = str(text).strip()
         if not clean_text:
             return
         path = self._discussion_path(discussion_id)
         existing = path.read_text(encoding="utf-8") if path.exists() else ""
         prefix = "\n\n" if existing.rstrip() else ""
-        self._append_text(discussion_id, f"{prefix}{role}: {clean_text}")
+        payload = f"{prefix}{role}: {clean_text}"
+        if isinstance(metadata, dict) and metadata:
+            payload = (
+                f"{payload}\n\n"
+                f"<!-- apmatia-metadata: {json.dumps(metadata, ensure_ascii=False, sort_keys=True)} -->"
+            )
+        self._append_text(discussion_id, payload)
 
     def _append_group_agent_message(
         self,
@@ -631,6 +805,15 @@ class DiscussionState:
                         ),
                     }
                 )
+                self._append_message(
+                    discussion_id,
+                    "Assistant",
+                    format_tool_result_message(
+                        tool_name=tool_call.name,
+                        status="denied",
+                        error="Tool is unavailable for this agent.",
+                    ),
+                )
                 continue
 
             self._set_activity(
@@ -662,6 +845,16 @@ class DiscussionState:
                     ),
                 }
             )
+            self._append_message(
+                discussion_id,
+                "Assistant",
+                format_tool_result_message(
+                    tool_name=tool_call.name,
+                    status=result.status,
+                    result=result.result,
+                    error=result.error,
+                ),
+            )
             self._set_activity(
                 discussion_id,
                 stage="generating",
@@ -675,6 +868,25 @@ class DiscussionState:
                 },
             )
         return tool_messages
+
+    def _set_agentic_idle_activity(
+        self,
+        discussion_id: str,
+        *,
+        agent_name: str | None = None,
+        speaker_name: str | None = None,
+    ) -> None:
+        self._set_activity(
+            discussion_id,
+            stage="idle",
+            agent_name=agent_name,
+            speaker_name=speaker_name,
+            agent_mode="agentic",
+            nudge=(
+                "Agentic mode is active. The agent is idle now, so it is okay to pause or send "
+                "another prompt if you want it to keep going."
+            ),
+        )
 
     def _get_discussion(self, discussion_id: str) -> Discussion | None:
         row = self._ensure_store.get("discussions", discussion_id=discussion_id)
@@ -904,6 +1116,7 @@ class DiscussionState:
         discussion: Discussion,
         agent_id: int | None,
         stop_event: threading.Event | None,
+        current_attachments: list[dict[str, Any]] | None = None,
     ) -> None:
         existing_content = self._discussion_path(discussion_id).read_text(encoding="utf-8") if self._discussion_path(discussion_id).exists() else ""
         base_system_prompt = discussion.system_prompt
@@ -944,7 +1157,12 @@ class DiscussionState:
             raise RuntimeError("No group chat participants are available.")
 
         if prompt.strip():
-            self._append_message(discussion_id, "User", prompt)
+            self._append_message(
+                discussion_id,
+                "User",
+                prompt,
+                metadata={"attachments": current_attachments} if current_attachments else None,
+            )
 
         interrupted = False
         for turn in plan.turns:
@@ -979,6 +1197,8 @@ class DiscussionState:
                     original_prompt=prompt,
                     coordinator_agent_id=plan.coordinator_agent_id,
                 ),
+                current_attachments=current_attachments,
+                attachment_resolver=lambda attachment, discussion_id=discussion_id: self._attachment_content_parts(discussion_id, attachment),
             )
             assistant_writer = self._new_assistant_stream_writer(
                 discussion_id,
@@ -1103,11 +1323,13 @@ class DiscussionState:
                         pass
 
     def _run_prompt(self, discussion_id: str, prompt: str, agent_id: int | None = None) -> None:
+        preserve_activity = False
         try:
             stop_event = self._stop_events.get(discussion_id)
             discussion = self._get_discussion(discussion_id)
             if not discussion:
                 raise RuntimeError(f"Discussion not found: {discussion_id}")
+            current_attachments = self._get_pending_prompt_attachments(discussion_id)
 
             if normalize_group_chat_mode(discussion.chat_mode) != "single":
                 self._run_group_chat_turns(
@@ -1116,6 +1338,7 @@ class DiscussionState:
                     discussion=discussion,
                     agent_id=agent_id,
                     stop_event=stop_event,
+                    current_attachments=current_attachments,
                 )
                 return
 
@@ -1149,8 +1372,15 @@ class DiscussionState:
                 existing_content=existing_content,
                 system_prompt=system_prompt,
                 current_prompt=prompt,
+                current_attachments=current_attachments,
+                attachment_resolver=lambda attachment, discussion_id=discussion_id: self._attachment_content_parts(discussion_id, attachment),
             )
-            self._append_message(discussion_id, "User", prompt)
+            self._append_message(
+                discussion_id,
+                "User",
+                prompt,
+                metadata={"attachments": current_attachments} if current_attachments else None,
+            )
             llm_config = self._resolve_agent_llm_config(agent_id) if agent_id is not None else None
             if agent is not None and speaker_name is not None:
                 self._set_activity(
@@ -1216,10 +1446,25 @@ class DiscussionState:
                 assistant_writer.append(fallback_reply)
             assistant_writer.append_metadata(last_turn_stats)
             self._update_discussion(discussion_id, {"last_error": None})
+            preserve_activity = False
+            current_discussion = self._get_discussion(discussion_id)
+            if (
+                agent_id is not None
+                and current_discussion is not None
+                and current_discussion.agent_mode == "agentic"
+                and (stop_event is None or not stop_event.is_set())
+            ):
+                self._set_agentic_idle_activity(
+                    discussion_id,
+                    agent_name=None if agent is None else str(agent.name or f"Agent {agent_id}"),
+                    speaker_name=speaker_name,
+                )
+                preserve_activity = True
         except Exception as error:
             self._update_discussion(discussion_id, {"last_error": str(error)})
         finally:
-            self._clear_activity(discussion_id)
+            if not preserve_activity:
+                self._clear_activity(discussion_id)
             with self._lock:
                 self._streaming.discard(discussion_id)
                 self._threads.pop(discussion_id, None)
@@ -1562,6 +1807,7 @@ class DiscussionState:
         folder_id: int | None | object = _UNSET,
         focused_wiki_id: str | None | object = _UNSET,
         participant_agent_ids: list[int] | None | object = _UNSET,
+        agent_mode: str | None | object = _UNSET,
         chat_mode: str | None | object = _UNSET,
         chat_pause_seconds: float | None | object = _UNSET,
         chat_is_paused: bool | object = _UNSET,
@@ -1606,6 +1852,8 @@ class DiscussionState:
                 )
                 if agent_id is not None
             ]
+        if agent_mode is not _UNSET:
+            updates["agent_mode"] = _normalize_agent_mode(agent_mode)
 
         if chat_mode is not _UNSET:
             updates["chat_mode"] = normalize_group_chat_mode(chat_mode)
@@ -1651,6 +1899,36 @@ class DiscussionState:
         if refreshed is None:
             raise ValueError("Discussion not found.")
         return self._discussion_to_public_dict(refreshed)
+
+    def set_agent_mode(
+        self,
+        *,
+        discussion_id: str,
+        mode: str,
+    ) -> dict:
+        discussion = self._get_discussion(discussion_id)
+        if discussion is None:
+            raise ValueError("Discussion not found.")
+
+        normalized_mode = _normalize_agent_mode(mode)
+        previous_mode = discussion.agent_mode
+        self._update_discussion(
+            discussion_id,
+            {"agent_mode": normalized_mode},
+        )
+        refreshed = self._get_discussion(discussion_id)
+        if refreshed is None:
+            raise ValueError("Discussion not found.")
+        status = "unchanged" if previous_mode == refreshed.agent_mode else "updated"
+        payload = self._discussion_to_public_dict(refreshed)
+        payload.update(
+            {
+                "previous_mode": previous_mode,
+                "current_mode": refreshed.agent_mode,
+                "status": status,
+            }
+        )
+        return payload
 
     def pause_group_chat(self, user_id: int, member_group_ids: set[int]) -> str:
         current = self._get_or_create_current_discussion(user_id, member_group_ids)
@@ -1723,6 +2001,7 @@ class DiscussionState:
         prompt: str,
         member_group_ids: set[int],
         agent_id: int | None = None,
+        attachments: list[dict[str, Any]] | None = None,
     ) -> str:
         with self._lock:
             discussion = self._get_or_create_current_discussion(user_id, member_group_ids)
@@ -1730,6 +2009,9 @@ class DiscussionState:
             if discussion_id in self._streaming:
                 raise RuntimeError("A discussion response is already streaming.")
             self._record_agent_participation(discussion_id, agent_id)
+            stored_attachments = self._store_prompt_attachments(discussion_id, attachments)
+            if stored_attachments:
+                self._pending_prompt_attachments[discussion_id] = stored_attachments
 
             stop_event = threading.Event()
             self._stop_events[discussion_id] = stop_event
@@ -1772,6 +2054,7 @@ class DiscussionState:
         path = self._discussion_path(discussion_id)
         content = path.read_text(encoding="utf-8") if path.exists() else ""
         messages = self._parse_messages(content)
+        messages = [self._hydrate_message_attachments(discussion_id, message) for message in messages]
         turns = self._llama_server_turns()
         assistant_messages = [message for message in messages if str(message.get("role", "")).strip().lower() != "user"]
         if turns and assistant_messages:
@@ -1791,6 +2074,7 @@ class DiscussionState:
             discussion_id=discussion_id,
             is_streaming=is_streaming,
             last_error=current.last_error,
+            agent_mode=current.agent_mode,
             chat_mode=current.chat_mode,
             chat_pause_seconds=current.chat_pause_seconds,
             chat_is_paused=current.chat_is_paused,

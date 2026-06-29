@@ -1,3 +1,4 @@
+import base64
 import importlib
 
 import pytest
@@ -5,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 from src.lib.agent_management.agent_prompt import AgentPrompt
+from src.lib.tool_management.models import ToolCall, ToolDefinition, ToolResult
 
 
 def test_discussion_private_scope_is_per_user(tmp_path, monkeypatch):
@@ -179,6 +181,142 @@ def test_discussion_can_store_focused_wiki_id(tmp_path, monkeypatch):
 
     assert created["focused_wiki_id"] == "wiki_focus01"
     assert updated["focused_wiki_id"] == "wiki_focus02"
+
+
+def test_discussion_can_switch_agent_mode_and_expose_it_in_snapshot(tmp_path, monkeypatch):
+    monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
+    monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
+    discussions = importlib.import_module("src.lib.discussions")
+    importlib.reload(discussions)
+
+    state = discussions.DiscussionState()
+    created = state.create_discussion(owner_user_id=101, title="Agentic Thread")
+    state.open_discussion(
+        user_id=101,
+        discussion_id=str(created["discussion_id"]),
+        member_group_ids=set(),
+    )
+
+    updated = state.set_agent_mode(discussion_id=str(created["discussion_id"]), mode="agentic")
+    snapshot = state.snapshot(user_id=101, member_group_ids=set())
+
+    assert updated["previous_mode"] == "discussion"
+    assert updated["current_mode"] == "agentic"
+    assert updated["status"] == "updated"
+    assert snapshot.agent_mode == "agentic"
+
+
+def test_agentic_mode_does_not_nudge_between_tool_calls(tmp_path, monkeypatch):
+    monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
+    monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
+    discussions = importlib.import_module("src.lib.discussions")
+    importlib.reload(discussions)
+
+    state = discussions.DiscussionState()
+    created = state.create_discussion(owner_user_id=101, title="Agentic Tool Thread")
+    state.set_agent_mode(discussion_id=str(created["discussion_id"]), mode="agentic")
+
+    fake_tool = ToolDefinition(
+        id=7,
+        name="echo",
+        description="Echo input.",
+        input_schema={
+            "type": "object",
+            "properties": {"text": {"type": "string"}},
+            "required": ["text"],
+            "additionalProperties": False,
+        },
+        output_schema={
+            "type": "object",
+            "properties": {"text": {"type": "string"}},
+            "required": ["text"],
+            "additionalProperties": False,
+        },
+        provider_id="builtin.echo",
+    )
+
+    class FakeToolManager:
+        def list_tools_available_to_agent(self, agent_id):
+            return [fake_tool]
+
+        def execute_tool_call(self, tool_call):
+            return ToolResult(
+                call_id=tool_call.call_id,
+                status="success",
+                result={"text": "hello"},
+            )
+
+    with monkeypatch.context() as ctx:
+        ctx.setattr(discussions, "get_tool_manager", lambda: FakeToolManager())
+        tool_messages = state._execute_tool_calls(
+            agent_id=1,
+            discussion_id=str(created["discussion_id"]),
+            tool_calls=[SimpleNamespace(name="echo", arguments={"text": "hello"})],
+        )
+
+    assert all(message["role"] == "user" for message in tool_messages)
+    assert not any("Agentic mode is active" in message["content"] for message in tool_messages)
+
+
+def test_agentic_idle_activity_is_persisted_for_nudging(tmp_path, monkeypatch):
+    monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
+    monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
+    discussions = importlib.import_module("src.lib.discussions")
+    importlib.reload(discussions)
+
+    state = discussions.DiscussionState()
+    created = state.create_discussion(owner_user_id=101, title="Agentic Idle Thread")
+    state.open_discussion(
+        user_id=101,
+        discussion_id=str(created["discussion_id"]),
+        member_group_ids=set(),
+    )
+
+    state._set_agentic_idle_activity(
+        str(created["discussion_id"]),
+        agent_name="Caller",
+        speaker_name="Caller",
+    )
+    snapshot = state.snapshot(user_id=101, member_group_ids=set())
+
+    assert snapshot.activity is not None
+    assert snapshot.activity["stage"] == "idle"
+    assert "idle now" in snapshot.activity["nudge"]
+
+
+def test_discussion_can_persist_and_hydrate_prompt_attachments(tmp_path, monkeypatch):
+    monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
+    monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
+    discussions = importlib.import_module("src.lib.discussions")
+    importlib.reload(discussions)
+
+    state = discussions.DiscussionState()
+    created = state.create_discussion(owner_user_id=101, title="Screenshot Thread")
+    discussion_id = str(created["discussion_id"])
+    png_bytes = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2W7p8AAAAASUVORK5CYII="
+    )
+    attachment_payload = {
+        "filename": "screenshot.png",
+        "mime_type": "image/png",
+        "data_base64": base64.b64encode(png_bytes).decode("ascii"),
+    }
+
+    stored = state._store_prompt_attachments(discussion_id, [attachment_payload])
+    assert stored[0]["mime_type"] == "image/png"
+    assert stored[0]["path"].startswith("attachments/")
+
+    hydrated = state._hydrate_message_attachments(
+        discussion_id,
+        {
+            "role": "User",
+            "text": "Please inspect this.",
+            "metadata": {"attachments": stored},
+        },
+    )
+
+    attachments = hydrated["metadata"]["attachments"]
+    assert attachments[0]["data_url"].startswith("data:image/png;base64,")
 
 
 def test_delete_discussion_moves_discussion_to_trash(tmp_path, monkeypatch):
@@ -719,6 +857,7 @@ def test_run_prompt_executes_tool_calls_and_stores_final_answer(tmp_path, monkey
 
     transcript = state._discussion_path(created["discussion_id"]).read_text(encoding="utf-8")
     assert "User: Say hello" in transcript
+    assert "Tool result:" in transcript
     assert "Assistant: The tool said hello." in transcript
     assert "<tool_call>" not in transcript
     assert len(calls) == 2

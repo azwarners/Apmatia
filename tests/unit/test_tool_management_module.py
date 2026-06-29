@@ -1,6 +1,7 @@
 """Unit tests for tool management orchestration and execution."""
 
 from dataclasses import replace
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -269,6 +270,9 @@ def test_input_schema_validation_rejects_bad_arguments(tool_manager):
     assert result.status == "invalid_arguments"
     assert result.result is None
     assert result.metadata["validation_errors"]
+    assert result.error["code"] == "VALIDATION_ERROR"
+    assert result.error["tool_name"] == "echo"
+    assert result.error["validation_errors"] == result.metadata["validation_errors"]
 
 
 def test_confirmation_required_tool_returns_pending(tool_manager):
@@ -281,6 +285,34 @@ def test_confirmation_required_tool_returns_pending(tool_manager):
 
     assert result.status == "pending_confirmation"
     assert result.result is None
+
+
+def test_tool_execution_is_audited_to_jsonl(tool_manager, tmp_path, monkeypatch):
+    monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
+
+    echo_tool = next(tool for tool in tool_manager.list_tool_definitions() if tool.name == "echo")
+    time_tool = next(tool for tool in tool_manager.list_tool_definitions() if tool.name == "get_current_time")
+    tool_manager.assign_tool_to_agent(1, echo_tool.id)
+
+    success = tool_manager.execute_tool_call(
+        ToolCall(tool_id=echo_tool.id, requester_agent_id=1, arguments={"text": "hello"})
+    )
+    denied = tool_manager.execute_tool_call(
+        ToolCall(tool_id=time_tool.id, requester_agent_id=1, arguments={})
+    )
+
+    assert success.status == "success"
+    assert denied.status == "denied"
+
+    audit_path = tmp_path / "data" / "tool_calls.jsonl"
+    records = [json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines()]
+
+    assert [record["status"] for record in records] == ["success", "denied"]
+    assert records[0]["call_id"] == success.call_id
+    assert records[0]["tool_name"] == "echo"
+    assert records[0]["arguments"] == {"text": "hello"}
+    assert records[1]["tool_name"] == "get_current_time"
+    assert records[1]["requester_agent_id"] == 1
 
 
 def test_get_current_time_returns_structured_result(tool_manager):

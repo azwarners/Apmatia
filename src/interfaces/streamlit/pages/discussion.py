@@ -1,7 +1,9 @@
 """Discussion page for sending prompts through the discussion backend."""
 from __future__ import annotations
 
+import base64
 import json
+from typing import Any
 
 import streamlit as st
 
@@ -28,6 +30,9 @@ from src.interfaces.streamlit.components.message_card import (
     apply_message_card_css,
     render_message_text_block,
     render_message_card,
+)
+from src.interfaces.streamlit.components.clipboard_button import (
+    render_clipboard_image_paste_bridge,
 )
 
 
@@ -112,6 +117,44 @@ def _speaker_agent(
     return None
 
 
+def _render_message_attachments(message: dict[str, object]) -> None:
+    metadata = message.get("metadata")
+    if not isinstance(metadata, dict):
+        return
+
+    raw_attachments = metadata.get("attachments")
+    if not isinstance(raw_attachments, list) or not raw_attachments:
+        return
+
+    for attachment in raw_attachments:
+        if not isinstance(attachment, dict):
+            continue
+        data_url = str(attachment.get("data_url") or "").strip()
+        if not data_url:
+            continue
+        filename = str(attachment.get("filename") or "image").strip() or "image"
+        st.image(data_url, caption=filename, use_container_width=True)
+
+
+def _uploaded_images_to_payload(uploaded_files: list[Any] | None) -> list[dict[str, str]]:
+    payload: list[dict[str, str]] = []
+    if not uploaded_files:
+        return payload
+
+    for uploaded_file in uploaded_files:
+        filename = str(getattr(uploaded_file, "name", "") or "image")
+        mime_type = str(getattr(uploaded_file, "type", "") or "image/png")
+        data = uploaded_file.getvalue()
+        payload.append(
+            {
+                "filename": filename,
+                "mime_type": mime_type,
+                "data_base64": base64.b64encode(data).decode("ascii"),
+            }
+        )
+    return payload
+
+
 MODE_DESCRIPTIONS = {
     "single": "One selected agent replies, and the discussion stops for your next message.",
     "round_robin": "Each participant speaks once in order, then the discussion waits for you.",
@@ -119,6 +162,8 @@ MODE_DESCRIPTIONS = {
     "continuous": "Participants keep taking turns automatically with no pause between turns.",
     "direct": "Participants answer directly when addressed. The exchange can stop on its own.",
 }
+
+MESSAGE_HISTORY_COLLAPSE_AFTER = 8
 
 
 def _authenticated_username() -> str:
@@ -245,6 +290,23 @@ def _activity_matches_message(
     return activity_speaker == message_speaker
 
 
+def _activity_message_index(
+    messages: list[dict[str, object]],
+    activity: dict[str, object] | None,
+) -> int | None:
+    if not isinstance(activity, dict):
+        return None
+
+    activity_speaker = str(activity.get("speaker_name") or "").strip().lower()
+    if not activity_speaker:
+        return None
+
+    for index in range(len(messages) - 1, -1, -1):
+        if _activity_matches_message(messages[index], activity):
+            return index
+    return None
+
+
 def _activity_status_text(
     activity: dict[str, object] | None,
     *,
@@ -286,6 +348,13 @@ def _activity_status_text(
         if model_summary:
             bits.append(f"Model: {model_summary}.")
         return " ".join(bits) if bits else None
+
+    if stage == "idle":
+        nudge = str(activity.get("nudge") or "").strip()
+        bits = [f"{agent_name} is idle in agentic mode."]
+        if nudge:
+            bits.append(nudge)
+        return " ".join(bits)
 
     if agent_name:
         return f"{agent_name} is active."
@@ -379,6 +448,7 @@ def _render_message_card(
                         st.success("Message updated.")
                         st.rerun()
         else:
+            _render_message_attachments(message)
             render_message_text_block(text)
         stats_caption = _format_llama_server_phase(message_status)
         if stats_caption:
@@ -483,15 +553,7 @@ def _render_messages(
     llama_server_status = (
         snapshot.get("llama_server_status") if isinstance(snapshot.get("llama_server_status"), dict) else None
     )
-    activity_message_index = None
-    if isinstance(activity, dict):
-        activity_speaker = str(activity.get("speaker_name") or "").strip().lower()
-        if activity_speaker:
-            for index in range(len(messages) - 1, -1, -1):
-                candidate = messages[index]
-                if _activity_matches_message(candidate, activity):
-                    activity_message_index = index
-                    break
+    activity_message_index = _activity_message_index(messages, activity)
     for index, message in enumerate(messages):
         is_active_message = activity_message_index is not None and index == activity_message_index
         _render_message_card(
@@ -520,7 +582,76 @@ def _render_messages(
         )
 
 
-def _render_streaming_messages(
+def _render_message_history(
+    snapshot: dict[str, object],
+    *,
+    username: str,
+    agent_name: str,
+    agent_lookup: dict[int, dict[str, object]] | None = None,
+    model_lookup: dict[int, dict[str, object]] | None = None,
+    active_message_index: int | None = None,
+    collapse_after: int = MESSAGE_HISTORY_COLLAPSE_AFTER,
+) -> None:
+    agent_lookup = agent_lookup or {}
+    model_lookup = model_lookup or {}
+    messages = snapshot.get("messages", [])
+    if not messages:
+        st.info("No messages yet.")
+        return
+
+    discussion_id = str(snapshot.get("discussion_id", ""))
+    activity = snapshot.get("activity") if isinstance(snapshot.get("activity"), dict) else None
+    activity_message_index = _activity_message_index(messages, activity)
+    renderable_messages = [
+        (index, message)
+        for index, message in enumerate(messages)
+        if index != active_message_index
+    ]
+    if not renderable_messages:
+        return
+
+    if collapse_after > 0 and len(renderable_messages) > collapse_after:
+        older_messages = renderable_messages[:-collapse_after]
+        recent_messages = renderable_messages[-collapse_after:]
+    else:
+        older_messages = []
+        recent_messages = renderable_messages
+
+    if older_messages:
+        with st.expander(f"Older messages ({len(older_messages)})", expanded=False):
+            for index, message in older_messages:
+                is_active_message = activity_message_index is not None and index == activity_message_index
+                _render_message_card(
+                    discussion_id,
+                    index,
+                    message,
+                    username=username,
+                    agent_name=agent_name,
+                    agent_lookup=agent_lookup,
+                    model_lookup=model_lookup,
+                    activity=activity if is_active_message else None,
+                    llama_server_status=None,
+                    is_active_message=False,
+                )
+
+    for index, message in recent_messages:
+        is_active_message = activity_message_index is not None and index == activity_message_index
+        _render_message_card(
+            discussion_id,
+            index,
+            message,
+            username=username,
+            agent_name=agent_name,
+            agent_lookup=agent_lookup,
+            model_lookup=model_lookup,
+            activity=activity if is_active_message else None,
+            llama_server_status=None,
+            is_active_message=False,
+        )
+
+
+def _render_streaming_message_view(
+    snapshot: dict[str, object],
     *,
     username: str,
     agent_name: str,
@@ -529,14 +660,64 @@ def _render_streaming_messages(
 ) -> dict[str, object]:
     agent_lookup = agent_lookup or {}
     model_lookup = model_lookup or {}
-    snapshot = discussion_state()
-    _render_messages(
-        snapshot,
-        username=username,
-        agent_name=agent_name,
-        agent_lookup=agent_lookup,
-        model_lookup=model_lookup,
+    messages = snapshot.get("messages", [])
+    discussion_id = str(snapshot.get("discussion_id", ""))
+    activity = snapshot.get("activity") if isinstance(snapshot.get("activity"), dict) else None
+    llama_server_status = (
+        snapshot.get("llama_server_status") if isinstance(snapshot.get("llama_server_status"), dict) else None
     )
+    activity_message_index = _activity_message_index(messages, activity)
+
+    if activity_message_index is not None and activity_message_index < len(messages):
+        _render_message_card(
+            discussion_id,
+            activity_message_index,
+            messages[activity_message_index],
+            username=username,
+            agent_name=agent_name,
+            agent_lookup=agent_lookup,
+            model_lookup=model_lookup,
+            activity=activity,
+            llama_server_status=llama_server_status,
+            is_active_message=bool(snapshot.get("is_streaming")),
+        )
+    elif bool(snapshot.get("is_streaming")) and isinstance(activity, dict):
+        _render_live_activity_card(
+            discussion_id,
+            activity=activity,
+            agent_lookup=agent_lookup,
+            model_lookup=model_lookup,
+            llama_server_status=llama_server_status,
+        )
+
+    return snapshot
+
+
+def _render_streaming_messages(
+    *,
+    username: str,
+    agent_name: str,
+    agent_lookup: dict[int, dict[str, object]] | None = None,
+    model_lookup: dict[int, dict[str, object]] | None = None,
+    include_history: bool = False,
+) -> dict[str, object]:
+    snapshot = discussion_state()
+    if include_history:
+        _render_messages(
+            snapshot,
+            username=username,
+            agent_name=agent_name,
+            agent_lookup=agent_lookup,
+            model_lookup=model_lookup,
+        )
+    else:
+        _render_streaming_message_view(
+            snapshot,
+            username=username,
+            agent_name=agent_name,
+            agent_lookup=agent_lookup,
+            model_lookup=model_lookup,
+        )
     return snapshot
 
 
@@ -871,6 +1052,18 @@ def render() -> None:
     if initial_is_streaming:
         fragment_factory = getattr(st, "fragment", None)
         if getattr(fragment_factory, "__module__", "").startswith("streamlit"):
+            activity_message_index = _activity_message_index(
+                snapshot.get("messages", []),
+                snapshot.get("activity") if isinstance(snapshot.get("activity"), dict) else None,
+            )
+            _render_message_history(
+                snapshot,
+                username=username,
+                agent_name=agent_name,
+                agent_lookup=agent_lookup,
+                model_lookup=model_lookup,
+                active_message_index=activity_message_index,
+            )
             @fragment_factory(run_every=0.5)
             def _streaming_fragment() -> dict[str, object]:
                 current_snapshot = _render_streaming_messages(
@@ -878,6 +1071,7 @@ def render() -> None:
                     agent_name=agent_name,
                     agent_lookup=agent_lookup,
                     model_lookup=model_lookup,
+                    include_history=False,
                 )
                 if not (current_snapshot.get("is_streaming") and not current_snapshot.get("chat_is_paused")):
                     st.rerun()
@@ -890,6 +1084,7 @@ def render() -> None:
                 agent_name=agent_name,
                 agent_lookup=agent_lookup,
                 model_lookup=model_lookup,
+                include_history=True,
             )
     else:
         _render_messages(
@@ -934,19 +1129,43 @@ def render() -> None:
             st.rerun()
     elif is_chat_paused:
         st.info("The group chat is paused. You can send a message now, or resume the conversation later.")
+    elif isinstance(live_activity, dict) and str(live_activity.get("stage") or "").strip().lower() == "idle":
+        activity_text = _activity_status_text(
+            live_activity,
+            agent_lookup=agent_lookup,
+            model_lookup=model_lookup,
+            llama_server_status=live_llama_status,
+        )
+        if activity_text:
+            _render_live_activity_card(
+                str(snapshot.get("discussion_id", "")),
+                activity=live_activity,
+                agent_lookup=agent_lookup,
+                model_lookup=model_lookup,
+                llama_server_status=live_llama_status,
+            )
 
     st.divider()
-    prompt_key = f"discussion_prompt_{selected_discussion_id}"
-    if prompt_key not in st.session_state:
-        st.session_state[prompt_key] = ""
-    with st.form("apmatia_discussion_prompt_form"):
+    attachment_key = f"discussion_prompt_attachments_{selected_discussion_id}"
+    with st.form("apmatia_discussion_prompt_form", clear_on_submit=True):
         prompt_placeholder = "Write a message to the selected agent." if not is_chat_paused else "Write a message to continue the paused group chat."
         prompt = st.text_area(
             "Message",
-            key=prompt_key,
             height=140,
             placeholder=prompt_placeholder,
             disabled=is_streaming and not is_chat_paused,
+        )
+        uploaded_files = st.file_uploader(
+            "Screenshots or images",
+            type=["png", "jpg", "jpeg", "webp", "gif"],
+            accept_multiple_files=True,
+            key=attachment_key,
+            help="Attach screenshots or other images so the selected model can inspect them. You can also paste images from the clipboard.",
+        )
+        st.caption("Tip: press Ctrl+V or Cmd+V to paste screenshots directly into the browser.")
+        render_clipboard_image_paste_bridge(
+            f"discussion-paste-{selected_discussion_id}",
+            target_selector='input[type="file"]',
         )
         submitted = st.form_submit_button("Send message", disabled=is_streaming and not is_chat_paused)
 
@@ -959,11 +1178,13 @@ def render() -> None:
 
     st.session_state["discussion_selected_agent_id"] = selected_agent.get("id")
     try:
-        prompt_discussion(prompt=prompt, agent_id=int(selected_agent.get("id")))
+        prompt_discussion(
+            prompt=prompt,
+            agent_id=int(selected_agent.get("id")),
+            attachments=_uploaded_images_to_payload(uploaded_files),
+        )
     except ApiError as error:
         st.error(f"Unable to send message: {error.detail}")
         return
-
-    st.session_state[prompt_key] = ""
     st.success("Message sent. Refreshing discussion.")
     st.rerun()

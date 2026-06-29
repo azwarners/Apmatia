@@ -133,7 +133,7 @@ Run the test suite with:
 - changelog: `docs/CHANGELOG.md`
 - HTTP version probe: `GET /api/version`
 
-Version `0.0.1.5` records the current Streamlit interface rollout.
+Version `0.0.1.6` records the modular architecture and workspace module rollout.
 
 ## API Notes
 

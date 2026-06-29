@@ -7,6 +7,7 @@ from typing import Any
 from src.core.modules import (
     ModuleWorkspaceEditor,
     create_module_scaffold,
+    ensure_module_workspace_root,
     plan_module_scaffold,
     resolve_module_target_dir,
     validate_module,
@@ -133,7 +134,7 @@ def workspace_module_tool_definitions() -> list[dict[str, Any]]:
             "read_only": True,
             "metadata": {"builtin": True, "workspace": True},
         },
-    ]
+        ]
 
 
 @dataclass(slots=True)
@@ -154,6 +155,7 @@ class WorkspaceModuleToolProvider:
             )
             return plan.to_dict()
 
+        workspace_root = ensure_module_workspace_root(self.base_dir)
         if self.action == "create":
             created = create_module_scaffold(
                 module_slug=str(arguments["module_slug"]),
@@ -173,6 +175,7 @@ class WorkspaceModuleToolProvider:
         editor = ModuleWorkspaceEditor(base_dir=self.base_dir)
 
         if self.action == "list":
+            _ = workspace_root
             files = editor.list_files(str(arguments["module_slug"]))
             module_dir = resolve_module_target_dir(str(arguments["module_slug"]), workspace=True, base_dir=self.base_dir)
             return {
@@ -182,10 +185,12 @@ class WorkspaceModuleToolProvider:
             }
 
         if self.action == "read":
+            _ = workspace_root
             result = editor.read_file(str(arguments["module_slug"]), str(arguments["relative_path"]))
             return result.to_dict()
 
         if self.action == "write":
+            _ = workspace_root
             result = editor.write_file(
                 str(arguments["module_slug"]),
                 str(arguments["relative_path"]),
@@ -196,6 +201,7 @@ class WorkspaceModuleToolProvider:
             return payload
 
         if self.action == "validate":
+            _ = workspace_root
             result = validate_module(str(arguments["module_slug"]), base_dir=self.base_dir, workspace=True)
             return result.to_dict()
 

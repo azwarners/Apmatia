@@ -128,6 +128,10 @@ def validate_module(
             checks.append(ModuleValidationCheck(name="manifest id matches slug", passed=False, message=message))
             errors.append(message)
 
+        manifest_type_errors = _validate_manifest_metadata(manifest)
+        checks.extend(manifest_type_errors.checks)
+        errors.extend(manifest_type_errors.errors)
+
     syntax_results: dict[str, bool] = {}
     for file_name in VALIDATED_PYTHON_FILES:
         path = module_dir / file_name
@@ -250,4 +254,53 @@ def _manifest_to_dict(manifest: ModuleManifest | None) -> dict[str, Any] | None:
         "description": manifest.description,
         "author": manifest.author,
         "metadata": dict(manifest.metadata),
+        "dependencies": dict(manifest.dependencies),
     }
+
+
+@dataclass(frozen=True, slots=True)
+class _ManifestValidationOutcome:
+    checks: tuple[ModuleValidationCheck, ...]
+    errors: tuple[str, ...]
+
+
+def _validate_manifest_metadata(manifest: ModuleManifest) -> _ManifestValidationOutcome:
+    checks: list[ModuleValidationCheck] = []
+    errors: list[str] = []
+
+    metadata = manifest.metadata if isinstance(manifest.metadata, dict) else {}
+    dependencies = manifest.dependencies if isinstance(manifest.dependencies, dict) else {}
+
+    checks.extend(_validate_optional_string(metadata, "metadata.category", errors))
+    checks.extend(_validate_optional_string_list(metadata, "metadata.tags", errors))
+    checks.extend(_validate_optional_string(dependencies, "dependencies.python", errors))
+    checks.extend(_validate_optional_string_list(dependencies, "dependencies.python_packages", errors))
+    checks.extend(_validate_optional_string_list(dependencies, "dependencies.system_packages", errors))
+    checks.extend(_validate_optional_string_list(dependencies, "dependencies.modules", errors))
+    checks.extend(_validate_optional_string_list(dependencies, "dependencies.tools", errors))
+
+    return _ManifestValidationOutcome(checks=tuple(checks), errors=tuple(errors))
+
+
+def _validate_optional_string(container: dict[str, Any], dotted_name: str, errors: list[str]) -> tuple[ModuleValidationCheck, ...]:
+    key = dotted_name.split(".")[-1]
+    if key not in container:
+        return ()
+    value = container[key]
+    if isinstance(value, str):
+        return (ModuleValidationCheck(name=f"{dotted_name} is a string", passed=True),)
+    message = f"{dotted_name} must be a string"
+    errors.append(message)
+    return (ModuleValidationCheck(name=f"{dotted_name} is a string", passed=False, message=message),)
+
+
+def _validate_optional_string_list(container: dict[str, Any], dotted_name: str, errors: list[str]) -> tuple[ModuleValidationCheck, ...]:
+    key = dotted_name.split(".")[-1]
+    if key not in container:
+        return ()
+    value = container[key]
+    if isinstance(value, list) and all(isinstance(item, str) for item in value):
+        return (ModuleValidationCheck(name=f"{dotted_name} is a list of strings", passed=True),)
+    message = f"{dotted_name} must be a list of strings"
+    errors.append(message)
+    return (ModuleValidationCheck(name=f"{dotted_name} is a list of strings", passed=False, message=message),)

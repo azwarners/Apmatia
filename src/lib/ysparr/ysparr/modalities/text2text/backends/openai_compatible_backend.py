@@ -66,6 +66,8 @@ class OpenAICompatibleBackend:
                 )
                 return
             except ExecutionError as error:
+                if _contains_multimodal_messages(chat_messages):
+                    raise
                 if not _should_fallback_to_completion(error):
                     raise
             yield from self._stream_request(
@@ -243,6 +245,18 @@ def _should_fallback_to_completion(error: ExecutionError) -> bool:
         or "not found" in message.lower()
         or "bad request" in message.lower()
     )
+
+
+def _contains_multimodal_messages(chat_messages: list[dict[str, Any]]) -> bool:
+    for message in chat_messages:
+        content = message.get("content")
+        if isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict) and part.get("type") == "image_url":
+                    return True
+        if isinstance(content, dict) and content.get("type") == "image_url":
+            return True
+    return False
 
 
 def _resolve_docker_host_loopback(base_url: str) -> str:

@@ -48,5 +48,5 @@ class ToolResult:
     call_id: str
     status: str
     result: Any = None
-    error: str | None = None
+    error: Any = None
     metadata: dict[str, Any] = field(default_factory=dict)

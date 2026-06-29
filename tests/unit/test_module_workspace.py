@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 from src.core.modules import (
     ModuleAlreadyExistsError,
@@ -22,6 +23,26 @@ def test_module_workspace_paths_resolve_under_workspace_root(tmp_path: Path):
     assert resolve_module_target_dir("productivity", workspace=True, base_dir=tmp_path) == (
         tmp_path / "workspace" / "modules" / "productivity"
     )
+
+
+def test_module_workspace_root_uses_environment_override(monkeypatch, tmp_path: Path):
+    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "persistent" / "modules"))
+
+    assert resolve_module_workspace_root() == tmp_path / "persistent" / "modules"
+
+
+def test_module_workspace_root_uses_config_override_when_env_missing(monkeypatch, tmp_path: Path):
+    monkeypatch.delenv("APMATIA_WORKSPACE_ROOT", raising=False)
+
+    with patch("src.core.modules.workspace.get_config_value", return_value=str(tmp_path / "config" / "modules")):
+        assert resolve_module_workspace_root() == tmp_path / "config" / "modules"
+
+
+def test_module_workspace_root_prefers_environment_over_config(monkeypatch, tmp_path: Path):
+    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "env" / "modules"))
+
+    with patch("src.core.modules.workspace.get_config_value", return_value=str(tmp_path / "config" / "modules")):
+        assert resolve_module_workspace_root() == tmp_path / "env" / "modules"
 
 
 def test_workspace_plan_does_not_write_files(tmp_path: Path):
@@ -71,6 +92,29 @@ def test_workspace_inspection_lists_and_shows_metadata_without_loading_modules(t
         base_dir=tmp_path,
         workspace=True,
     )
+    manifest_path = tmp_path / "workspace" / "modules" / "productivity" / "manifest.toml"
+    manifest_path.write_text(
+        """
+[module]
+module_id = "productivity"
+name = "Productivity"
+version = "0.1.0"
+description = "Tasks, projects, and productivity helpers."
+author = "Nick Warner"
+
+[metadata]
+category = "system"
+tags = ["linux", "administration"]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []
+""".lstrip(),
+        encoding="utf-8",
+    )
 
     before_ids = [item.module_id for item in get_application_registry().list_modules()]
     inspections = list_workspace_module_inspections(base_dir=tmp_path)
@@ -84,6 +128,14 @@ def test_workspace_inspection_lists_and_shows_metadata_without_loading_modules(t
     assert inspection.manifest.name == "Productivity"
     assert inspection.manifest.description == "Tasks, projects, and productivity helpers."
     assert inspection.manifest.author == "Nick Warner"
+    assert inspection.manifest.metadata == {"category": "system", "tags": ["linux", "administration"]}
+    assert inspection.manifest.dependencies == {
+        "python": ">=3.10",
+        "python_packages": [],
+        "system_packages": [],
+        "modules": [],
+        "tools": [],
+    }
     assert inspection.actions == ()
     assert inspection.tools == ()
     assert inspection.commands == ()
@@ -109,6 +161,14 @@ def test_workspace_inspection_json_shape_includes_source(tmp_path: Path):
     assert payload["is_workspace"] is True
     assert payload["module"]["module_id"] == "productivity"
     assert payload["module"]["name"] == "Productivity"
+    assert payload["module"]["metadata"] == {"category": "", "tags": []}
+    assert payload["module"]["dependencies"] == {
+        "python": "",
+        "python_packages": [],
+        "system_packages": [],
+        "modules": [],
+        "tools": [],
+    }
 
 
 def test_workspace_create_refuses_overwrite_without_force(tmp_path: Path):

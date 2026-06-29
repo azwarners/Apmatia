@@ -28,6 +28,8 @@ class ModuleInspection:
                 "version": self.manifest.version,
                 "description": self.manifest.description,
                 "author": self.manifest.author,
+                "metadata": dict(self.manifest.metadata),
+                "dependencies": dict(self.manifest.dependencies),
             },
             "source": self.source,
             "is_workspace": self.source == "workspace",

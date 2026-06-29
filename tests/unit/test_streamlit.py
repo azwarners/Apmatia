@@ -915,7 +915,6 @@ def test_discussion_page_uses_agent_and_discussion_backend(mock_streamlit):
     mock_streamlit.text_area.return_value = "Write a status update."
     mock_streamlit.form_submit_button.return_value = True
     mock_streamlit.button.return_value = False
-    mock_streamlit.session_state["discussion_prompt_IDabc123"] = "Write a status update."
 
     with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
         "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
@@ -937,7 +936,7 @@ def test_discussion_page_uses_agent_and_discussion_backend(mock_streamlit):
     payload = mock_prompt.call_args.kwargs
     assert payload["agent_id"] == 7
     assert payload["prompt"] == "Write a status update."
-    assert mock_streamlit.session_state["discussion_prompt_IDabc123"] == ""
+    assert payload["attachments"] == []
     mock_streamlit.title.assert_called_with("Discussion")
     mock_streamlit.caption.assert_any_call(
         "Using Default via openai_compatible at http://localhost:5001."
@@ -1508,6 +1507,21 @@ def test_clipboard_button_component_renders_main_dom_copy_control(mock_streamlit
     assert "navigator.clipboard.writeText(text)" in rendered_html
 
 
+def test_clipboard_image_paste_bridge_renders_paste_listener(mock_streamlit):
+    """The paste bridge listens for clipboard images without blocking text paste."""
+    import src.interfaces.streamlit.components.clipboard_button as clipboard_button
+
+    clipboard_button = importlib.reload(clipboard_button)
+    clipboard_button.render_clipboard_image_paste_bridge("discussion-attachments")
+
+    rendered_html = "\n".join(call.args[0] for call in mock_streamlit.html.call_args_list)
+    assert "addEventListener(\"paste\", handler, true)" in rendered_html
+    assert "DataTransfer" in rendered_html
+    assert "input.files = dataTransfer.files" in rendered_html
+    assert "clipboardData" in rendered_html
+    assert "pasted-screenshot" in rendered_html
+
+
 def test_message_card_css_hides_streamlit_code_copy_button(mock_streamlit):
     """Only Apmatia's footer copy control is shown on message cards."""
     import src.interfaces.streamlit.components.message_card as message_card
@@ -1975,6 +1989,102 @@ def test_discussion_page_keeps_stop_mode_while_streaming(mock_streamlit):
 
     mock_stop.assert_called_once()
     assert mock_streamlit.rerun.call_count >= 1
+
+
+def test_discussion_history_collapses_older_messages_and_skips_active_message(mock_streamlit):
+    """The static transcript should keep only recent messages visible while streaming."""
+    import src.interfaces.streamlit.pages.discussion as discussion_page
+
+    discussion_page = importlib.reload(discussion_page)
+    snapshot = {
+        "discussion_id": "IDabc123",
+        "messages": [
+            {"role": "User", "text": f"Message {index}"}
+            for index in range(10)
+        ],
+        "activity": {
+            "stage": "generating",
+            "agent_name": "Planner",
+            "speaker_name": "Planner",
+        },
+        "is_streaming": True,
+    }
+    rendered = []
+
+    def fake_render_message_card(*args, **kwargs):
+        rendered.append(kwargs["card_key"])
+
+    with patch.object(discussion_page, "render_message_card", side_effect=fake_render_message_card):
+        discussion_page._render_message_history(
+            snapshot,
+            username="nick",
+            agent_name="Planner",
+            active_message_index=9,
+        )
+
+    assert rendered == [
+        "discussion-IDabc123-0",
+        "discussion-IDabc123-1",
+        "discussion-IDabc123-2",
+        "discussion-IDabc123-3",
+        "discussion-IDabc123-4",
+        "discussion-IDabc123-5",
+        "discussion-IDabc123-6",
+        "discussion-IDabc123-7",
+        "discussion-IDabc123-8",
+    ]
+    mock_streamlit.expander.assert_called_once_with("Older messages (1)", expanded=False)
+
+
+def test_discussion_streaming_view_renders_only_the_active_message(mock_streamlit):
+    """The live fragment should update only the in-flight assistant message."""
+    import src.interfaces.streamlit.pages.discussion as discussion_page
+
+    discussion_page = importlib.reload(discussion_page)
+    snapshot = {
+        "discussion_id": "IDabc123",
+        "messages": [
+            {"role": "User", "text": "Hello"},
+            {"role": "Assistant", "text": "Working on it", "speaker_name": "Planner"},
+        ],
+        "activity": {
+            "stage": "generating",
+            "agent_name": "Planner",
+            "speaker_name": "Planner",
+        },
+        "llama_server_status": {
+            "chat_format": "peg-native",
+            "thinking_enabled": False,
+            "selected_slot_id": 1,
+            "current_task_id": 999,
+            "prompt_processing_progress": 0.25,
+            "prompt_processing_n_tokens": 128,
+            "prompt_tokens_total": 512,
+            "prompt_eval": {"tokens_per_second": 44.0},
+            "eval": {"tokens_per_second": 8.5},
+            "total_time_ms": 2400.0,
+            "total_tokens": 256,
+            "slots_idle": False,
+        },
+        "is_streaming": True,
+    }
+    rendered = []
+
+    def fake_render_message_card(*args, **kwargs):
+        rendered.append(kwargs["card_key"])
+
+    with patch.object(discussion_page, "render_message_card", side_effect=fake_render_message_card), patch.object(
+        discussion_page, "_render_live_activity_card"
+    ) as mock_live_activity:
+        returned_snapshot = discussion_page._render_streaming_message_view(
+            snapshot,
+            username="nick",
+            agent_name="Planner",
+        )
+
+    assert returned_snapshot is snapshot
+    assert rendered == ["discussion-IDabc123-1"]
+    mock_live_activity.assert_not_called()
 
 
 def test_main_function_authenticated_routes_to_settings(mock_streamlit):

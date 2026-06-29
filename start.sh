@@ -65,6 +65,7 @@ print(str(value).strip())' "$APMATIA_CONFIG_DIR_HOST/config.json")"
 fi
 
 mkdir -p "$APMATIA_HOME_HOST" "$APMATIA_DATA_DIR_HOST" "$APMATIA_CONFIG_DIR_HOST"
+mkdir -p "$APMATIA_HOME_HOST/workspace/modules"
 if [ -n "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST" ]; then
     mkdir -p "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
 fi

@@ -115,11 +115,12 @@ class InMemoryAgentService(AgentService):
 @pytest.fixture
 def workspace_tool_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.chdir(tmp_path)
+    (tmp_path / "workspace" / "modules").mkdir(parents=True, exist_ok=True)
     return ToolManager(
         InMemoryToolDefinitionRepository(),
         InMemoryAssignmentRepository(),
         InMemoryAgentService(),
-        builtin_providers=build_workspace_module_tool_providers(),
+        builtin_providers=build_workspace_module_tool_providers(base_dir=tmp_path),
         builtin_definitions=workspace_module_tool_definitions(),
     )
 
@@ -178,6 +179,29 @@ def test_create_workspace_module_creates_draft_module(workspace_tool_manager: To
     assert (tmp_path / "workspace/modules/productivity/module.py").exists()
     assert (tmp_path / "src/modules/productivity").exists() is False
     assert result.result["module_dir"].endswith("workspace/modules/productivity")
+
+
+def test_create_workspace_module_fails_when_workspace_root_is_missing(tmp_path: Path):
+    manager = ToolManager(
+        InMemoryToolDefinitionRepository(),
+        InMemoryAssignmentRepository(),
+        InMemoryAgentService(),
+        builtin_providers=build_workspace_module_tool_providers(base_dir=tmp_path),
+        builtin_definitions=workspace_module_tool_definitions(),
+    )
+    tool_id = _assign_tool(manager, 1, "create_workspace_module")
+
+    result = manager.execute_tool_call(
+        ToolCall(
+            tool_id=tool_id,
+            requester_agent_id=1,
+            arguments={"module_slug": "productivity", "display_name": "Productivity"},
+        )
+    )
+
+    assert result.status == "error"
+    assert result.error["code"] == "MISSING_WORKSPACE_DIRECTORY"
+    assert result.error["request_id"] == result.call_id
 
 
 def test_list_workspace_module_files_lists_scaffold_files(workspace_tool_manager: ToolManager, tmp_path: Path):
@@ -266,7 +290,8 @@ def test_write_workspace_module_file_rejects_unsafe_path(workspace_tool_manager:
     )
 
     assert result.status == "error"
-    assert ".." in result.error
+    assert result.error["code"] == "WORKSPACE_PATH_ERROR"
+    assert ".." in result.error["message"]
 
 
 def test_validate_workspace_module_returns_structured_validation_results(workspace_tool_manager: ToolManager, tmp_path: Path):
@@ -285,6 +310,14 @@ def test_validate_workspace_module_returns_structured_validation_results(workspa
     assert result.result["module_slug"] == "productivity"
     assert result.result["passed"] is True
     assert result.result["manifest"]["module_id"] == "productivity"
+    assert result.result["manifest"]["metadata"] == {"category": "", "tags": []}
+    assert result.result["manifest"]["dependencies"] == {
+        "python": "",
+        "python_packages": [],
+        "system_packages": [],
+        "modules": [],
+        "tools": [],
+    }
 
 
 def test_workspace_tools_import_without_streamlit():
@@ -320,3 +353,4 @@ def test_runtime_seeds_workspace_tools(monkeypatch: pytest.MonkeyPatch, tmp_path
     assert "plan_workspace_module" in names
     assert "create_workspace_module" in names
     assert "write_workspace_module_file" in names
+    assert "apmatia_system_audit" in names

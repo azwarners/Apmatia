@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from src.api.http.app import app, create_app
+from src.api.internal import discussions as internal_discussions
 from src.lib.model_management.models import LLM
 from src.api.internal.prompt_LLM import prompt_llm
 from src.api.internal import model_management
@@ -150,3 +151,29 @@ def test_group_edit_route_updates_group(
     mock_edit_group.assert_called_once_with(group_id=10, name="team-renamed", description="updated")
     mock_is_group_owner.assert_called_once()
     mock_list_group_members.assert_called_once_with(10)
+
+
+@patch("src.api.internal.discussions.discussion_state")
+def test_internal_start_prompt_forwards_attachments(mock_discussion_state):
+    attachments = [
+        {"filename": "shot.png", "mime_type": "image/png", "data_base64": "Zm9v"}
+    ]
+
+    mock_discussion_state.start_prompt.return_value = "IDabc123"
+
+    result = internal_discussions.start_prompt(
+        user_id=1,
+        prompt="hello",
+        member_group_ids={7},
+        agent_id=3,
+        attachments=attachments,
+    )
+
+    assert result == "IDabc123"
+    mock_discussion_state.start_prompt.assert_called_once_with(
+        user_id=1,
+        prompt="hello",
+        member_group_ids={7},
+        agent_id=3,
+        attachments=attachments,
+    )

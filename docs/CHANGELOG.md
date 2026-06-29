@@ -2,6 +2,17 @@
 
 All notable changes to Apmatia are documented in this file.
 
+## 0.0.1.6 - Modular Architecture and Workspace Modules
+
+- Added the bundled module system under `src/modules/` so packaged application features can
+  register metadata, commands, views, and actions through a shared application registry.
+- Added module creation guidance in `docs/CREATING_MODULES.md` and a richer architecture overview
+  that explains where bundled modules fit in the layered design.
+- Added workspace-oriented module tooling in the CLI, core, libraries, and tests so module
+  planning, scaffolding, validation, and workspace editing can be exercised end to end.
+- Updated the documentation and recovery note to make the correct checkout and the module workflow
+  harder to miss in future sessions.
+
 ## 0.0.1.5 - Streamlit Interface Migration
 
 - Replaced the primary browser-facing Golden Layout HTML/JavaScript interface with a Streamlit-based Python interface under `src/interfaces/streamlit/`.

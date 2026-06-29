@@ -56,7 +56,6 @@ class OpenAICompatibleBackend:
     def stream(self, request: PromptRequest) -> Iterable[str]:
         metadata = request.metadata if isinstance(request.metadata, dict) else {}
         chat_messages = metadata.get("chat_messages")
-        supports_multimodal = _contains_multimodal_messages(chat_messages)
 
         if isinstance(chat_messages, list):
             try:
@@ -67,7 +66,7 @@ class OpenAICompatibleBackend:
                 )
                 return
             except ExecutionError as error:
-                if supports_multimodal or not _should_fallback_to_completion(error):
+                if not _should_fallback_to_completion(error):
                     raise
             yield from self._stream_request(
                 request=request,
@@ -244,21 +243,6 @@ def _should_fallback_to_completion(error: ExecutionError) -> bool:
         or "not found" in message.lower()
         or "bad request" in message.lower()
     )
-
-
-def _contains_multimodal_messages(chat_messages: Any) -> bool:
-    if not isinstance(chat_messages, list):
-        return False
-    for message in chat_messages:
-        if not isinstance(message, dict):
-            continue
-        content = message.get("content")
-        if not isinstance(content, list):
-            continue
-        for part in content:
-            if isinstance(part, dict) and part.get("type") == "image_url":
-                return True
-    return False
 
 
 def _resolve_docker_host_loopback(base_url: str) -> str:

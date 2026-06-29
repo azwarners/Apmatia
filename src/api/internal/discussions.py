@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from src.lib.discussions import discussion_state
 
 
@@ -15,14 +13,12 @@ def start_prompt(
     prompt: str,
     member_group_ids: set[int],
     agent_id: int | None = None,
-    attachments: list[dict[str, Any]] | None = None,
 ) -> str:
     return discussion_state.start_prompt(
         user_id=user_id,
         prompt=prompt,
         member_group_ids=member_group_ids,
         agent_id=agent_id,
-        attachments=attachments,
     )
 
 

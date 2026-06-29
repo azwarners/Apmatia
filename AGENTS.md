@@ -1,5 +1,7 @@
 Apmatia is built around a collection of tiny, focused Python libraries. All business logic should live in libraries, while the application layer should stay thin and act only as orchestration and glue.
 
+Feature work should generally move into modules when it fits the problem. Bundled modules live in `src/modules/`, and draft or agent-assisted work belongs in `workspace/modules/` until it is ready to be promoted.
+
 User interfaces such as a CLI or web app must always use the API. Interfaces never call Apmatia core directly. Only the API gets to talk to the core. This is a strict boundary.
 
 Tests are run with `./test.sh`.

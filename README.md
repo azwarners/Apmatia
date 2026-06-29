@@ -2,6 +2,14 @@
 
 Apmatia is an API-first, self-hosted application framework for modular AI workflows. It is built from small Python libraries, keeps orchestration in a thin core layer, and serves both programmatic and interactive use through the same API boundary.
 
+Apmatia is moving toward a module-first architecture:
+
+- reusable capability code should live in libraries
+- feature packages should live in modules
+- new feature work should generally start as a module when it fits the problem
+- bundled modules live in `src/modules/`
+- draft and agent-assisted modules live in `workspace/modules/`
+
 ## What It Is
 
 Apmatia is designed to make AI features feel like application features instead of isolated scripts.
@@ -32,6 +40,7 @@ That gives the project a few important properties:
 - user, group, and session-backed authentication flows
 - soft-delete discussion and folder lifecycle with restore support
 - shared settings for prompting and UI appearance
+- registry-driven module metadata, scaffolding, validation, and workspace editing
 
 ## Project Structure
 
@@ -41,13 +50,17 @@ src/
 │   ├── http/        # FastAPI transport layer
 │   └── internal/    # canonical application interface
 ├── core/            # orchestration and runtime wiring
+│   └── modules/     # module registry, scaffolding, planning, validation, workspace tools
 ├── interfaces/
 │   ├── cli/
 │   └── streamlit/
-└── lib/             # reusable business logic libraries
+├── lib/             # reusable business logic libraries
+└── modules/         # bundled feature modules
 ```
 
 The most important rule is simple: interfaces use the API, and only the API talks to the core.
+
+Modules are the preferred home for new feature packages when the feature can be isolated cleanly. Libraries provide reusable implementation details; modules package those capabilities and register actions, tools, commands, views, and module metadata.
 
 ## Libraries
 
@@ -126,8 +139,13 @@ Version `0.0.1.5` records the current Streamlit interface rollout.
 
 The FastAPI layer remains the transport-facing API surface. The Streamlit app stays on the interface side of the boundary and uses the same API contract rather than reaching into core logic directly.
 
+## Module Development
+
+For module creation, planning, validation, workspace editing, and inspection, use the core module helpers and the CLI `module` commands. The workspace path is intentionally separate from bundled modules so draft work can stay isolated until it is ready to be promoted.
+
 ## Additional Documentation
 
 - architecture: `docs/ARCHITECTURE.md`
+- module creation guide: `docs/CREATING_MODULES.md`
 - changelog: `docs/CHANGELOG.md`
 - third-party notices: `docs/THIRD_PARTY_NOTICES.md`

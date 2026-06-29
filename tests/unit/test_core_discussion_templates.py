@@ -62,38 +62,6 @@ class TestBuildChatMessages:
 
         assert result[0]["content"] == "You are a helpful assistant."
 
-    def test_includes_image_attachments_for_the_current_prompt(self):
-        existing_content = ""
-        system_prompt = ""
-        current_prompt = "Please inspect this screenshot."
-
-        result = discussion_templates.build_chat_messages(
-            existing_content,
-            system_prompt,
-            current_prompt,
-            current_attachments=[
-                {
-                    "filename": "screenshot.png",
-                    "mime_type": "image/png",
-                    "path": "attachments/shot.png",
-                }
-            ],
-            attachment_resolver=lambda attachment: [
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:{attachment['mime_type']};base64,Zm9v",
-                    },
-                }
-            ],
-        )
-
-        assert result[0]["role"] == "user"
-        assert isinstance(result[0]["content"], list)
-        assert result[0]["content"][0] == {"type": "text", "text": "Please inspect this screenshot."}
-        assert result[0]["content"][1]["type"] == "image_url"
-        assert result[0]["content"][1]["image_url"]["url"].startswith("data:image/png;base64,")
-
 
 class TestParseConversationMessages:
     def test_parses_user_and_assistant_messages(self):

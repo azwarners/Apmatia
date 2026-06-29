@@ -6,10 +6,6 @@ from typing import TYPE_CHECKING
 
 from src.core.agent_management_runtime import get_agent_manager
 from src.core.memory_management_runtime import get_memory_manager
-from src.lib.system_audit.tooling import (
-    build_system_audit_tool_providers,
-    system_audit_tool_definitions,
-)
 from src.core.wiki_management_runtime import get_wiki_manager
 from src.lib.apmatia_administration.tooling import (
     apmatia_administration_tool_definitions,
@@ -17,6 +13,10 @@ from src.lib.apmatia_administration.tooling import (
 )
 from src.lib.memory_management.tooling import build_memory_tool_providers, memory_tool_definitions
 from src.lib.tool_management.module import ToolManager
+from src.lib.tool_management.workspace_modules import (
+    build_workspace_module_tool_providers,
+    workspace_module_tool_definitions,
+)
 from src.lib.wiki_management.tooling import build_wiki_tool_providers, wiki_tool_definitions
 
 if TYPE_CHECKING:
@@ -51,15 +51,15 @@ def _ensure_runtime() -> None:
             agent_manager,
             builtin_providers=[
                 *build_apmatia_administration_tool_providers(agent_manager),
-                *build_system_audit_tool_providers(agent_manager),
                 *build_memory_tool_providers(get_memory_manager(), agent_manager),
                 *build_wiki_tool_providers(get_wiki_manager(), agent_manager),
+                *build_workspace_module_tool_providers(),
             ],
             builtin_definitions=[
                 *apmatia_administration_tool_definitions(),
-                *system_audit_tool_definitions(),
                 *memory_tool_definitions(),
                 *wiki_tool_definitions(),
+                *workspace_module_tool_definitions(),
             ],
         )
 

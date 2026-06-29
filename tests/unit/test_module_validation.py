@@ -1,0 +1,136 @@
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+from src.core.modules import create_module_scaffold, validate_module
+
+
+def test_validate_module_passes_for_valid_scaffold(tmp_path: Path):
+    create_module_scaffold(
+        module_slug="productivity",
+        display_name="Productivity",
+        description="Tasks, projects, and productivity helpers.",
+        author="Nick Warner",
+        base_dir=tmp_path,
+    )
+
+    result = validate_module("productivity", base_dir=tmp_path)
+
+    assert result.passed is True
+    assert result.module_slug == "productivity"
+    assert result.module_path == tmp_path / "src/modules/productivity"
+    assert result.manifest is not None
+    assert result.manifest.module_id == "productivity"
+    assert result.registered["modules"] == ["productivity"]
+
+
+def test_validate_module_missing_required_file_fails(tmp_path: Path):
+    create_module_scaffold(
+        module_slug="productivity",
+        display_name="Productivity",
+        base_dir=tmp_path,
+    )
+    (tmp_path / "src/modules/productivity/actions.py").unlink()
+
+    result = validate_module("productivity", base_dir=tmp_path)
+
+    assert result.passed is False
+    assert any(not check.passed and check.name == "required file: actions.py" for check in result.checks)
+    assert any("missing required file: actions.py" in error for error in result.errors)
+
+
+def test_validate_module_invalid_toml_fails(tmp_path: Path):
+    create_module_scaffold(
+        module_slug="productivity",
+        display_name="Productivity",
+        base_dir=tmp_path,
+    )
+    manifest_path = tmp_path / "src/modules/productivity/manifest.toml"
+    manifest_path.write_text("not = [valid", encoding="utf-8")
+
+    result = validate_module("productivity", base_dir=tmp_path)
+
+    assert result.passed is False
+    assert any(not check.passed and check.name == "manifest parses" for check in result.checks)
+    assert any("failed to parse" in error for error in result.errors)
+
+
+def test_validate_module_invalid_python_syntax_fails(tmp_path: Path):
+    create_module_scaffold(
+        module_slug="productivity",
+        display_name="Productivity",
+        base_dir=tmp_path,
+    )
+    module_path = tmp_path / "src/modules/productivity/module.py"
+    module_path.write_text("def register(registry):\n    if True print('bad')\n", encoding="utf-8")
+
+    result = validate_module("productivity", base_dir=tmp_path)
+
+    assert result.passed is False
+    assert any(not check.passed and check.name == "python syntax: module.py" for check in result.checks)
+
+
+def test_validate_module_missing_register_fails(tmp_path: Path):
+    create_module_scaffold(
+        module_slug="productivity",
+        display_name="Productivity",
+        base_dir=tmp_path,
+    )
+    module_path = tmp_path / "src/modules/productivity/module.py"
+    module_path.write_text("VALUE = 1\n", encoding="utf-8")
+
+    result = validate_module("productivity", base_dir=tmp_path)
+
+    assert result.passed is False
+    assert any(not check.passed and check.name == "register(registry) exists" for check in result.checks)
+
+
+def test_validate_module_register_raising_fails(tmp_path: Path):
+    create_module_scaffold(
+        module_slug="productivity",
+        display_name="Productivity",
+        base_dir=tmp_path,
+    )
+    module_path = tmp_path / "src/modules/productivity/module.py"
+    module_path.write_text(
+        "from __future__ import annotations\n\n"
+        "from src.core.registry import ModuleMetadata\n\n"
+        "PRODUCTIVITY_MODULE = ModuleMetadata(module_id='productivity', name='Productivity')\n\n"
+        "def register(registry):\n"
+        "    raise RuntimeError('boom')\n",
+        encoding="utf-8",
+    )
+
+    result = validate_module("productivity", base_dir=tmp_path)
+
+    assert result.passed is False
+    assert any(not check.passed and check.name == "register(registry) succeeds" for check in result.checks)
+    assert any("raised an exception" in error for error in result.errors)
+
+
+def test_module_validation_does_not_require_streamlit(tmp_path: Path):
+    create_module_scaffold(
+        module_slug="productivity",
+        display_name="Productivity",
+        base_dir=tmp_path,
+    )
+    code = f"""
+import builtins
+from pathlib import Path
+original_import = builtins.__import__
+
+def guarded_import(name, *args, **kwargs):
+    if name == "streamlit" or name.startswith("streamlit."):
+        raise AssertionError("streamlit import attempted")
+    return original_import(name, *args, **kwargs)
+
+builtins.__import__ = guarded_import
+from src.core.modules import validate_module
+result = validate_module("productivity", base_dir=Path({str(tmp_path)!r}))
+assert result.passed is True
+"""
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr

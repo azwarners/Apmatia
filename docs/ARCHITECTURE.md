@@ -1,13 +1,13 @@
 # Architecture
 
-Apmatia is built around a strict, API-first layered architecture. Business logic lives in small libraries, the application layer stays thin, and every interface reaches the system through the API boundary.
+Apmatia is built around a strict, API-first layered architecture. Business logic lives in small libraries, feature packages live in modules, the application layer stays thin, and every interface reaches the system through the API boundary.
 
 ## Core Principle
 
 All functionality flows in one direction:
 
 ```text
-Libraries -> Core -> API (internal) -> Interfaces
+Libraries -> Modules -> Core -> API (internal) -> Interfaces
 ```
 
 No layer is allowed to bypass another.
@@ -38,7 +38,7 @@ Libraries contain the real domain behavior for Apmatia. They implement features,
 
 They do not know about HTTP, FastAPI, Streamlit, or the CLI.
 
-`apmatia/src/lib:`
+Top-level libraries in `src/lib/` currently include:
 
 - `agent_management`
 
@@ -68,7 +68,20 @@ They do not know about HTTP, FastAPI, Streamlit, or the CLI.
 
   Provides the underlying generative execution engine used by Apmatia to talk to text-generation backends. It supplies modality-specific execution, backend adapters such as KoboldCpp and OpenAI-compatible endpoints, and output persistence for model runs.
 
-### 2. Core (Orchestration)
+### 2. Modules (Feature Packages)
+
+**Location:** `src/modules/` for bundled modules, `workspace/modules/` for draft modules
+
+Modules package application features. They register application metadata, actions, tools, commands, and views into the registry. Modules are the preferred place for new feature work when the feature can be isolated cleanly.
+
+Module rules:
+
+- bundled modules ship under `src/modules/`
+- draft, agent-assisted, or user-created work stays in `workspace/modules/`
+- modules may depend on libraries and core helpers, but they should not own transport concerns
+- modules register capabilities into the registry instead of talking directly to interfaces
+
+### 3. Core (Orchestration)
 
 **Location:** `src/core/`
 
@@ -76,7 +89,7 @@ Core coordinates one or more libraries into application behavior. It loads confi
 
 It does not expose interfaces or own transport details.
 
-### 3. API (Internal)
+### 4. API (Internal)
 
 **Location:** `src/api/internal/`
 
@@ -84,7 +97,7 @@ This is the canonical programmatic interface for Apmatia. Interfaces and transpo
 
 It exposes application capabilities as stable functions and keeps the rest of the system behind a single contract.
 
-### 4. API (HTTP)
+### 5. API (HTTP)
 
 **Location:** `src/api/http/`
 
@@ -92,7 +105,7 @@ This layer exposes the internal API over FastAPI. It defines routes, request mod
 
 It does not implement business logic or call libraries directly.
 
-### 5. Interfaces
+### 6. Interfaces
 
 **Location:** `src/interfaces/`
 
@@ -145,13 +158,15 @@ This keeps accidental deletions reversible without cluttering active views.
 
 To add a new feature:
 
-1. Create or extend a library in `src/lib/`.
-2. Add orchestration in `src/core/`.
-3. Expose it through `src/api/internal/`.
-4. Optionally surface it through FastAPI, Streamlit, the CLI, or another interface.
+1. Create or extend a library in `src/lib/` if the logic is reusable.
+2. Decide whether the feature belongs in a library or a module.
+3. Package the feature in a module under `src/modules/` or `workspace/modules/`.
+4. Add orchestration in `src/core/`.
+5. Expose it through `src/api/internal/`.
+6. Optionally surface it through FastAPI, Streamlit, the CLI, or another interface.
 
 That sequence preserves the API-first boundary and keeps interfaces thin.
 
 ## Summary
 
-Apmatia scales by keeping logic in focused libraries, orchestration in core, and presentation in interface clients. The UI layer remains thin because interfaces consume the API rather than the core directly.
+Apmatia scales by keeping logic in focused libraries, feature packages in modules, orchestration in core, and presentation in interface clients. The UI layer remains thin because interfaces consume the API rather than the core directly.

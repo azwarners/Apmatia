@@ -18,6 +18,8 @@ For browser clipboard actions in Streamlit, do not rely on iframe components or 
 
 For the Streamlit app's custom upper-right menu, remember that Streamlit still renders a top header layer even when the toolbar is minimized. That invisible layer can cover or intercept custom controls placed at the top edge. Preserve the CSS safeguards in `src/interfaces/streamlit/app.py` that give `.apm-header-menu` a higher stacking order than `[data-testid="stHeader"]` and disable pointer events on the Streamlit header. When adding items to this menu, change only the menu contents unless the trigger/header stacking behavior is intentionally being revisited.
 
+Module UI work should stay schema-first and adapter-driven. When adding or changing module views, update the registry-backed view metadata and the shared module-view adapter/schema layer rather than writing module-specific Streamlit screens. The `apmatia_ipe` module is the reference example for schema-inferred list and create views.
+
 When reporting changes back to the user, always include the full absolute path of at least one relevant file so it is obvious which repo instance and directory were touched. Prefer verbose path references when mentioning files in responses, especially after work that could otherwise be confused with a different checkout.
 
 Do not use relative paths like `apmatia/...`, `./...`, or bare filenames when describing changed files to the user. Use absolute paths such as `/home/nick/ServerData/repos/apmatia/...` so there is no ambiguity about which checkout is being discussed.

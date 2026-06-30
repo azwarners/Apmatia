@@ -8,6 +8,8 @@
 set -e
 
 MODE="core"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$SCRIPT_DIR"
 
 for arg in "$@"; do
     case "$arg" in
@@ -43,6 +45,8 @@ fi
 APMATIA_HOME_HOST="${APMATIA_HOME:-$HOME/.apmatia}"
 APMATIA_DATA_DIR_HOST="${APMATIA_DATA_DIR:-$HOME/.local/share/apmatia}"
 APMATIA_CONFIG_DIR_HOST="${APMATIA_CONFIG_DIR:-$HOME/.config/apmatia}"
+APMATIA_WORKSPACE_DIR_HOST="${APMATIA_WORKSPACE_DIR:-$REPO_ROOT/workspace}"
+APMATIA_WORKSPACE_ROOT_HOST="$APMATIA_WORKSPACE_DIR_HOST/modules"
 APMATIA_LLAMA_SERVER_LOG_DIR_HOST="${APMATIA_LLAMA_SERVER_LOG_DIR:-${LLAMA_LOG_DIR:-}}"
 
 if [ -z "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST" ] && [ -f "$APMATIA_CONFIG_DIR_HOST/config.json" ]; then
@@ -65,7 +69,7 @@ print(str(value).strip())' "$APMATIA_CONFIG_DIR_HOST/config.json")"
 fi
 
 mkdir -p "$APMATIA_HOME_HOST" "$APMATIA_DATA_DIR_HOST" "$APMATIA_CONFIG_DIR_HOST"
-mkdir -p "$APMATIA_HOME_HOST/workspace/modules"
+mkdir -p "$APMATIA_WORKSPACE_ROOT_HOST"
 if [ -n "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST" ]; then
     mkdir -p "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
 fi
@@ -90,12 +94,14 @@ if [ "$MODE" = "streamlit" ]; then
     docker run \
         --name "$CONTAINER_NAME" \
         -p 0.0.0.0:8501:8501 \
-        -v "$PWD":/app \
+        -v "$REPO_ROOT":/app \
+        -v "$APMATIA_WORKSPACE_DIR_HOST":/app/workspace \
         -v "$APMATIA_HOME_HOST":/root/.apmatia \
         -v "$APMATIA_CONFIG_DIR_HOST":/root/.config/apmatia \
         -v "$APMATIA_DATA_DIR_HOST":/root/.local/share/apmatia \
         -e APMATIA_HOME=/root/.apmatia \
         -e APMATIA_DATA_DIR=/root/.local/share/apmatia \
+        -e APMATIA_WORKSPACE_ROOT=/app/workspace/modules \
         "${LOG_DIR_ARGS[@]}" \
         --entrypoint /bin/bash \
         "$IMAGE_NAME" /app/scripts/entrypoint.sh
@@ -110,12 +116,14 @@ else
     docker run \
         --name "$CONTAINER_NAME" \
         -p 0.0.0.0:8000:8000 \
-        -v "$PWD":/app \
+        -v "$REPO_ROOT":/app \
+        -v "$APMATIA_WORKSPACE_DIR_HOST":/app/workspace \
         -v "$APMATIA_HOME_HOST":/root/.apmatia \
         -v "$APMATIA_CONFIG_DIR_HOST":/root/.config/apmatia \
         -v "$APMATIA_DATA_DIR_HOST":/root/.local/share/apmatia \
         -e APMATIA_HOME=/root/.apmatia \
         -e APMATIA_DATA_DIR=/root/.local/share/apmatia \
+        -e APMATIA_WORKSPACE_ROOT=/app/workspace/modules \
         "${LOG_DIR_ARGS[@]}" \
         --entrypoint /bin/bash \
         "$IMAGE_NAME" /app/scripts/entrypoint.sh

@@ -7,6 +7,7 @@ from .discussion_routes import router as discussion_router
 from .groups_routes import router as groups_router
 from .memory_routes import router as memory_router
 from .model_routes import router as model_router
+from .module_routes import router as module_router
 from .prompt_routes import router as prompt_router
 from .settings_routes import router as settings_router
 from .tool_routes import router as tool_router
@@ -23,6 +24,7 @@ router.include_router(auth_router)
 router.include_router(agent_router)
 router.include_router(agent_prompt_router)
 router.include_router(model_router)
+router.include_router(module_router)
 router.include_router(memory_router)
 router.include_router(tool_router)
 router.include_router(wiki_router)

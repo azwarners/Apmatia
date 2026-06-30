@@ -2091,20 +2091,28 @@ def test_main_function_authenticated_routes_to_settings(mock_streamlit):
     """Authenticated users can navigate to settings through the sidebar."""
     mock_streamlit.sidebar.button.side_effect = lambda label, *args, **kwargs: label == "⚙️ Settings"
 
-    with patch(
-        "src.interfaces.streamlit.api_client.get_auth_session",
+    import src.interfaces.streamlit.app as app
+
+    app = importlib.reload(app)
+
+    with patch.object(
+        app,
+        "get_auth_session",
         return_value={"authenticated": True, "username": "testuser"},
-    ), patch(
-        "src.interfaces.streamlit.api_client.get_settings",
+    ), patch.object(
+        app,
+        "get_settings",
         return_value={"theme": "dark"},
-    ), patch(
-        "src.interfaces.streamlit.api_client.logout"
+    ), patch.object(
+        app,
+        "list_module_catalog",
+        return_value=[],
+    ), patch.object(
+        app,
+        "logout",
     ) as mock_logout, patch(
         "src.interfaces.streamlit.pages.settings.render"
     ) as mock_settings_render:
-        import src.interfaces.streamlit.app as app
-
-        app = importlib.reload(app)
         app.main()
 
     assert Path(app.FAVICON_PATH).is_file()
@@ -2116,10 +2124,16 @@ def test_main_function_authenticated_routes_to_settings(mock_streamlit):
         "client.showSidebarNavigation", False
     )
     mock_streamlit.sidebar.title.assert_called_once_with("Apmatia")
-    assert mock_streamlit.sidebar.button.call_count == 8
+    assert mock_streamlit.sidebar.button.call_count == 9
     mock_streamlit.sidebar.button.assert_any_call(
         "🧩 AI Models",
         key="nav_model_management",
+        use_container_width=True,
+        type="secondary",
+    )
+    mock_streamlit.sidebar.button.assert_any_call(
+        "📦 Modules",
+        key="nav_module_management",
         use_container_width=True,
         type="secondary",
     )
@@ -2142,6 +2156,87 @@ def test_main_function_authenticated_routes_to_settings(mock_streamlit):
     )
     mock_settings_render.assert_called_once()
     assert mock_streamlit.session_state["selected_page"] == "settings"
+
+
+def test_render_sidebar_shows_visible_module_with_active_subpages(mock_streamlit):
+    mock_streamlit.session_state["selected_page"] = "module_view"
+    mock_streamlit.session_state["selected_module_id"] = "apmatia_ipe"
+    mock_streamlit.session_state["selected_module_view_id"] = "apmatia_ipe.task.view"
+
+    modules = [
+        {
+            "module_id": "apmatia_ipe",
+            "name": "Apmatia IPE",
+            "hidden": False,
+            "views": [
+                {"view_id": "apmatia_ipe.task.view", "name": "Tasks View", "effective_hidden": False},
+                {"view_id": "apmatia_ipe.project.view", "name": "Projects View", "effective_hidden": True},
+            ],
+        },
+        {
+            "module_id": "hidden_module",
+            "name": "Hidden Module",
+            "hidden": True,
+            "views": [{"view_id": "hidden_module.view", "name": "Hidden View", "effective_hidden": False}],
+        },
+    ]
+    mock_streamlit.sidebar.button.return_value = False
+
+    import src.interfaces.streamlit.app as app
+
+    app = importlib.reload(app)
+
+    with patch.object(app, "list_module_catalog", return_value=modules):
+        selected_page = app.render_sidebar()
+
+    assert selected_page == "module_view"
+    mock_streamlit.sidebar.button.assert_any_call(
+        "Apmatia IPE",
+        key="nav_module_apmatia_ipe",
+        use_container_width=True,
+        type="primary",
+    )
+    mock_streamlit.sidebar.button.assert_any_call(
+        "Tasks View",
+        key="nav_module_view_apmatia_ipe.task.view",
+        use_container_width=True,
+        type="primary",
+    )
+    button_labels = [call.args[0] for call in mock_streamlit.sidebar.button.call_args_list if call.args]
+    assert "Projects View" not in button_labels
+    assert "Hidden Module" not in button_labels
+
+
+def test_render_sidebar_clicking_module_selects_first_visible_view(mock_streamlit):
+    mock_streamlit.session_state["selected_page"] = "discussion"
+
+    def sidebar_button(label, *args, **kwargs):
+        return label == "Apmatia IPE"
+
+    mock_streamlit.sidebar.button.side_effect = sidebar_button
+    modules = [
+        {
+            "module_id": "apmatia_ipe",
+            "name": "Apmatia IPE",
+            "hidden": False,
+            "views": [
+                {"view_id": "apmatia_ipe.task.view", "name": "Tasks View", "effective_hidden": False},
+                {"view_id": "apmatia_ipe.project.view", "name": "Projects View", "effective_hidden": False},
+            ],
+        }
+    ]
+
+    import src.interfaces.streamlit.app as app
+
+    app = importlib.reload(app)
+
+    with patch.object(app, "list_module_catalog", return_value=modules):
+        app.render_sidebar()
+
+    assert mock_streamlit.session_state["selected_page"] == "module_view"
+    assert mock_streamlit.session_state["selected_module_id"] == "apmatia_ipe"
+    assert mock_streamlit.session_state["selected_module_view_id"] == "apmatia_ipe.task.view"
+    mock_streamlit.rerun.assert_called_once()
 
 
 def test_main_function_authenticated_routes_to_agent_management(mock_streamlit):
@@ -2263,6 +2358,18 @@ def test_start_script_mounts_persistent_user_state():
     assert '-v "$APMATIA_CONFIG_DIR_HOST":/root/.config/apmatia' in launcher
     assert '-e APMATIA_HOME=/root/.apmatia' in launcher
     assert '-e APMATIA_DATA_DIR=/root/.local/share/apmatia' in launcher
+    assert '-v "$APMATIA_WORKSPACE_DIR_HOST":/app/workspace' in launcher
+    assert '-e APMATIA_WORKSPACE_ROOT=/app/workspace/modules' in launcher
+
+
+def test_start_script_bootstraps_workspace_modules_on_the_host():
+    """The standard launcher must create the repo workspace instead of nesting it under ~/.apmatia."""
+    launcher = (REPO_ROOT / "start.sh").read_text()
+
+    assert 'APMATIA_WORKSPACE_DIR_HOST="${APMATIA_WORKSPACE_DIR:-$REPO_ROOT/workspace}"' in launcher
+    assert 'APMATIA_WORKSPACE_ROOT_HOST="$APMATIA_WORKSPACE_DIR_HOST/modules"' in launcher
+    assert 'mkdir -p "$APMATIA_WORKSPACE_ROOT_HOST"' in launcher
+    assert 'mkdir -p "$APMATIA_HOME_HOST/workspace/modules"' not in launcher
 
 
 def test_start_script_uses_saved_llama_server_log_dir_when_env_is_missing():
@@ -2271,6 +2378,16 @@ def test_start_script_uses_saved_llama_server_log_dir_when_env_is_missing():
 
     assert "config.json" in launcher
     assert "llama_server" in launcher
+
+
+def test_windows_launcher_bootstraps_persistent_directories():
+    """The Windows launcher must create the same directories before compose starts."""
+    launcher = (REPO_ROOT / "scripts" / "start.bat").read_text()
+
+    assert 'mkdir "%REPO_ROOT%\\workspace\\modules"' in launcher
+    assert 'mkdir "%USERPROFILE%\\.apmatia"' in launcher
+    assert 'mkdir "%USERPROFILE%\\.config\\apmatia"' in launcher
+    assert 'mkdir "%USERPROFILE%\\.local\\share\\apmatia"' in launcher
 
 
 def test_container_has_writable_non_root_home():

@@ -10,6 +10,10 @@ Apmatia is moving toward a module-first architecture:
 - bundled modules live in `src/modules/`
 - draft and agent-assisted modules live in `workspace/modules/`
 
+The first bundled module to actively drive new product behavior is `apmatia_ipe`, which now
+demonstrates how module metadata, view schemas, and the Streamlit adapter can work together to
+deliver real UI and data-entry flows without custom page code for each screen.
+
 ## What It Is
 
 Apmatia is designed to make AI features feel like application features instead of isolated scripts.
@@ -41,6 +45,8 @@ That gives the project a few important properties:
 - soft-delete discussion and folder lifecycle with restore support
 - shared settings for prompting and UI appearance
 - registry-driven module metadata, scaffolding, validation, and workspace editing
+- module-driven Streamlit navigation, visibility controls, and generic view rendering
+- schema-inferred module view forms for list/create module pages
 
 ## Project Structure
 
@@ -133,7 +139,8 @@ Run the test suite with:
 - changelog: `docs/CHANGELOG.md`
 - HTTP version probe: `GET /api/version`
 
-Version `0.0.1.6` records the modular architecture and workspace module rollout.
+Version `0.0.1.7` records the module view adapter, schema inference, and the first module-driven
+product flow.
 
 ## API Notes
 
@@ -142,6 +149,13 @@ The FastAPI layer remains the transport-facing API surface. The Streamlit app st
 ## Module Development
 
 For module creation, planning, validation, workspace editing, and inspection, use the core module helpers and the CLI `module` commands. The workspace path is intentionally separate from bundled modules so draft work can stay isolated until it is ready to be promoted.
+
+Module authors now have a clearer path for UI:
+
+- define the module's models and registry metadata
+- describe field intent once through the module view schema helpers
+- let the Streamlit adapter render list views and create forms automatically
+- use module management visibility to hide modules or specific views from the left navigation
 
 ## Additional Documentation
 

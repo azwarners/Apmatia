@@ -147,17 +147,58 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
 
     assert exit_code == 0
     assert isinstance(payload, list)
-    assert payload[0]["module"]["module_id"] == "example"
-    assert payload[0]["module"]["name"] == "Example Module"
+    assert [item["module"]["module_id"] for item in payload] == ["apmatia_ipe", "example"]
+    assert payload[0]["module"]["name"] == "Apmatia Integrated Productivity Environment"
     assert payload[0]["module"]["version"] == "0.1.0"
-    assert payload[0]["module"]["description"] == "Minimal bundled example module."
+    assert payload[0]["module"]["description"] == "An integrated workspace for ideas, tasks, projects, habits, and calendar planning."
     assert payload[0]["source"] == "bundled"
     assert payload[0]["is_workspace"] is False
-    assert payload[0]["module"]["metadata"] == {}
-    assert payload[0]["module"]["dependencies"] == {}
-    assert payload[0]["actions"] == ["example.action"]
-    assert payload[0]["commands"] == ["example.command"]
-    assert payload[0]["views"] == ["example.view"]
+    assert payload[0]["module"]["metadata"] == {"category": "productivity", "tags": ["ideas", "tasks", "projects", "habits", "calendar", "assistant"]}
+    assert payload[0]["module"]["dependencies"] == {
+        "python": ">=3.10",
+        "python_packages": [],
+        "system_packages": [],
+        "modules": [],
+        "tools": [],
+    }
+    assert payload[0]["actions"] == [
+        "apmatia_ipe.calendar_event",
+        "apmatia_ipe.habit",
+        "apmatia_ipe.idea",
+        "apmatia_ipe.project",
+        "apmatia_ipe.task",
+    ]
+    assert payload[0]["commands"] == [
+        "apmatia_ipe.calendar_event.create",
+        "apmatia_ipe.calendar_event.delete",
+        "apmatia_ipe.calendar_event.edit",
+        "apmatia_ipe.calendar_event.list",
+        "apmatia_ipe.habit.create",
+        "apmatia_ipe.habit.delete",
+        "apmatia_ipe.habit.edit",
+        "apmatia_ipe.habit.list",
+        "apmatia_ipe.idea.create",
+        "apmatia_ipe.idea.delete",
+        "apmatia_ipe.idea.edit",
+        "apmatia_ipe.idea.list",
+        "apmatia_ipe.project.create",
+        "apmatia_ipe.project.delete",
+        "apmatia_ipe.project.edit",
+        "apmatia_ipe.project.list",
+        "apmatia_ipe.task.create",
+        "apmatia_ipe.task.delete",
+        "apmatia_ipe.task.edit",
+        "apmatia_ipe.task.list",
+    ]
+    assert payload[0]["views"] == [
+        "apmatia_ipe.calendar_event.view",
+        "apmatia_ipe.habit.view",
+        "apmatia_ipe.idea.view",
+        "apmatia_ipe.project.view",
+        "apmatia_ipe.task.view",
+    ]
+    assert payload[1]["module"]["module_id"] == "example"
+    assert payload[1]["module"]["name"] == "Example Module"
 
 
 def test_cli_module_show_displays_example_module_details(capsys):

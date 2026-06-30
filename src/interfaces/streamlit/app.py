@@ -3,13 +3,16 @@ from pathlib import Path
 
 import streamlit as st
 
-from src.interfaces.streamlit.api_client import ApiError, get_auth_session, get_settings, logout
+from src.api.internal.apmatia_ipe import ensure_ipe_coach_agent_for_user
+from src.interfaces.streamlit.api_client import ApiError, get_auth_session, get_settings, list_modules as list_module_catalog, logout
 from src.interfaces.streamlit.pages.login import show_auth_form
 from src.interfaces.streamlit.pages import (
     settings,
     model_management,
+    module_management,
     agent_management,
     memory_management,
+    module_views,
     tool_management,
     user_management,
     discussion,
@@ -27,7 +30,9 @@ PAGE_OPTIONS = [
     "tutor_live_discussion",
     "tutor_session_wiki",
     "model_management",
+    "module_management",
     "agent_management",
+    "module_view",
     "user_management",
     "memory_management",
     "tool_management",
@@ -49,6 +54,8 @@ def _format_page_label(page: str) -> str:
         return "📚 Tutor · Session Wiki"
     if page == "model_management":
         return "🧩 AI Models"
+    if page == "module_management":
+        return "📦 Modules"
     if page == "agent_management":
         return "🤖 Agents"
     if page == "user_management":
@@ -475,6 +482,7 @@ def render_sidebar():
         "tutor_live_discussion",
         "tutor_session_wiki",
     }
+    visible_modules = _visible_module_catalog()
 
     def _nav_button(page: str) -> None:
         if st.sidebar.button(
@@ -493,9 +501,15 @@ def render_sidebar():
         _nav_button("tutor_session_config")
         _nav_button("tutor_live_discussion")
         _nav_button("tutor_session_wiki")
+    if visible_modules:
+        st.sidebar.divider()
+        st.sidebar.subheader("Modules")
+        for module in visible_modules:
+            _render_module_sidebar_section(module)
     st.sidebar.divider()
     st.sidebar.subheader("Management")
     _nav_button("model_management")
+    _nav_button("module_management")
     _nav_button("agent_management")
     _nav_button("user_management")
     _nav_button("memory_management")
@@ -503,6 +517,74 @@ def render_sidebar():
     st.sidebar.divider()
     _nav_button("settings")
     return st.session_state["selected_page"]
+
+
+def _visible_module_catalog() -> list[dict[str, object]]:
+    try:
+        modules = list_module_catalog()
+    except ApiError:
+        return []
+
+    visible_modules: list[dict[str, object]] = []
+    for module in modules:
+        if bool(module.get("hidden", False)):
+            continue
+        visible_views = [
+            view
+            for view in list(module.get("views") or [])
+            if not bool(view.get("effective_hidden", False))
+        ]
+        visible_modules.append({**module, "views": visible_views})
+    return visible_modules
+
+
+def _render_module_sidebar_section(module: dict[str, object]) -> None:
+    module_id = str(module.get("module_id") or "")
+    module_name = str(module.get("name") or module_id or "Unnamed module")
+    module_views = list(module.get("views") or [])
+    is_active_module = (
+        st.session_state.get("selected_page") == "module_view"
+        and st.session_state.get("selected_module_id") == module_id
+    )
+
+    if st.sidebar.button(
+        module_name,
+        key=f"nav_module_{module_id}",
+        use_container_width=True,
+        type="primary" if is_active_module else "secondary",
+    ):
+        _select_module_for_navigation(module_id, module_views)
+
+    if not is_active_module:
+        return
+
+    st.sidebar.subheader(module_name)
+    for view in module_views:
+        view_id = str(view.get("view_id") or "")
+        view_name = str(view.get("name") or view_id or "Unnamed view")
+        is_active_view = st.session_state.get("selected_module_view_id") == view_id
+        if st.sidebar.button(
+            view_name,
+            key=f"nav_module_view_{view_id}",
+            use_container_width=True,
+            type="primary" if is_active_view else "secondary",
+        ):
+            st.session_state["selected_page"] = "module_view"
+            st.session_state["selected_module_id"] = module_id
+            st.session_state["selected_module_view_id"] = view_id
+            st.rerun()
+
+
+def _select_module_for_navigation(module_id: str, module_views: list[dict[str, object]]) -> None:
+    st.session_state["selected_page"] = "module_view"
+    st.session_state["selected_module_id"] = module_id
+    current_view_id = st.session_state.get("selected_module_view_id")
+    visible_view_ids = {str(view.get("view_id") or "") for view in module_views}
+    if current_view_id in visible_view_ids:
+        st.session_state["selected_module_view_id"] = current_view_id
+    else:
+        st.session_state["selected_module_view_id"] = None if not module_views else str(module_views[0].get("view_id") or "")
+    st.rerun()
 
 
 def _set_theme_preference(theme: str) -> None:
@@ -594,6 +676,15 @@ def main():
         show_auth_form()
         return
 
+    session_user = st.session_state.get("authenticated_user") or {}
+    try:
+        user_id = session_user.get("user_id")
+        if user_id is not None:
+            ensure_ipe_coach_agent_for_user(int(user_id), username=str(session_user.get("username") or ""))
+    except Exception:
+        # Onboarding should never block the UI.
+        pass
+
     _process_header_actions()
     render_top_bar()
 
@@ -608,8 +699,16 @@ def main():
         model_management.render()
         return
 
+    if selected_page == "module_management":
+        module_management.render()
+        return
+
     if selected_page == "agent_management":
         agent_management.render()
+        return
+
+    if selected_page == "module_view":
+        module_views.render()
         return
 
     if selected_page == "user_management":

@@ -2,6 +2,14 @@
 
 All notable changes to Apmatia are documented in this file.
 
+## 0.0.1.7 - Module View Adapter and Schema Inference
+
+- Added a generic Streamlit module view adapter under `src/interfaces/streamlit/module_views/` so module views can be rendered from opaque registry-backed descriptors instead of handwritten page code.
+- Added a minimal, extendible module view schema layer that can infer table columns and create forms from dataclass-backed model fields, with small per-field overrides for labels, visibility, and widget hints.
+- Wired the Streamlit shell to use module visibility from the module management API so hidden modules and hidden views disappear from the left navigation.
+- Added a generic module-view runtime and API endpoints so Streamlit can list module items and execute module commands through the application boundary instead of calling module internals directly.
+- Promoted `apmatia_ipe` as the first bundled module to use this path for real functionality, including idea capture through the inferred form schema.
+
 ## 0.0.1.6 - Modular Architecture and Workspace Modules
 
 - Added the bundled module system under `src/modules/` so packaged application features can

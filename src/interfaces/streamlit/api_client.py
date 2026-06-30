@@ -218,6 +218,26 @@ def test_llm_config(config_id: int) -> dict[str, Any]:
     return _request("POST", f"/model-configs/{config_id}/test")
 
 
+def list_modules() -> list[dict[str, Any]]:
+    return _request("GET", "/modules")
+
+
+def set_module_visibility(module_id: str, *, hidden: bool) -> dict[str, Any]:
+    return _request("PATCH", f"/modules/{module_id}/visibility", json={"hidden": hidden})
+
+
+def set_module_view_visibility(view_id: str, *, hidden: bool) -> dict[str, Any]:
+    return _request("PATCH", f"/module-views/{view_id}/visibility", json={"hidden": hidden})
+
+
+def list_module_view_items(view_id: str) -> list[dict[str, Any]]:
+    return _request("GET", f"/module-views/{view_id}/items")
+
+
+def execute_module_command(command_id: str, **payload: Any) -> dict[str, Any]:
+    return _request("POST", f"/module-commands/{command_id}", json={"payload": payload})
+
+
 def list_agents() -> list[dict[str, Any]]:
     return _request("GET", "/agents")
 

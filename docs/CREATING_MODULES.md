@@ -195,7 +195,7 @@ apmatia module plan productivity
 apmatia module create productivity --name "Productivity"
 apmatia module validate productivity
 apmatia module list
-apmatia module show example
+apmatia module show apmatia_worksim
 ```
 
 Workspace-aware examples:

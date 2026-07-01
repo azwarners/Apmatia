@@ -130,13 +130,13 @@ def test_cli_module_create_uses_scaffold_helper(tmp_path):
     mock_create_module_scaffold.assert_called_once()
 
 
-def test_cli_module_list_includes_example_module(capsys):
+def test_cli_module_list_includes_worksim_module(capsys):
     exit_code = main(["module", "list"])
 
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "example | Example Module | 0.1.0" in captured.out
+    assert "apmatia_worksim | Apmatia Worksim | 0.1.0" in captured.out
 
 
 def test_cli_module_list_json_output_is_valid_json(capsys):
@@ -147,10 +147,11 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
 
     assert exit_code == 0
     assert isinstance(payload, list)
-    assert [item["module"]["module_id"] for item in payload] == ["apmatia_ipe", "example"]
+    assert [item["module"]["module_id"] for item in payload] == ["apmatia_ipe", "apmatia_worksim"]
     assert payload[0]["module"]["name"] == "Apmatia Integrated Productivity Environment"
     assert payload[0]["module"]["version"] == "0.1.0"
     assert payload[0]["module"]["description"] == "An integrated workspace for ideas, tasks, projects, habits, and calendar planning."
+    assert payload[1]["module"]["author"] == "Nick"
     assert payload[0]["source"] == "bundled"
     assert payload[0]["is_workspace"] is False
     assert payload[0]["module"]["metadata"] == {"category": "productivity", "tags": ["ideas", "tasks", "projects", "habits", "calendar", "assistant"]}
@@ -197,49 +198,78 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "apmatia_ipe.project.view",
         "apmatia_ipe.task.view",
     ]
-    assert payload[1]["module"]["module_id"] == "example"
-    assert payload[1]["module"]["name"] == "Example Module"
+    assert payload[1]["module"]["module_id"] == "apmatia_worksim"
+    assert payload[1]["module"]["name"] == "Apmatia Worksim"
+    assert payload[1]["module"]["version"] == "0.1.0"
+    assert payload[1]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
+    assert payload[1]["module"]["author"] == "Nick"
+    assert payload[1]["module"]["metadata"] == {
+        "category": "workspace",
+        "tags": ["wiki", "org-chart", "agents", "teams", "simulation"],
+    }
+    assert payload[1]["actions"] == ["apmatia_worksim.org_chart_node"]
+    assert payload[1]["commands"] == [
+        "apmatia_worksim.org_chart_node.create",
+        "apmatia_worksim.org_chart_node.delete",
+        "apmatia_worksim.org_chart_node.edit",
+        "apmatia_worksim.org_chart_node.list",
+    ]
+    assert payload[1]["views"] == ["apmatia_worksim.org_chart_node.view"]
 
 
-def test_cli_module_show_displays_example_module_details(capsys):
-    exit_code = main(["module", "show", "example"])
+def test_cli_module_show_displays_worksim_module_details(capsys):
+    exit_code = main(["module", "show", "apmatia_worksim"])
 
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "Module: example" in captured.out
-    assert "Name: Example Module" in captured.out
+    assert "Module: apmatia_worksim" in captured.out
+    assert "Name: Apmatia Worksim" in captured.out
     assert "Version: 0.1.0" in captured.out
-    assert "Description: Minimal bundled example module." in captured.out
+    assert "Description: A workplace simulation module centered on a persistent org chart wiki." in captured.out
     assert "Author:" in captured.out
     assert "Metadata:" in captured.out
-    assert "  Category:" in captured.out
+    assert "  Category: workspace" in captured.out
     assert "Dependencies:" in captured.out
     assert "  Python:" in captured.out
-    assert "Actions: example.action" in captured.out
-    assert "Commands: example.command" in captured.out
-    assert "Views: example.view" in captured.out
+    assert "Actions: apmatia_worksim.org_chart_node" in captured.out
+    assert "Commands: apmatia_worksim.org_chart_node.create, apmatia_worksim.org_chart_node.delete, apmatia_worksim.org_chart_node.edit, apmatia_worksim.org_chart_node.list" in captured.out
+    assert "Views: apmatia_worksim.org_chart_node.view" in captured.out
 
 
 def test_cli_module_show_json_output_is_valid_json(capsys):
-    exit_code = main(["module", "show", "example", "--format", "json"])
+    exit_code = main(["module", "show", "apmatia_worksim", "--format", "json"])
 
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
 
     assert exit_code == 0
-    assert payload["module"]["module_id"] == "example"
-    assert payload["module"]["name"] == "Example Module"
+    assert payload["module"]["module_id"] == "apmatia_worksim"
+    assert payload["module"]["name"] == "Apmatia Worksim"
     assert payload["module"]["version"] == "0.1.0"
-    assert payload["module"]["description"] == "Minimal bundled example module."
-    assert payload["module"]["author"] == ""
+    assert payload["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
+    assert payload["module"]["author"] == "Nick"
     assert payload["source"] == "bundled"
     assert payload["is_workspace"] is False
-    assert payload["module"]["metadata"] == {}
-    assert payload["module"]["dependencies"] == {}
-    assert payload["actions"] == ["example.action"]
-    assert payload["commands"] == ["example.command"]
-    assert payload["views"] == ["example.view"]
+    assert payload["module"]["metadata"] == {
+        "category": "workspace",
+        "tags": ["wiki", "org-chart", "agents", "teams", "simulation"],
+    }
+    assert payload["module"]["dependencies"] == {
+        "python": ">=3.10",
+        "python_packages": [],
+        "system_packages": [],
+        "modules": [],
+        "tools": [],
+    }
+    assert payload["actions"] == ["apmatia_worksim.org_chart_node"]
+    assert payload["commands"] == [
+        "apmatia_worksim.org_chart_node.create",
+        "apmatia_worksim.org_chart_node.delete",
+        "apmatia_worksim.org_chart_node.edit",
+        "apmatia_worksim.org_chart_node.list",
+    ]
+    assert payload["views"] == ["apmatia_worksim.org_chart_node.view"]
 
 
 def test_cli_module_show_missing_module_fails(capsys):

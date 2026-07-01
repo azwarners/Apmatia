@@ -79,9 +79,9 @@ def test_adapt_module_view_infers_columns_and_create_form_from_schema():
     view.metadata["ui"].pop("columns", None)
     view.metadata["schema"] = {
         "fields": [
-            {"key": "name", "label": "Name", "list": True, "create": True},
-            {"key": "details", "label": "Details", "list": True, "create": True, "field_type": "textarea"},
-            {"key": "created_at", "label": "Created", "list": True, "create": False},
+            {"key": "name", "label": "Name", "list": True, "create": True, "edit": True},
+            {"key": "details", "label": "Details", "list": True, "create": True, "edit": True, "field_type": "textarea"},
+            {"key": "created_at", "label": "Created", "list": True, "create": False, "edit": False},
         ],
         "create": {
             "key": "create_example",
@@ -97,6 +97,10 @@ def test_adapt_module_view_infers_columns_and_create_form_from_schema():
     assert spec.create_form.key == "create_example"
     assert spec.create_form.title == "Create example"
     assert [field.key for field in spec.create_form.fields] == ["name", "details"]
+    assert spec.edit_form is not None
+    assert spec.edit_form.key == "edit"
+    assert spec.edit_form.title == "Edit example"
+    assert [field.key for field in spec.edit_form.fields] == ["name", "details"]
 
 
 def test_adapt_module_view_supports_existing_registry_collection_shape():
@@ -136,6 +140,7 @@ def test_adapt_module_view_supports_existing_registry_collection_shape():
     assert [action.intent for action in spec.item_actions] == ["edit", "delete"]
     assert spec.view_actions[0].payload == {"command_id": "example.tasks.create"}
     assert spec.item_actions[1].payload == {"command_id": "example.tasks.delete"}
+    assert spec.item_actions[1].confirmation is True
 
 
 def test_render_module_view_renders_empty_state(mock_streamlit):

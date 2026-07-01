@@ -9,17 +9,17 @@ from src.core.registry import (
 from src.core.registry import bootstrap
 
 
-def test_load_bundled_modules_loads_example_module():
+def test_load_bundled_modules_loads_bundled_modules():
     registry = load_bundled_modules(Registry())
 
-    assert [module.module_id for module in registry.list_modules()] == ["apmatia_ipe", "example"]
+    assert [module.module_id for module in registry.list_modules()] == ["apmatia_ipe", "apmatia_worksim"]
     assert [action.action_id for action in registry.list_actions()] == [
         "apmatia_ipe.calendar_event",
         "apmatia_ipe.habit",
         "apmatia_ipe.idea",
         "apmatia_ipe.project",
         "apmatia_ipe.task",
-        "example.action",
+        "apmatia_worksim.org_chart_node",
     ]
     assert [command.command_id for command in registry.list_commands()] == [
         "apmatia_ipe.calendar_event.create",
@@ -42,7 +42,10 @@ def test_load_bundled_modules_loads_example_module():
         "apmatia_ipe.task.delete",
         "apmatia_ipe.task.edit",
         "apmatia_ipe.task.list",
-        "example.command",
+        "apmatia_worksim.org_chart_node.create",
+        "apmatia_worksim.org_chart_node.delete",
+        "apmatia_worksim.org_chart_node.edit",
+        "apmatia_worksim.org_chart_node.list",
     ]
     assert [view.view_id for view in registry.list_views()] == [
         "apmatia_ipe.calendar_event.view",
@@ -50,7 +53,7 @@ def test_load_bundled_modules_loads_example_module():
         "apmatia_ipe.idea.view",
         "apmatia_ipe.project.view",
         "apmatia_ipe.task.view",
-        "example.view",
+        "apmatia_worksim.org_chart_node.view",
     ]
 
 
@@ -70,4 +73,4 @@ def test_get_application_registry_returns_cached_registry():
     second = get_application_registry()
 
     assert first is second
-    assert [module.module_id for module in first.list_modules()] == ["apmatia_ipe", "example"]
+    assert [module.module_id for module in first.list_modules()] == ["apmatia_ipe", "apmatia_worksim"]

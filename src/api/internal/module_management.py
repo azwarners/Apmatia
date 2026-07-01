@@ -5,6 +5,7 @@ from src.core.module_management import (
     get_view_catalog_entry,
     list_module_catalog,
     set_module_hidden,
+    set_view_order,
     set_view_hidden,
 )
 
@@ -19,3 +20,7 @@ def update_module_visibility(module_id: str, *, hidden: bool) -> dict:
 
 def update_view_visibility(view_id: str, *, hidden: bool) -> dict:
     return get_view_catalog_entry(view_id) if hidden is None else set_view_hidden(view_id, hidden=hidden)
+
+
+def update_view_order(module_id: str, view_id: str, *, new_index: int) -> dict:
+    return set_view_order(module_id, view_id, new_index=new_index)

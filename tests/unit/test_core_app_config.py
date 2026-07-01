@@ -63,6 +63,7 @@ class TestDefaultConfig:
 
         assert config["ui"]["theme"] == "dark"
         assert config["ui"]["font_family"] == "system-ui"
+        assert config["ui"]["accent_color"] == "#ff6b6b"
         assert config["ui"]["font_size"] == 16
 
     def test_llama_server_config_structure(self):

@@ -11,6 +11,7 @@ def build_collection_view_schema(
     *,
     list_fields: tuple[str, ...] = (),
     create_fields: tuple[str, ...] = (),
+    edit_fields: tuple[str, ...] = (),
     field_overrides: dict[str, dict[str, Any]] | None = None,
     create: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -30,6 +31,7 @@ def build_collection_view_schema(
             "data_type": str(override.pop("data_type", _infer_data_type(dataclass_field.type))),
             "field_type": str(override.pop("field_type", _infer_field_type(dataclass_field.type))),
             "create": bool(override.pop("create", dataclass_field.name in create_fields)),
+            "edit": bool(override.pop("edit", dataclass_field.name in edit_fields or dataclass_field.name not in {"id", "created_at", "updated_at"})),
             "list": bool(override.pop("list", dataclass_field.name in list_fields)),
             "required": bool(override.pop("required", _is_required(dataclass_field))),
         }

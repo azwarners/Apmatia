@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Mapping
 
 import streamlit as st
 
@@ -77,15 +77,16 @@ def render_collection_view(
             with table_columns[-1]:
                 st.caption("Actions")
 
-    for item in spec.items:
+    for index, item in enumerate(spec.items):
         with st.container(border=True):
-            render_collection_row(spec, item, on_intent=on_intent)
+            render_collection_row(spec, item, row_index=index, on_intent=on_intent)
 
 
 def render_collection_row(
     spec: CollectionViewDescriptor,
     item: Any,
     *,
+    row_index: int,
     on_intent: Callable[[ModuleViewIntent], None] | None = None,
 ) -> None:
     if spec.columns:
@@ -95,12 +96,12 @@ def render_collection_row(
                 st.write(_format_item_value(item, column.key, column.empty_value))
         if spec.item_actions:
             with row_columns[-1]:
-                _render_item_actions(spec, item, on_intent=on_intent)
+                _render_item_actions(spec, item, row_index=row_index, on_intent=on_intent)
         return
 
     st.write(_summarize_item(item))
     if spec.item_actions:
-        _render_item_actions(spec, item, on_intent=on_intent)
+        _render_item_actions(spec, item, row_index=row_index, on_intent=on_intent)
 
 
 def render_unsupported_view(spec: CollectionViewDescriptor) -> None:
@@ -115,16 +116,19 @@ def render_module_view_form(
     form: ModuleViewFormDescriptor,
     *,
     form_key: str,
+    title: str | None = None,
+    submit_label: str | None = None,
+    initial_values: Mapping[str, Any] | None = None,
 ) -> tuple[bool, bool, dict[str, Any]]:
-    st.subheader(form.title)
+    st.subheader(title or form.title)
     if form.description:
         st.caption(form.description)
 
     payload: dict[str, Any] = {}
     with st.form(form_key):
         for field in form.fields:
-            payload[field.key] = _render_form_field(field)
-        submitted = st.form_submit_button(form.submit_label)
+            payload[field.key] = _render_form_field(field, initial_value=None if initial_values is None else initial_values.get(field.key))
+        submitted = st.form_submit_button(submit_label or form.submit_label)
         cancelled = bool(st.form_submit_button(form.cancel_label)) if form.cancel_label else False
     return submitted, cancelled, payload
 
@@ -133,6 +137,7 @@ def _render_item_actions(
     spec: CollectionViewDescriptor,
     item: Any,
     *,
+    row_index: int,
     on_intent: Callable[[ModuleViewIntent], None] | None = None,
 ) -> None:
     if not spec.item_actions:
@@ -141,7 +146,8 @@ def _render_item_actions(
     action_columns = st.columns(len(spec.item_actions))
     for column, action in zip(action_columns, spec.item_actions):
         with column:
-            if _button(action, key_prefix=f"{spec.view_id}-{_item_id(item, spec.item_key)}", disabled=False):
+            item_key = _item_key(item, spec.item_key, row_index=row_index)
+            if _button(action, key_prefix=f"{spec.view_id}-{item_key}", disabled=False):
                 _emit_item_intent(spec, action, item=item, on_intent=on_intent)
 
 
@@ -186,8 +192,9 @@ def _button(action: ModuleViewActionDescriptor, *, key_prefix: str, disabled: bo
     )
 
 
-def _render_form_field(field: ModuleViewFormFieldDescriptor) -> Any:
+def _render_form_field(field: ModuleViewFormFieldDescriptor, *, initial_value: Any = None) -> Any:
     field_type = field.field_type.lower().strip()
+    value = initial_value if initial_value not in (None, "") else field.default
     common_kwargs = {
         "help": field.help_text or None,
     }
@@ -195,15 +202,15 @@ def _render_form_field(field: ModuleViewFormFieldDescriptor) -> Any:
     if field_type == "textarea":
         return st.text_area(
             field.label,
-            value=str(field.default or ""),
+            value=_stringify_form_value(value),
             placeholder=field.placeholder,
             **common_kwargs,
         )
     if field_type == "number":
-        value = field.default if field.default not in (None, "") else 0
+        number_value = value if isinstance(value, (int, float)) else field.default if isinstance(field.default, (int, float)) else 0
         return st.number_input(
             field.label,
-            value=value,
+            value=number_value,
             min_value=field.min_value,
             max_value=field.max_value,
             step=field.step,
@@ -212,14 +219,14 @@ def _render_form_field(field: ModuleViewFormFieldDescriptor) -> Any:
     if field_type == "checkbox":
         return st.checkbox(
             field.label,
-            value=bool(field.default),
+            value=bool(value),
             help=field.help_text or None,
         )
     if field_type == "select":
         options = list(field.options)
         if not options:
             return ""
-        default_value = str(field.default) if field.default not in (None, "") else options[0]
+        default_value = str(value) if value not in (None, "") else str(field.default) if field.default not in (None, "") else options[0]
         try:
             index = options.index(default_value)
         except ValueError:
@@ -233,10 +240,20 @@ def _render_form_field(field: ModuleViewFormFieldDescriptor) -> Any:
 
     return st.text_input(
         field.label,
-        value=str(field.default or ""),
+        value=_stringify_form_value(value),
         placeholder=field.placeholder,
         **common_kwargs,
     )
+
+
+def _stringify_form_value(value: Any) -> str:
+    if value in (None, ""):
+        return ""
+    if isinstance(value, (list, tuple)):
+        return ", ".join(str(item) for item in value if str(item).strip())
+    if isinstance(value, dict):
+        return json.dumps(value, ensure_ascii=False, default=str)
+    return str(value)
 
 
 def _format_item_value(item: Any, key: str, empty_value: str) -> str:
@@ -265,3 +282,10 @@ def _item_id(item: Any, key: str) -> str | None:
     if value is None:
         return None
     return str(value)
+
+
+def _item_key(item: Any, key: str, *, row_index: int) -> str:
+    item_id = _item_id(item, key)
+    if item_id:
+        return item_id
+    return f"row-{row_index}"

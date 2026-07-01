@@ -38,6 +38,10 @@ def render() -> None:
                 "Font family",
                 value=current.get("font_family", "system-ui"),
             )
+            accent_color = st.color_picker(
+                "Accent color",
+                value=str(current.get("accent_color", "#ff6b6b") or "#ff6b6b"),
+            )
         with appearance_right:
             font_size = st.slider(
                 "Font size",
@@ -67,6 +71,7 @@ def render() -> None:
         llama_server_log_dir=llama_server_log_dir,
         theme=theme,
         font_family=font_family,
+        accent_color=accent_color,
         font_size=int(font_size),
         title_bar_height=int(title_bar_height),
         title_bar_font_size=int(title_bar_font_size),
@@ -78,4 +83,8 @@ def render() -> None:
         st.error(f"Unable to save settings: {error.detail}")
         return
 
+    st.session_state["ui_theme_preference"] = theme
+    st.session_state["ui_font_family"] = font_family
+    st.session_state["ui_accent_color"] = accent_color
     st.success("Settings saved.")
+    st.rerun()

@@ -7,6 +7,7 @@ from src.interfaces.streamlit.api_client import (
     ApiError,
     list_modules,
     set_module_visibility,
+    set_module_view_order,
     set_module_view_visibility,
 )
 
@@ -27,7 +28,10 @@ def render() -> None:
         return
 
     st.title("Module Management")
-    st.caption("Hide modules or individual module views through the local API. This is the first step toward broader module configuration.")
+    st.caption(
+        "Hide modules, reorder module views, or hide individual views through the local API. "
+        "View order controls the left navigation."
+    )
 
     if not modules:
         st.info("No modules are registered yet.")
@@ -73,15 +77,45 @@ def render() -> None:
                 view_name = str(view.get("name") or view_id or "Unnamed view")
                 effective_hidden = bool(view.get("effective_hidden", False))
                 explicit_hidden = bool(view.get("hidden", False))
+                sort_order = int(view.get("sort_order") or 0)
+                last_order = max(len(views) - 1, 0)
 
-                view_left, view_right = st.columns([3, 1])
+                view_left, move_up_col, move_down_col, view_right = st.columns([4, 1, 1, 1])
                 with view_left:
                     st.write(view_name)
                     description = str(view.get("description") or "").strip()
                     state_text = "hidden by module" if module_hidden and not explicit_hidden else ("hidden" if effective_hidden else "visible")
-                    st.caption(f"{view_id} · {state_text}")
+                    st.caption(f"{view_id} · {state_text} · order {sort_order + 1} of {len(views)}")
                     if description:
                         st.caption(description)
+                with move_up_col:
+                    if st.button(
+                        "Move up",
+                        key=f"move_view_up_{view_id}",
+                        use_container_width=True,
+                        disabled=sort_order == 0,
+                    ):
+                        try:
+                            set_module_view_order(module_id, view_id, new_index=sort_order - 1)
+                        except ApiError as error:
+                            st.error(f"Unable to reorder view: {error.detail}")
+                        else:
+                            st.success(f"{view_name} moved up.")
+                            st.rerun()
+                with move_down_col:
+                    if st.button(
+                        "Move down",
+                        key=f"move_view_down_{view_id}",
+                        use_container_width=True,
+                        disabled=sort_order >= last_order,
+                    ):
+                        try:
+                            set_module_view_order(module_id, view_id, new_index=sort_order + 1)
+                        except ApiError as error:
+                            st.error(f"Unable to reorder view: {error.detail}")
+                        else:
+                            st.success(f"{view_name} moved down.")
+                            st.rerun()
                 with view_right:
                     if st.button(_view_toggle_label(view), key=f"toggle_view_{view_id}", use_container_width=True):
                         try:

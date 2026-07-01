@@ -230,6 +230,10 @@ def set_module_view_visibility(view_id: str, *, hidden: bool) -> dict[str, Any]:
     return _request("PATCH", f"/module-views/{view_id}/visibility", json={"hidden": hidden})
 
 
+def set_module_view_order(module_id: str, view_id: str, *, new_index: int) -> dict[str, Any]:
+    return _request("PATCH", f"/modules/{module_id}/views/{view_id}/order", json={"new_index": new_index})
+
+
 def list_module_view_items(view_id: str) -> list[dict[str, Any]]:
     return _request("GET", f"/module-views/{view_id}/items")
 

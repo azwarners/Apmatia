@@ -70,6 +70,7 @@ class CollectionViewDescriptor:
     item_actions: tuple[ModuleViewActionDescriptor, ...] = ()
     view_actions: tuple[ModuleViewActionDescriptor, ...] = ()
     create_form: ModuleViewFormDescriptor | None = None
+    edit_form: ModuleViewFormDescriptor | None = None
     items: tuple[Any, ...] = ()
     unsupported_reason: str | None = None
 

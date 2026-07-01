@@ -4,7 +4,7 @@ import subprocess
 import sys
 
 from src.core.registry import ActionContribution, CommandContribution, ModuleMetadata, Registry, ViewContribution
-from src.modules.example.module import register as register_example_module
+from src.modules.apmatia_worksim.module import register as register_worksim_module
 
 
 def test_registry_registers_and_lists_module():
@@ -57,22 +57,31 @@ def test_registry_registers_and_lists_view():
     assert registry.list_views() == [view]
 
 
-def test_example_module_registers_into_registry():
+def test_worksim_module_registers_into_registry():
     registry = Registry()
 
-    register_example_module(registry)
+    register_worksim_module(registry)
 
     assert registry.list_modules() == [
         ModuleMetadata(
-            module_id="example",
-            name="Example Module",
+            module_id="apmatia_worksim",
+            name="Apmatia Worksim",
             version="0.1.0",
-            description="Minimal bundled example module.",
+            description="A workplace simulation module centered on a persistent org chart wiki.",
+            metadata={
+                "category": "workspace",
+                "tags": ["wiki", "org-chart", "agents", "teams", "simulation"],
+            },
         )
     ]
-    assert [action.action_id for action in registry.list_actions()] == ["example.action"]
-    assert [command.command_id for command in registry.list_commands()] == ["example.command"]
-    assert [view.view_id for view in registry.list_views()] == ["example.view"]
+    assert [action.action_id for action in registry.list_actions()] == ["apmatia_worksim.org_chart_node"]
+    assert [command.command_id for command in registry.list_commands()] == [
+        "apmatia_worksim.org_chart_node.create",
+        "apmatia_worksim.org_chart_node.delete",
+        "apmatia_worksim.org_chart_node.edit",
+        "apmatia_worksim.org_chart_node.list",
+    ]
+    assert [view.view_id for view in registry.list_views()] == ["apmatia_worksim.org_chart_node.view"]
 
 
 def test_core_registry_import_does_not_require_streamlit():

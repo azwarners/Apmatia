@@ -86,6 +86,16 @@ def adapt_module_view(
                 _mapping_value(metadata, "schema", default=None),
                 default_key="create",
                 default_title=f"Create {str(_mapping_value(metadata, 'singular_label', default='item') or 'item')}",
+                field_flag="create",
+            )
+        ),
+        edit_form=(
+            _parse_form_descriptor(_mapping_value(ui, "edit_form", default=None), default_key="edit")
+            or _form_from_schema(
+                _mapping_value(metadata, "schema", default=None),
+                default_key="edit",
+                default_title=f"Edit {str(_mapping_value(metadata, 'singular_label', default='item') or 'item')}",
+                field_flag="edit",
             )
         ),
         items=resolved_items,
@@ -240,7 +250,13 @@ def _columns_from_schema(raw_schema: Any) -> list[CollectionColumnDescriptor]:
     return columns
 
 
-def _form_from_schema(raw_schema: Any, *, default_key: str, default_title: str) -> ModuleViewFormDescriptor | None:
+def _form_from_schema(
+    raw_schema: Any,
+    *,
+    default_key: str,
+    default_title: str,
+    field_flag: str,
+) -> ModuleViewFormDescriptor | None:
     if not isinstance(raw_schema, Mapping):
         return None
 
@@ -250,7 +266,7 @@ def _form_from_schema(raw_schema: Any, *, default_key: str, default_title: str) 
 
     fields: list[ModuleViewFormFieldDescriptor] = []
     for entry in raw_fields:
-        if not isinstance(entry, Mapping) or not bool(entry.get("create", False)):
+        if not isinstance(entry, Mapping) or not bool(entry.get(field_flag, False)):
             continue
         key = str(entry.get("key") or "").strip()
         if not key:
@@ -280,11 +296,21 @@ def _form_from_schema(raw_schema: Any, *, default_key: str, default_title: str) 
     if not fields:
         return None
 
-    create_metadata = raw_schema.get("create")
-    create_section = create_metadata if isinstance(create_metadata, Mapping) else {}
+    section_key = "create" if field_flag == "create" else "edit"
+    section_metadata = raw_schema.get(section_key)
+    create_section = section_metadata if isinstance(section_metadata, Mapping) else {}
+    fallback_section = raw_schema.get("create") if field_flag == "edit" else None
+    fallback_section = fallback_section if isinstance(fallback_section, Mapping) else {}
+    title = str(
+        create_section.get("title")
+        or (fallback_section.get("title") if field_flag == "edit" else "")
+        or default_title
+    ).strip() or default_title
+    if field_flag == "edit":
+        title = _edit_title(title)
     return ModuleViewFormDescriptor(
         key=str(create_section.get("key") or default_key).strip() or default_key,
-        title=str(create_section.get("title") or default_title).strip() or default_title,
+        title=title,
         description=str(create_section.get("description") or "").strip(),
         submit_label=str(create_section.get("submit_label") or "Save").strip() or "Save",
         cancel_label=str(create_section.get("cancel_label") or "Cancel").strip() or "Cancel",
@@ -330,6 +356,7 @@ def _actions_from_commands(raw_commands: Any) -> tuple[tuple[ModuleViewActionDes
             intent=key,
             scope=scope,
             style=style,
+            confirmation=key == "delete",
             payload={"command_id": str(command_id)},
         )
         if scope == "view":
@@ -337,3 +364,16 @@ def _actions_from_commands(raw_commands: Any) -> tuple[tuple[ModuleViewActionDes
         else:
             item_actions.append(descriptor)
     return tuple(view_actions), tuple(item_actions)
+
+
+def _edit_title(title: str) -> str:
+    parts = title.split(maxsplit=1)
+    if not parts:
+        return "Edit"
+    if parts[0].lower() in {"create", "capture", "new"}:
+        if len(parts) == 1:
+            return "Edit"
+        return f"Edit {parts[1]}"
+    if title.lower().startswith("edit "):
+        return title
+    return f"Edit {title}".strip()

@@ -1,0 +1,17 @@
+[module]
+module_id = "apmatia_worksim"
+name = "Apmatia Worksim"
+version = "0.1.0"
+description = "A workplace simulation module centered on a persistent org chart wiki."
+author = "Nick"
+
+[metadata]
+category = "workspace"
+tags = ["wiki", "org-chart", "agents", "teams", "simulation"]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []

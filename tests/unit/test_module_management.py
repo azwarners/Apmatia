@@ -20,10 +20,10 @@ def _registry_with_modules() -> Registry:
     )
     registry.register_module(
         ModuleMetadata(
-            module_id="example",
-            name="Example Module",
+            module_id="apmatia_worksim",
+            name="Apmatia Worksim",
             version="0.1.0",
-            description="Minimal example.",
+            description="A workplace simulation module centered on a persistent org chart wiki.",
         )
     )
     registry.register_view(
@@ -61,7 +61,7 @@ def test_list_module_catalog_combines_registry_and_hidden_settings():
     ):
         catalog = list_module_catalog()
 
-    assert [module["module_id"] for module in catalog] == ["apmatia_ipe", "example"]
+    assert [module["module_id"] for module in catalog] == ["apmatia_ipe", "apmatia_worksim"]
     ipe_module = catalog[0]
     assert ipe_module["hidden"] is True
     assert ipe_module["view_count"] == 2
@@ -78,7 +78,7 @@ def test_list_module_catalog_combines_registry_and_hidden_settings():
 
 def test_set_module_hidden_persists_sorted_unique_hidden_module_ids():
     values = {
-        ("ui", "hidden_module_ids"): ["example", "example"],
+        ("ui", "hidden_module_ids"): ["apmatia_worksim", "apmatia_worksim"],
     }
 
     def fake_get_config_value(*keys, default=None):
@@ -95,7 +95,7 @@ def test_set_module_hidden_persists_sorted_unique_hidden_module_ids():
     mock_set_config_value.assert_called_once_with(
         "ui",
         "hidden_module_ids",
-        value=["apmatia_ipe", "example"],
+        value=["apmatia_ipe", "apmatia_worksim"],
     )
     assert result == {"module_id": "apmatia_ipe", "hidden": True}
 

@@ -1,5 +1,0 @@
-[module]
-module_id = "example"
-name = "Example Module"
-version = "0.1.0"
-description = "Minimal bundled example module."

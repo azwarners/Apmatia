@@ -25,3 +25,11 @@ When reporting changes back to the user, always include the full absolute path o
 Do not use relative paths like `apmatia/...`, `./...`, or bare filenames when describing changed files to the user. Use absolute paths such as `/home/nick/ServerData/repos/apmatia/...` so there is no ambiguity about which checkout is being discussed.
 
 Do not rely on UI hover labels, file cards, shortened link text, or repo-relative display names to establish the file path. When a file is mentioned in a response, the absolute path must be written explicitly in the message body itself.
+
+## Destructive Changes
+
+Do not delete, rename, or remove any existing module, package, directory, or substantial block of code unless the user explicitly names the exact target and clearly asks for that deletion.
+If a request is ambiguous, incomplete, or could be interpreted as changing a different module, ask for clarification before making any destructive change.
+Never infer that an existing module should be removed just because a new module is being added or a refactor is in progress.
+When asked to restore or revert work, only restore the files or paths actually changed in the current task unless the user explicitly requests a broader rollback.
+Before deleting any directory that contains code, summarize exactly what will be removed and wait for confirmation.

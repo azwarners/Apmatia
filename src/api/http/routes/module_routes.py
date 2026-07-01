@@ -7,6 +7,7 @@ from src.api.internal.module_management import (
     list_modules,
     update_module_visibility,
     update_view_visibility,
+    update_view_order,
 )
 from src.api.internal.module_views import get_module_view_items, run_module_command
 
@@ -17,6 +18,10 @@ router = APIRouter(tags=["modules"])
 
 class VisibilityPayload(BaseModel):
     hidden: bool
+
+
+class ViewOrderPayload(BaseModel):
+    new_index: int
 
 
 class ModuleCommandPayload(BaseModel):
@@ -51,6 +56,20 @@ def patch_view_visibility(
     require_session(request)
     try:
         return update_view_visibility(view_id, hidden=payload.hidden)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.patch("/modules/{module_id}/views/{view_id}/order", response_model=dict)
+def patch_view_order(
+    request: Request,
+    payload: ViewOrderPayload,
+    module_id: str = Path(..., description="Module ID"),
+    view_id: str = Path(..., description="View ID"),
+) -> dict:
+    require_session(request)
+    try:
+        return update_view_order(module_id, view_id, new_index=payload.new_index)
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
 

@@ -76,7 +76,7 @@ class SQLiteStore:
             for row in rows:
                 payload = json.loads(row["data"])
                 if isinstance(payload, dict):
-                    results.append({"id": int(row["id"]), **payload})
+                    results.append({**payload, "id": int(row["id"])})
             return results
 
     def update(self, table: str, where: dict[str, Any], data: dict[str, Any]) -> int:

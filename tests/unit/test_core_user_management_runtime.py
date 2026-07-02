@@ -5,7 +5,7 @@ def test_runtime_initializes_singletons_and_reuses_instances(tmp_path, monkeypat
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path / "app"))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
 
-    runtime = importlib.import_module("src.core.user_management_runtime")
+    runtime = importlib.import_module("apmatia.core.user_management_runtime")
     runtime = importlib.reload(runtime)
 
     user_manager_first = runtime.get_user_manager()

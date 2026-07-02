@@ -1,10 +1,10 @@
 from unittest.mock import Mock, patch
 
-from src.api.internal import user_management
-from src.lib.user_management.models import GroupRole
+from apmatia.api.internal import user_management
+from apmatia.lib.user_management.models import GroupRole
 
 
-@patch("src.api.internal.user_management.get_user_manager")
+@patch("apmatia.api.internal.user_management.get_user_manager")
 def test_internal_create_user_delegates_to_user_manager(mock_get_user_manager):
     manager = Mock()
     manager.create_user.return_value = {"id": 1, "username": "nick"}
@@ -16,7 +16,7 @@ def test_internal_create_user_delegates_to_user_manager(mock_get_user_manager):
     manager.create_user.assert_called_once_with(username="nick", password="pw")
 
 
-@patch("src.api.internal.user_management.get_user_manager")
+@patch("apmatia.api.internal.user_management.get_user_manager")
 def test_internal_user_crud_methods_delegate(mock_get_user_manager):
     manager = Mock()
     manager.verify_user.return_value = True
@@ -41,7 +41,7 @@ def test_internal_user_crud_methods_delegate(mock_get_user_manager):
     manager.list_users.assert_called_once_with()
 
 
-@patch("src.api.internal.user_management.get_group_manager")
+@patch("apmatia.api.internal.user_management.get_group_manager")
 def test_internal_group_methods_delegate(mock_get_group_manager):
     manager = Mock()
     manager.create_group.return_value = {"id": 10, "name": "team"}

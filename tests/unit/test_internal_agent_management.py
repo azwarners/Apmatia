@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.api.internal import agent_management
+from apmatia.api.internal import agent_management
 
 
 class MockAgent:
@@ -27,7 +27,7 @@ class TestCreateAgent:
         mock_manager = MagicMock()
         mock_manager.create_agent.return_value = mock_agent
 
-        with patch("src.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
+        with patch("apmatia.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
             result = agent_management.create_agent("Test Agent")
 
         mock_manager.create_agent.assert_called_once_with("Test Agent")
@@ -49,7 +49,7 @@ class TestCreateAgent:
         mock_manager = MagicMock()
         mock_manager.create_agent.return_value = mock_agent
 
-        with patch("src.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
+        with patch("apmatia.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
             result = agent_management.create_agent(
                 "Test Agent",
                 system_prompt_id=10,
@@ -75,7 +75,7 @@ class TestGetAgent:
         mock_manager = MagicMock()
         mock_manager.get_agent.return_value = mock_agent
 
-        with patch("src.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
+        with patch("apmatia.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
             result = agent_management.get_agent(1)
 
         mock_manager.get_agent.assert_called_once_with(1)
@@ -86,7 +86,7 @@ class TestGetAgent:
         mock_manager = MagicMock()
         mock_manager.get_agent.return_value = None
 
-        with patch("src.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
+        with patch("apmatia.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
             result = agent_management.get_agent(999)
 
         assert result is None
@@ -98,7 +98,7 @@ class TestUpdateAgent:
         mock_manager = MagicMock()
         mock_manager.update_agent.return_value = mock_agent
 
-        with patch("src.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
+        with patch("apmatia.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
             result = agent_management.update_agent(1, name="Updated Agent")
 
         mock_manager.update_agent.assert_called_once_with(1, name="Updated Agent")
@@ -114,7 +114,7 @@ class TestUpdateAgent:
         mock_manager = MagicMock()
         mock_manager.update_agent.return_value = mock_agent
 
-        with patch("src.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
+        with patch("apmatia.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
             result = agent_management.update_agent(
                 1, name="Updated Agent", system_prompt_id=1, memory_id=2
             )
@@ -129,7 +129,7 @@ class TestDeleteAgent:
         mock_manager = MagicMock()
         mock_manager.delete_agent.return_value = True
 
-        with patch("src.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
+        with patch("apmatia.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
             result = agent_management.delete_agent(1)
 
         mock_manager.delete_agent.assert_called_once_with(1)
@@ -139,7 +139,7 @@ class TestDeleteAgent:
         mock_manager = MagicMock()
         mock_manager.delete_agent.return_value = False
 
-        with patch("src.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
+        with patch("apmatia.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
             result = agent_management.delete_agent(999)
 
         assert result is False
@@ -152,7 +152,7 @@ class TestListAgents:
         mock_manager = MagicMock()
         mock_manager.list_agents.return_value = [mock_agent1, mock_agent2]
 
-        with patch("src.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
+        with patch("apmatia.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
             result = agent_management.list_agents()
 
         assert len(result) == 2
@@ -165,7 +165,7 @@ class TestListAgents:
         mock_manager = MagicMock()
         mock_manager.list_agents.return_value = []
 
-        with patch("src.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
+        with patch("apmatia.api.internal.agent_management.get_agent_manager", return_value=mock_manager):
             result = agent_management.list_agents()
 
         assert result == []

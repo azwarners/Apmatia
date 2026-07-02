@@ -1,9 +1,9 @@
 from dataclasses import replace
 from unittest.mock import patch
 
-from src.lib.agent_management.models import Agent
-from src.lib.agent_management.services import AgentService
-from src.lib.apmatia_administration.tooling import (
+from apmatia.lib.agent_management.models import Agent
+from apmatia.lib.agent_management.services import AgentService
+from apmatia.lib.apmatia_administration.tooling import (
     ApmatiaAdministrationToolProvider,
     apmatia_administration_tool_definitions,
     build_apmatia_administration_tool_providers,
@@ -102,7 +102,7 @@ class InMemoryAgentService(AgentService):
         payload = self._prompts.get(prompt_id)
         if payload is None:
             return None
-        from src.lib.agent_management.agent_prompt import AgentPrompt
+        from apmatia.lib.agent_management.agent_prompt import AgentPrompt
 
         return AgentPrompt(**payload)
 
@@ -201,7 +201,7 @@ def test_admin_tool_provider_inherits_owner_context_from_discussion_when_caller_
         owner_group_id = 88
         group_id = 91
 
-    with patch("src.lib.discussions.discussion_state._get_discussion", return_value=MockDiscussion()):
+    with patch("apmatia.lib.discussions.discussion_state._get_discussion", return_value=MockDiscussion()):
         result = provider.execute(
             {
                 "name": "Discussion Agent",
@@ -230,7 +230,7 @@ def test_admin_tool_provider_switches_agent_mode():
         agent_service=agent_service,
     )
 
-    with patch("src.lib.discussions.discussion_state") as mock_discussion_state:
+    with patch("apmatia.lib.discussions.discussion_state") as mock_discussion_state:
         mock_discussion_state.set_agent_mode.return_value = {
             "previous_mode": "discussion",
             "current_mode": "agentic",

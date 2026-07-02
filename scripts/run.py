@@ -1,6 +1,6 @@
 import os
 import uvicorn
-from src.api.http.app import app
+from apmatia.api.http.app import app
 
 if __name__ == "__main__":
     # Get host from environment variable, default to 0.0.0.0 for LAN access

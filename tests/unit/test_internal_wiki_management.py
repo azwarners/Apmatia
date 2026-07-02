@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from src.api.internal import wiki_management as internal_wiki_management
+from apmatia.api.internal import wiki_management as internal_wiki_management
 
 
 class MockWiki:
@@ -47,7 +47,7 @@ def test_list_wikis_serializes_manager_results():
     mock_manager = MagicMock()
     mock_manager.list_wikis.return_value = [MockWiki()]
 
-    with patch("src.api.internal.wiki_management.get_wiki_manager", return_value=mock_manager):
+    with patch("apmatia.api.internal.wiki_management.get_wiki_manager", return_value=mock_manager):
         result = internal_wiki_management.list_wikis(requester_user_id=7, requester_group_ids=set())
 
     assert result[0]["id"] == "wiki_demo"
@@ -59,7 +59,7 @@ def test_create_leaf_serializes_node():
     mock_manager = MagicMock()
     mock_manager.create_leaf.return_value = MockNode(id="wn_note", title="Takeaway")
 
-    with patch("src.api.internal.wiki_management.get_wiki_manager", return_value=mock_manager):
+    with patch("apmatia.api.internal.wiki_management.get_wiki_manager", return_value=mock_manager):
         result = internal_wiki_management.create_leaf("wiki_demo", "wn_root", "Takeaway", body="Body")
 
     assert result["id"] == "wn_note"

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import importlib
 
-from src.core.registry import ViewContribution
-from src.interfaces.streamlit.module_views.adapter import adapt_module_view
-from src.interfaces.streamlit.module_views.models import ModuleViewIntent
+from apmatia.core.registry import ViewContribution
+from apmatia.interfaces.streamlit.module_views.adapter import adapt_module_view
+from apmatia.interfaces.streamlit.module_views.models import ModuleViewIntent
 
 
 def _collection_view() -> ViewContribution:
@@ -144,7 +144,7 @@ def test_adapt_module_view_supports_existing_registry_collection_shape():
 
 
 def test_render_module_view_renders_empty_state(mock_streamlit):
-    import src.interfaces.streamlit.module_views.renderers as renderers
+    import apmatia.interfaces.streamlit.module_views.renderers as renderers
 
     renderers = importlib.reload(renderers)
 
@@ -159,7 +159,7 @@ def test_render_module_view_renders_empty_state(mock_streamlit):
 
 
 def test_render_module_view_renders_rows_and_emits_intents(mock_streamlit):
-    import src.interfaces.streamlit.module_views.renderers as renderers
+    import apmatia.interfaces.streamlit.module_views.renderers as renderers
 
     renderers = importlib.reload(renderers)
 
@@ -200,7 +200,7 @@ def test_render_module_view_renders_rows_and_emits_intents(mock_streamlit):
 
 
 def test_render_module_view_gracefully_handles_unsupported_modes(mock_streamlit):
-    import src.interfaces.streamlit.module_views.renderers as renderers
+    import apmatia.interfaces.streamlit.module_views.renderers as renderers
 
     renderers = importlib.reload(renderers)
 

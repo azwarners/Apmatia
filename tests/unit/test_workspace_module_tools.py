@@ -8,17 +8,17 @@ from pathlib import Path
 
 import pytest
 
-from src.core.modules import create_module_scaffold
-from src.core import tool_management_runtime
-from src.lib.agent_management.models import Agent
-from src.lib.agent_management.services import AgentService
-from src.lib.tool_management import (
+from apmatia.core.modules import create_module_scaffold
+from apmatia.core import tool_management_runtime
+from apmatia.lib.agent_management.models import Agent
+from apmatia.lib.agent_management.services import AgentService
+from apmatia.lib.tool_management import (
     ToolCall,
     ToolManager,
     build_workspace_module_tool_providers,
     workspace_module_tool_definitions,
 )
-from src.lib.tool_management.repositories import AgentToolAssignmentRepository, ToolDefinitionRepository
+from apmatia.lib.tool_management.repositories import AgentToolAssignmentRepository, ToolDefinitionRepository
 
 
 class InMemoryToolDefinitionRepository(ToolDefinitionRepository):
@@ -331,7 +331,7 @@ def guarded_import(name, *args, **kwargs):
     return original_import(name, *args, **kwargs)
 
 builtins.__import__ = guarded_import
-from src.lib.tool_management.workspace_modules import workspace_module_tool_definitions
+from apmatia.lib.tool_management.workspace_modules import workspace_module_tool_definitions
 assert workspace_module_tool_definitions()
 """
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
@@ -344,7 +344,7 @@ def test_runtime_seeds_workspace_tools(monkeypatch: pytest.MonkeyPatch, tmp_path
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path / ".apmatia"))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
 
-    import src.core.tool_management_runtime as runtime
+    import apmatia.core.tool_management_runtime as runtime
 
     importlib.reload(runtime)
     runtime.get_tool_manager()

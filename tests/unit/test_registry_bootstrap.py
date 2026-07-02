@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from src.core.registry import (
+from apmatia.core.registry import (
     create_application_registry,
     get_application_registry,
     load_bundled_modules,
     Registry,
 )
-from src.core.registry import bootstrap
+from apmatia.core.registry import bootstrap
 
 
 def test_load_bundled_modules_loads_bundled_modules():

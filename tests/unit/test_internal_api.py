@@ -2,14 +2,14 @@ from fastapi.testclient import TestClient
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from src.api.http.app import app, create_app
-from src.api.internal import discussions as internal_discussions
-from src.lib.model_management.models import LLM
-from src.api.internal.prompt_LLM import prompt_llm
-from src.api.internal import model_management
+from apmatia.api.http.app import app, create_app
+from apmatia.api.internal import discussions as internal_discussions
+from apmatia.lib.model_management.models import LLM
+from apmatia.api.internal.prompt_LLM import prompt_llm
+from apmatia.api.internal import model_management
 
 
-@patch("src.api.internal.prompt_LLM.core_prompt_llm")
+@patch("apmatia.api.internal.prompt_LLM.core_prompt_llm")
 def test_internal_prompt(mock_core_prompt):
     mock_core_prompt.return_value = "mocked response"
 
@@ -43,7 +43,7 @@ def test_login_returns_fallback_page_when_legacy_web_ui_is_missing():
     assert "legacy browser UI is not included" in response.text
 
 
-@patch("src.api.http.routes.auth_routes.login_user")
+@patch("apmatia.api.http.routes.auth_routes.login_user")
 def test_login_sets_a_30_day_cookie(mock_login_user):
     mock_login_user.return_value = SimpleNamespace(token="token123", username="nick")
     client = TestClient(app)
@@ -58,7 +58,7 @@ def test_login_sets_a_30_day_cookie(mock_login_user):
     assert "max-age=2592000" in response.headers.get("set-cookie", "").lower()
 
 
-@patch("src.api.internal.model_management.get_llm_config_manager")
+@patch("apmatia.api.internal.model_management.get_llm_config_manager")
 def test_model_management_serializes_slotted_llm_models(mock_get_manager):
     mock_manager = mock_get_manager.return_value
     mock_manager.list_configs.return_value = [
@@ -88,9 +88,9 @@ def test_model_management_serializes_slotted_llm_models(mock_get_manager):
     assert model_management.update_llm_config(3, user_alias="Updated")["id"] == 3
 
 
-@patch("src.api.http.routes.groups_routes.require_session")
-@patch("src.api.http.routes.groups_routes.is_group_owner", return_value=True)
-@patch("src.api.http.routes.groups_routes.list_group_members")
+@patch("apmatia.api.http.routes.groups_routes.require_session")
+@patch("apmatia.api.http.routes.groups_routes.is_group_owner", return_value=True)
+@patch("apmatia.api.http.routes.groups_routes.list_group_members")
 def test_group_members_route_lists_members(mock_list_group_members, mock_is_group_owner, mock_require_session):
     mock_require_session.return_value = SimpleNamespace(user_id=1, username="nick")
     mock_list_group_members.return_value = [
@@ -126,10 +126,10 @@ def test_group_members_route_lists_members(mock_list_group_members, mock_is_grou
     mock_list_group_members.assert_called()
 
 
-@patch("src.api.http.routes.groups_routes.require_session")
-@patch("src.api.http.routes.groups_routes.is_group_owner", return_value=True)
-@patch("src.api.http.routes.groups_routes.edit_group")
-@patch("src.api.http.routes.groups_routes.list_group_members", return_value=[{"id": 1, "user_id": 1, "role": "owner"}])
+@patch("apmatia.api.http.routes.groups_routes.require_session")
+@patch("apmatia.api.http.routes.groups_routes.is_group_owner", return_value=True)
+@patch("apmatia.api.http.routes.groups_routes.edit_group")
+@patch("apmatia.api.http.routes.groups_routes.list_group_members", return_value=[{"id": 1, "user_id": 1, "role": "owner"}])
 def test_group_edit_route_updates_group(
     mock_list_group_members, mock_edit_group, mock_is_group_owner, mock_require_session
 ):
@@ -153,7 +153,7 @@ def test_group_edit_route_updates_group(
     mock_list_group_members.assert_called_once_with(10)
 
 
-@patch("src.api.internal.discussions.discussion_state")
+@patch("apmatia.api.internal.discussions.discussion_state")
 def test_internal_start_prompt_forwards_attachments(mock_discussion_state):
     attachments = [
         {"filename": "shot.png", "mime_type": "image/png", "data_base64": "Zm9v"}

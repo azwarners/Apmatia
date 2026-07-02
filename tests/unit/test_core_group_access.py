@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
-from src.core.group_access import enabled_group_ids, is_group_member, is_group_owner, visible_groups
-from src.lib.user_management.models import GroupRole
+from apmatia.core.group_access import enabled_group_ids, is_group_member, is_group_owner, visible_groups
+from apmatia.lib.user_management.models import GroupRole
 
 
 def test_enabled_group_ids_and_group_member_support_dicts_and_objects():

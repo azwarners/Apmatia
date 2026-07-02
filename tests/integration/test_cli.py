@@ -5,10 +5,10 @@ import sys
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from src.interfaces.cli.main import main
+from apmatia.interfaces.cli.main import main
 
 
-@patch("src.interfaces.cli.main.prompt_llm")
+@patch("apmatia.interfaces.cli.main.prompt_llm")
 @patch("sys.argv", ["main.py", "Nick"])
 def test_cli_with_prompt(mock_prompt_llm):
     mock_prompt_llm.return_value = "mocked cli response"
@@ -109,7 +109,7 @@ def test_cli_module_create_workspace_success(tmp_path, capsys):
 
 
 def test_cli_module_create_uses_scaffold_helper(tmp_path):
-    with patch("src.interfaces.cli.modules.create_module_scaffold") as mock_create_module_scaffold:
+    with patch("apmatia.interfaces.cli.modules.create_module_scaffold") as mock_create_module_scaffold:
         mock_create_module_scaffold.return_value = SimpleNamespace(
             module_dir=tmp_path / "src/modules/productivity",
             created_files=(tmp_path / "src/modules/productivity/module.py",),
@@ -282,7 +282,7 @@ def test_cli_module_show_missing_module_fails(capsys):
 
 
 def test_cli_module_list_workspace_includes_workspace_module(tmp_path, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -302,7 +302,7 @@ def test_cli_module_list_workspace_includes_workspace_module(tmp_path, capsys):
 
 
 def test_cli_module_list_workspace_json_output_is_valid_json(tmp_path, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -333,7 +333,7 @@ def test_cli_module_list_workspace_json_output_is_valid_json(tmp_path, capsys):
 
 
 def test_cli_module_show_workspace_displays_workspace_module_details(tmp_path, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -387,7 +387,7 @@ tools = []
 
 
 def test_cli_module_show_workspace_json_output_is_valid_json(tmp_path, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -417,7 +417,7 @@ def test_cli_module_show_workspace_missing_module_fails(tmp_path, capsys):
 
 
 def test_cli_module_files_workspace_lists_files(tmp_path, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -437,7 +437,7 @@ def test_cli_module_files_workspace_lists_files(tmp_path, capsys):
 
 
 def test_cli_module_files_workspace_json_output_is_valid_json(tmp_path, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -459,7 +459,7 @@ def test_cli_module_files_workspace_json_output_is_valid_json(tmp_path, capsys):
 
 
 def test_cli_module_read_workspace_file_outputs_content(tmp_path, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -478,7 +478,7 @@ def test_cli_module_read_workspace_file_outputs_content(tmp_path, capsys):
 
 
 def test_cli_module_read_workspace_missing_file_fails(tmp_path, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -496,7 +496,7 @@ def test_cli_module_read_workspace_missing_file_fails(tmp_path, capsys):
 
 
 def test_cli_module_write_workspace_writes_new_file_from_stdin(tmp_path, monkeypatch, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -528,7 +528,7 @@ def test_cli_module_write_workspace_writes_new_file_from_stdin(tmp_path, monkeyp
 
 
 def test_cli_module_write_workspace_overwrites_existing_file_from_stdin(tmp_path, monkeypatch, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -583,7 +583,7 @@ def test_cli_module_write_workspace_missing_module_fails(tmp_path, monkeypatch, 
 
 
 def test_cli_module_write_workspace_unsafe_path_fails(tmp_path, monkeypatch, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -614,7 +614,7 @@ def test_cli_module_write_workspace_unsafe_path_fails(tmp_path, monkeypatch, cap
 
 
 def test_cli_module_write_requires_workspace_flag(tmp_path, monkeypatch, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -643,7 +643,7 @@ def test_cli_module_write_requires_workspace_flag(tmp_path, monkeypatch, capsys)
 
 
 def test_cli_module_write_requires_stdin_flag(tmp_path, monkeypatch, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -672,7 +672,7 @@ def test_cli_module_write_requires_stdin_flag(tmp_path, monkeypatch, capsys):
 
 
 def test_cli_module_read_workspace_unsafe_path_fails(tmp_path, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -691,7 +691,7 @@ def test_cli_module_read_workspace_unsafe_path_fails(tmp_path, capsys):
 
 
 def test_cli_module_files_requires_workspace_flag(tmp_path, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -718,7 +718,7 @@ def test_cli_module_files_missing_workspace_module_fails(tmp_path, capsys):
 
 
 def test_cli_module_validate_success_text_output(tmp_path, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -736,7 +736,7 @@ def test_cli_module_validate_success_text_output(tmp_path, capsys):
 
 
 def test_cli_module_validate_json_output_is_valid_json(tmp_path, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -757,7 +757,7 @@ def test_cli_module_validate_json_output_is_valid_json(tmp_path, capsys):
 
 
 def test_cli_module_validate_failure_returns_non_zero(tmp_path, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -776,7 +776,7 @@ def test_cli_module_validate_failure_returns_non_zero(tmp_path, capsys):
 
 
 def test_cli_module_validate_failure_json_output_is_valid_json(tmp_path, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",
@@ -901,7 +901,7 @@ def test_cli_module_invalid_format_fails():
         [
             sys.executable,
             "-c",
-            "from src.interfaces.cli.main import main; raise SystemExit(main(['module', 'list', '--format', 'yaml']))",
+            "from apmatia.interfaces.cli.main import main; raise SystemExit(main(['module', 'list', '--format', 'yaml']))",
         ],
         capture_output=True,
         text=True,
@@ -923,7 +923,7 @@ def guarded_import(name, *args, **kwargs):
     return original_import(name, *args, **kwargs)
 
 builtins.__import__ = guarded_import
-import src.interfaces.cli.main
+import apmatia.interfaces.cli.main
 """
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
 
@@ -931,7 +931,7 @@ import src.interfaces.cli.main
 
 
 def test_cli_module_validate_workspace_json_output_is_valid_json(tmp_path, capsys):
-    from src.core.modules import create_module_scaffold
+    from apmatia.core.modules import create_module_scaffold
 
     create_module_scaffold(
         module_slug="productivity",

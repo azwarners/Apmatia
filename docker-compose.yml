@@ -5,18 +5,20 @@ services:
       context: .
       args:
         OFFLINE_DEPS: ${APMATIA_OFFLINE:-0}
+    user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "8001:8000"
     volumes:
       - .:/app
-      - ./workspace:/app/workspace
-      - ${HOME}/.apmatia:/root/.apmatia
-      - ${HOME}/.config/apmatia:/root/.config/apmatia
-      - ${HOME}/.local/share/apmatia:/root/.local/share/apmatia
+      - ${HOME}/.apmatia/workspace:/home/apmatia/.apmatia/workspace
+      - ${HOME}/.apmatia:/home/apmatia/.apmatia
+      - ${HOME}/.config/apmatia:/home/apmatia/.config/apmatia
+      - ${HOME}/.local/share/apmatia:/home/apmatia/.local/share/apmatia
     environment:
-      - APMATIA_HOME=/root/.apmatia
-      - APMATIA_DATA_DIR=/root/.local/share/apmatia
-      - APMATIA_WORKSPACE_ROOT=/app/workspace/modules
+      - HOME=/home/apmatia
+      - APMATIA_HOME=/home/apmatia/.apmatia
+      - APMATIA_DATA_DIR=/home/apmatia/.local/share/apmatia
+      - APMATIA_WORKSPACE_ROOT=/home/apmatia/.apmatia/workspace/modules
 
   streamlit:
     container_name: apmatia-streamlit
@@ -24,16 +26,18 @@ services:
       context: .
       args:
         OFFLINE_DEPS: ${APMATIA_OFFLINE:-0}
+    user: "${UID:-1000}:${GID:-1000}"
     volumes:
       - .:/app
-      - ./workspace:/app/workspace
-      - ${HOME}/.apmatia:/root/.apmatia
-      - ${HOME}/.config/apmatia:/root/.config/apmatia
-      - ${HOME}/.local/share/apmatia:/root/.local/share/apmatia
+      - ${HOME}/.apmatia/workspace:/home/apmatia/.apmatia/workspace
+      - ${HOME}/.apmatia:/home/apmatia/.apmatia
+      - ${HOME}/.config/apmatia:/home/apmatia/.config/apmatia
+      - ${HOME}/.local/share/apmatia:/home/apmatia/.local/share/apmatia
     environment:
-      - APMATIA_HOME=/root/.apmatia
-      - APMATIA_DATA_DIR=/root/.local/share/apmatia
-      - APMATIA_WORKSPACE_ROOT=/app/workspace/modules
-    command: streamlit run src/interfaces/streamlit/app.py --server.port 8501 --server.headless true --server.address 0.0.0.0
+      - HOME=/home/apmatia
+      - APMATIA_HOME=/home/apmatia/.apmatia
+      - APMATIA_DATA_DIR=/home/apmatia/.local/share/apmatia
+      - APMATIA_WORKSPACE_ROOT=/home/apmatia/.apmatia/workspace/modules
+    command: streamlit run src/apmatia/interfaces/streamlit/app.py --server.port 8501 --server.headless true --server.address 0.0.0.0
     ports:
       - "0.0.0.0:8501:8501"

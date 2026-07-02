@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.core import app_config
+from apmatia.core import app_config
 
 
 class TestResolveConfigDir:
@@ -27,7 +27,7 @@ class TestResolveConfigDir:
 
     def test_falls_back_to_temp_dir_on_oserror(self):
         with patch.dict(os.environ, {}, clear=True):
-            with patch("src.core.app_config.PREFERRED_CONFIG_DIR") as mock_preferred:
+            with patch("apmatia.core.app_config.PREFERRED_CONFIG_DIR") as mock_preferred:
                 mock_preferred.mkdir.side_effect = OSError("Permission denied")
                 result = app_config._resolve_config_dir()
         expected_fallback = Path(tempfile.gettempdir()) / "apmatia"
@@ -185,7 +185,7 @@ class TestSeedFromEnv:
 class TestMigrateLegacyState:
     def test_returns_config_unchanged_when_no_legacy_file(self):
         config = {"discussion": {}}
-        with patch("src.core.app_config.LEGACY_STATE_FILE") as mock_legacy_path:
+        with patch("apmatia.core.app_config.LEGACY_STATE_FILE") as mock_legacy_path:
             mock_legacy_path.exists.return_value = False
             result = app_config._migrate_legacy_state(config)
         assert result == config
@@ -194,10 +194,10 @@ class TestMigrateLegacyState:
         config = {"discussion": {}}
         legacy_data = {"current_discussion_id": 123}
 
-        with patch("src.core.app_config.LEGACY_STATE_FILE") as mock_legacy_path:
+        with patch("apmatia.core.app_config.LEGACY_STATE_FILE") as mock_legacy_path:
             mock_legacy_path.exists.return_value = True
             with patch(
-                "src.core.app_config.load_config_file", return_value=legacy_data
+                "apmatia.core.app_config.load_config_file", return_value=legacy_data
             ):
                 result = app_config._migrate_legacy_state(config)
 
@@ -207,10 +207,10 @@ class TestMigrateLegacyState:
         config = {"discussion": {}}
         legacy_data = {"system_prompt": "Test prompt"}
 
-        with patch("src.core.app_config.LEGACY_STATE_FILE") as mock_legacy_path:
+        with patch("apmatia.core.app_config.LEGACY_STATE_FILE") as mock_legacy_path:
             mock_legacy_path.exists.return_value = True
             with patch(
-                "src.core.app_config.load_config_file", return_value=legacy_data
+                "apmatia.core.app_config.load_config_file", return_value=legacy_data
             ):
                 result = app_config._migrate_legacy_state(config)
 
@@ -220,10 +220,10 @@ class TestMigrateLegacyState:
         config = {"discussion": {"current_discussion_id": "456"}}
         legacy_data = {"current_discussion_id": 123}
 
-        with patch("src.core.app_config.LEGACY_STATE_FILE") as mock_legacy_path:
+        with patch("apmatia.core.app_config.LEGACY_STATE_FILE") as mock_legacy_path:
             mock_legacy_path.exists.return_value = True
             with patch(
-                "src.core.app_config.load_config_file", return_value=legacy_data
+                "apmatia.core.app_config.load_config_file", return_value=legacy_data
             ):
                 result = app_config._migrate_legacy_state(config)
 
@@ -232,10 +232,10 @@ class TestMigrateLegacyState:
     def test_handles_load_config_file_exception(self):
         config = {"discussion": {}}
 
-        with patch("src.core.app_config.LEGACY_STATE_FILE") as mock_legacy_path:
+        with patch("apmatia.core.app_config.LEGACY_STATE_FILE") as mock_legacy_path:
             mock_legacy_path.exists.return_value = True
             with patch(
-                "src.core.app_config.load_config_file", side_effect=Exception("Error")
+                "apmatia.core.app_config.load_config_file", side_effect=Exception("Error")
             ):
                 result = app_config._migrate_legacy_state(config)
 
@@ -244,9 +244,9 @@ class TestMigrateLegacyState:
     def test_handles_non_dict_legacy_data(self):
         config = {"discussion": {}}
 
-        with patch("src.core.app_config.LEGACY_STATE_FILE") as mock_legacy_path:
+        with patch("apmatia.core.app_config.LEGACY_STATE_FILE") as mock_legacy_path:
             mock_legacy_path.exists.return_value = True
-            with patch("src.core.app_config.load_config_file", return_value="not a dict"):
+            with patch("apmatia.core.app_config.load_config_file", return_value="not a dict"):
                 result = app_config._migrate_legacy_state(config)
 
         assert result == config
@@ -257,29 +257,29 @@ class TestLoadAppConfig:
         loaded_config = {"llm": {"model_name": "custom"}}
 
         with patch(
-            "src.core.app_config.load_config_file", return_value=loaded_config
+            "apmatia.core.app_config.load_config_file", return_value=loaded_config
         ):
             with patch(
-                "src.core.app_config._migrate_legacy_state", side_effect=lambda x: x
+                "apmatia.core.app_config._migrate_legacy_state", side_effect=lambda x: x
             ):
                 with patch(
-                    "src.core.app_config._seed_from_env", side_effect=lambda x: x
+                    "apmatia.core.app_config._seed_from_env", side_effect=lambda x: x
                 ):
-                    with patch("src.core.app_config._config_file", return_value=Path("/tmp/test_config.json")):
+                    with patch("apmatia.core.app_config._config_file", return_value=Path("/tmp/test_config.json")):
                         result = app_config.load_app_config()
 
         assert result["llm"]["model_name"] == "custom"
         assert result["llm"]["max_tokens"] == 8192
 
     def test_handles_non_dict_loaded_config(self):
-        with patch("src.core.app_config.load_config_file", return_value="not a dict"):
+        with patch("apmatia.core.app_config.load_config_file", return_value="not a dict"):
             with patch(
-                "src.core.app_config._migrate_legacy_state", side_effect=lambda x: x
+                "apmatia.core.app_config._migrate_legacy_state", side_effect=lambda x: x
             ):
                 with patch(
-                    "src.core.app_config._seed_from_env", side_effect=lambda x: x
+                    "apmatia.core.app_config._seed_from_env", side_effect=lambda x: x
                 ):
-                    with patch("src.core.app_config._config_file", return_value=Path("/tmp/test_config.json")):
+                    with patch("apmatia.core.app_config._config_file", return_value=Path("/tmp/test_config.json")):
                         result = app_config.load_app_config()
 
         assert result["llm"]["model_name"] == "default"
@@ -288,17 +288,17 @@ class TestLoadAppConfig:
         loaded_config = {"llm": {"model_name": "custom"}}
 
         with patch(
-            "src.core.app_config.load_config_file", return_value=loaded_config
+            "apmatia.core.app_config.load_config_file", return_value=loaded_config
         ):
             with patch(
-                "src.core.app_config._migrate_legacy_state", side_effect=lambda x: x
+                "apmatia.core.app_config._migrate_legacy_state", side_effect=lambda x: x
             ):
                 with patch(
-                    "src.core.app_config._seed_from_env",
+                    "apmatia.core.app_config._seed_from_env",
                     side_effect=lambda x: {**x, "llm": {**x["llm"], "model_name": "seeded"}},
                 ):
-                    with patch("src.core.app_config.save_app_config") as mock_save:
-                        with patch("src.core.app_config._config_file", return_value=Path("/tmp/test_config.json")):
+                    with patch("apmatia.core.app_config.save_app_config") as mock_save:
+                        with patch("apmatia.core.app_config._config_file", return_value=Path("/tmp/test_config.json")):
                             result = app_config.load_app_config()
 
         assert result["llm"]["model_name"] == "seeded"
@@ -308,8 +308,8 @@ class TestLoadAppConfig:
 class TestSaveAppConfig:
     def test_saves_config_to_file(self):
         config = {"test": "value"}
-        with patch("src.core.app_config.save_config_file") as mock_save:
-            with patch("src.core.app_config._config_file", return_value=Path("/tmp/test_config.json")) as mock_config_file:
+        with patch("apmatia.core.app_config.save_config_file") as mock_save:
+            with patch("apmatia.core.app_config._config_file", return_value=Path("/tmp/test_config.json")) as mock_config_file:
                 app_config.save_app_config(config)
         mock_save.assert_called_once_with(mock_config_file.return_value, config)
 
@@ -317,20 +317,20 @@ class TestSaveAppConfig:
 class TestGetConfigValue:
     def test_returns_nested_value(self):
         with patch(
-            "src.core.app_config.load_app_config",
+            "apmatia.core.app_config.load_app_config",
             return_value={"llm": {"model_name": "test-model"}},
         ):
             result = app_config.get_config_value("llm", "model_name")
         assert result == "test-model"
 
     def test_returns_default_when_key_not_found(self):
-        with patch("src.core.app_config.load_app_config", return_value={}):
+        with patch("apmatia.core.app_config.load_app_config", return_value={}):
             result = app_config.get_config_value("nonexistent", default="default-value")
         assert result == "default-value"
 
     def test_returns_default_when_intermediate_key_not_dict(self):
         with patch(
-            "src.core.app_config.load_app_config", return_value={"llm": "not-a-dict"}
+            "apmatia.core.app_config.load_app_config", return_value={"llm": "not-a-dict"}
         ):
             result = app_config.get_config_value("llm", "model_name", default="default-value")
         assert result == "default-value"
@@ -338,9 +338,9 @@ class TestGetConfigValue:
 
 class TestSetConfigValue:
     def test_sets_and_saves_value(self):
-        with patch("src.core.app_config.load_app_config", return_value={}):
-            with patch("src.core.app_config.save_app_config") as mock_save:
-                with patch("src.core.app_config._config_file"):
+        with patch("apmatia.core.app_config.load_app_config", return_value={}):
+            with patch("apmatia.core.app_config.save_app_config") as mock_save:
+                with patch("apmatia.core.app_config._config_file"):
                     result = app_config.set_config_value("llm", "model_name", value="new-model")
 
         assert result["llm"]["model_name"] == "new-model"
@@ -351,9 +351,9 @@ class TestSetConfigValue:
             app_config.set_config_value(value="value")
 
     def test_sets_deeply_nested_value(self):
-        with patch("src.core.app_config.load_app_config", return_value={}):
-            with patch("src.core.app_config.save_app_config") as mock_save:
-                with patch("src.core.app_config._config_file"):
+        with patch("apmatia.core.app_config.load_app_config", return_value={}):
+            with patch("apmatia.core.app_config.save_app_config") as mock_save:
+                with patch("apmatia.core.app_config._config_file"):
                     result = app_config.set_config_value(
                         "llm", "openai_compatible", "base_url", value="http://localhost:8000"
                     )

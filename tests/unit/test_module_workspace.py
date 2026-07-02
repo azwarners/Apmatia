@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-from src.core.modules import (
+from apmatia.core.modules import (
     ModuleAlreadyExistsError,
     create_module_scaffold,
     get_workspace_module_inspection,
@@ -15,7 +15,7 @@ from src.core.modules import (
     resolve_module_workspace_root,
     validate_module,
 )
-from src.core.registry import get_application_registry
+from apmatia.core.registry import get_application_registry
 
 
 def test_module_workspace_paths_resolve_under_workspace_root(tmp_path: Path):
@@ -34,14 +34,14 @@ def test_module_workspace_root_uses_environment_override(monkeypatch, tmp_path: 
 def test_module_workspace_root_uses_config_override_when_env_missing(monkeypatch, tmp_path: Path):
     monkeypatch.delenv("APMATIA_WORKSPACE_ROOT", raising=False)
 
-    with patch("src.core.modules.workspace.get_config_value", return_value=str(tmp_path / "config" / "modules")):
+    with patch("apmatia.core.modules.workspace.get_config_value", return_value=str(tmp_path / "config" / "modules")):
         assert resolve_module_workspace_root() == tmp_path / "config" / "modules"
 
 
 def test_module_workspace_root_prefers_environment_over_config(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "env" / "modules"))
 
-    with patch("src.core.modules.workspace.get_config_value", return_value=str(tmp_path / "config" / "modules")):
+    with patch("apmatia.core.modules.workspace.get_config_value", return_value=str(tmp_path / "config" / "modules")):
         assert resolve_module_workspace_root() == tmp_path / "env" / "modules"
 
 
@@ -214,7 +214,7 @@ def guarded_import(name, *args, **kwargs):
     return original_import(name, *args, **kwargs)
 
 builtins.__import__ = guarded_import
-from src.core.modules import create_module_scaffold, plan_module_scaffold, validate_module
+from apmatia.core.modules import create_module_scaffold, plan_module_scaffold, validate_module
 create_module_scaffold("productivity", display_name="Productivity", base_dir=Path({str(tmp_path)!r}), workspace=True)
 assert plan_module_scaffold("productivity", display_name="Productivity", base_dir=Path({str(tmp_path)!r}), workspace=True).passed is True
 assert validate_module("productivity", base_dir=Path({str(tmp_path)!r}), workspace=True).passed is True

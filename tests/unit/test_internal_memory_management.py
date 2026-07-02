@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from src.api.internal import memory_management as internal_memory
+from apmatia.api.internal import memory_management as internal_memory
 
 
 class MockMemory:
@@ -28,7 +28,7 @@ def test_list_memories_serializes_manager_results():
     mock_manager = MagicMock()
     mock_manager.list_memories.return_value = [MockMemory(id=4, title="Saved")]
 
-    with patch("src.api.internal.memory_management.get_memory_manager", return_value=mock_manager):
+    with patch("apmatia.api.internal.memory_management.get_memory_manager", return_value=mock_manager):
         result = internal_memory.list_memories()
 
     assert result[0]["id"] == 4
@@ -42,7 +42,7 @@ def test_archive_memory_returns_serialized_memory():
     mock_manager = MagicMock()
     mock_manager.archive_memory.return_value = MockMemory(id=8, status="archived")
 
-    with patch("src.api.internal.memory_management.get_memory_manager", return_value=mock_manager):
+    with patch("apmatia.api.internal.memory_management.get_memory_manager", return_value=mock_manager):
         result = internal_memory.archive_memory(8, requester_user_id=7)
 
     mock_manager.archive_memory.assert_called_once_with(8, requester_user_id=7)

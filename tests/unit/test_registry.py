@@ -3,8 +3,8 @@ from __future__ import annotations
 import subprocess
 import sys
 
-from src.core.registry import ActionContribution, CommandContribution, ModuleMetadata, Registry, ViewContribution
-from src.modules.apmatia_worksim.module import register as register_worksim_module
+from apmatia.core.registry import ActionContribution, CommandContribution, ModuleMetadata, Registry, ViewContribution
+from apmatia.modules.apmatia_worksim.module import register as register_worksim_module
 
 
 def test_registry_registers_and_lists_module():
@@ -96,7 +96,7 @@ def guarded_import(name, *args, **kwargs):
 
 builtins.__import__ = guarded_import
 import importlib
-importlib.import_module("src.core.registry")
+importlib.import_module("apmatia.core.registry")
 """
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
 

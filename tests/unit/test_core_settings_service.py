@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.core.settings_service import get_settings_payload, save_settings_payload
+from apmatia.core.settings_service import get_settings_payload, save_settings_payload
 
 
 def _valid_payload() -> dict:
@@ -31,7 +31,7 @@ def test_get_settings_payload_returns_ui_preferences():
     def fake_get_config_value(*keys, default=None):
         return values.get(keys, default)
 
-    with patch("src.core.settings_service.get_config_value", side_effect=fake_get_config_value):
+    with patch("apmatia.core.settings_service.get_config_value", side_effect=fake_get_config_value):
         payload = get_settings_payload()
 
     assert payload == {
@@ -45,7 +45,7 @@ def test_get_settings_payload_returns_ui_preferences():
     }
 
 
-@patch("src.core.settings_service.set_config_value")
+@patch("apmatia.core.settings_service.set_config_value")
 def test_save_settings_payload_persists_ui_settings(mock_set_config_value):
     save_settings_payload(**_valid_payload())
 
@@ -86,7 +86,7 @@ def test_get_settings_payload_falls_back_to_llama_server_env():
         "os.environ",
         {"APMATIA_LLAMA_SERVER_LOG_DIR": "/var/log/llama.cpp"},
         clear=True,
-    ), patch("src.core.settings_service.get_config_value", side_effect=fake_get_config_value):
+    ), patch("apmatia.core.settings_service.get_config_value", side_effect=fake_get_config_value):
         payload = get_settings_payload()
 
     assert payload["llama_server_log_dir"] == "/var/log/llama.cpp"

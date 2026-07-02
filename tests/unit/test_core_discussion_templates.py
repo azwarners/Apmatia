@@ -1,6 +1,6 @@
 import pytest
 
-from src.lib.discussions import discussion_templates
+from apmatia.lib.discussions import discussion_templates
 
 
 class TestBuildChatMessages:

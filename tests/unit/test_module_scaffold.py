@@ -6,7 +6,7 @@ from pathlib import Path
 
 import tomllib
 
-from src.core.modules import (
+from apmatia.core.modules import (
     CreatedModule,
     InvalidModuleSlugError,
     ModuleAlreadyExistsError,
@@ -160,7 +160,7 @@ def guarded_import(name, *args, **kwargs):
     return original_import(name, *args, **kwargs)
 
 builtins.__import__ = guarded_import
-from src.core.modules import create_module_scaffold
+from apmatia.core.modules import create_module_scaffold
 """
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
 

@@ -5,14 +5,14 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from src.lib.agent_management.module import AgentManager
-from src.lib.agent_management.sqlite_repositories import SQLiteAgentManagementBundle
-from src.lib.memory_management.module import MemoryManager
-from src.lib.memory_management.sqlite_repositories import SQLiteMemoryManagementBundle
-from src.lib.memory_management.tooling import build_memory_tool_providers, memory_tool_definitions
-from src.lib.tool_management.module import ToolManager
-from src.lib.tool_management.models import ToolCall
-from src.lib.tool_management.sqlite_repositories import SQLiteToolManagementBundle
+from apmatia.lib.agent_management.module import AgentManager
+from apmatia.lib.agent_management.sqlite_repositories import SQLiteAgentManagementBundle
+from apmatia.lib.memory_management.module import MemoryManager
+from apmatia.lib.memory_management.sqlite_repositories import SQLiteMemoryManagementBundle
+from apmatia.lib.memory_management.tooling import build_memory_tool_providers, memory_tool_definitions
+from apmatia.lib.tool_management.module import ToolManager
+from apmatia.lib.tool_management.models import ToolCall
+from apmatia.lib.tool_management.sqlite_repositories import SQLiteToolManagementBundle
 
 
 def _temp_db_path() -> str:

@@ -5,14 +5,14 @@ import pytest
 from types import SimpleNamespace
 from unittest.mock import Mock
 
-from src.lib.agent_management.agent_prompt import AgentPrompt
-from src.lib.tool_management.models import ToolCall, ToolDefinition, ToolResult
+from apmatia.lib.agent_management.agent_prompt import AgentPrompt
+from apmatia.lib.tool_management.models import ToolCall, ToolDefinition, ToolResult
 
 
 def test_discussion_private_scope_is_per_user(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -30,7 +30,7 @@ def test_discussion_private_scope_is_per_user(tmp_path, monkeypatch):
 def test_discussion_group_scope_is_shared(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -55,7 +55,7 @@ def test_discussion_group_scope_is_shared(tmp_path, monkeypatch):
 def test_discussion_group_scope_blocks_non_members(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -80,7 +80,7 @@ def test_discussion_group_scope_blocks_non_members(tmp_path, monkeypatch):
 def test_update_folder_prevents_descendant_cycles(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -98,7 +98,7 @@ def test_update_folder_prevents_descendant_cycles(tmp_path, monkeypatch):
 def test_update_folder_allows_move_to_root(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -117,7 +117,7 @@ def test_update_folder_allows_move_to_root(tmp_path, monkeypatch):
 def test_update_discussion_preserves_group_when_only_renaming(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -141,7 +141,7 @@ def test_update_discussion_preserves_group_when_only_renaming(tmp_path, monkeypa
 def test_update_discussion_allows_move_to_root(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -164,7 +164,7 @@ def test_update_discussion_allows_move_to_root(tmp_path, monkeypatch):
 def test_discussion_can_store_focused_wiki_id(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -186,7 +186,7 @@ def test_discussion_can_store_focused_wiki_id(tmp_path, monkeypatch):
 def test_discussion_can_switch_agent_mode_and_expose_it_in_snapshot(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -209,7 +209,7 @@ def test_discussion_can_switch_agent_mode_and_expose_it_in_snapshot(tmp_path, mo
 def test_agentic_mode_does_not_nudge_between_tool_calls(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -261,7 +261,7 @@ def test_agentic_mode_does_not_nudge_between_tool_calls(tmp_path, monkeypatch):
 def test_agentic_idle_activity_is_persisted_for_nudging(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -287,7 +287,7 @@ def test_agentic_idle_activity_is_persisted_for_nudging(tmp_path, monkeypatch):
 def test_discussion_can_persist_and_hydrate_prompt_attachments(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -322,7 +322,7 @@ def test_discussion_can_persist_and_hydrate_prompt_attachments(tmp_path, monkeyp
 def test_delete_discussion_moves_discussion_to_trash(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -347,7 +347,7 @@ def test_delete_discussion_moves_discussion_to_trash(tmp_path, monkeypatch):
 def test_delete_last_discussion_does_not_auto_create_replacement_in_tree(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -372,7 +372,7 @@ def test_delete_last_discussion_does_not_auto_create_replacement_in_tree(tmp_pat
 def test_start_prompt_records_agent_participation(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -403,7 +403,7 @@ def test_start_prompt_records_agent_participation(tmp_path, monkeypatch):
 def test_round_robin_group_chat_streams_named_agent_turns(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     agent_manager = Mock()
@@ -457,7 +457,7 @@ def test_round_robin_group_chat_streams_named_agent_turns(tmp_path, monkeypatch)
 def test_discussion_object_id_matches_discussion_id(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -473,7 +473,7 @@ def test_discussion_object_id_matches_discussion_id(tmp_path, monkeypatch):
 def test_discussion_transcript_preserves_message_metadata(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -507,7 +507,7 @@ def test_discussion_transcript_preserves_message_metadata(tmp_path, monkeypatch)
 def test_discussion_snapshot_backfills_renderable_llama_status_when_metadata_is_unhelpful(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -561,7 +561,7 @@ def test_discussion_snapshot_backfills_renderable_llama_status_when_metadata_is_
 def test_legacy_discussion_rows_missing_base_fields_still_load(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -592,7 +592,7 @@ def test_legacy_discussion_rows_missing_base_fields_still_load(tmp_path, monkeyp
 def test_snapshot_includes_parsed_messages(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -613,7 +613,7 @@ def test_snapshot_includes_parsed_messages(tmp_path, monkeypatch):
 def test_snapshot_separates_streaming_assistant_turn_from_user_turn(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -634,7 +634,7 @@ def test_snapshot_separates_streaming_assistant_turn_from_user_turn(tmp_path, mo
 def test_update_message_rewrites_discussion_transcript(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -658,7 +658,7 @@ def test_update_message_rewrites_discussion_transcript(tmp_path, monkeypatch):
 def test_delete_message_removes_selected_transcript_entry(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -681,7 +681,7 @@ def test_delete_message_removes_selected_transcript_entry(tmp_path, monkeypatch)
 def test_start_prompt_prefers_active_model_id(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     agent_manager = Mock()
@@ -704,7 +704,7 @@ def test_start_prompt_prefers_active_model_id(tmp_path, monkeypatch):
 def test_start_prompt_falls_back_to_default_model_id(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     agent_manager = Mock()
@@ -724,7 +724,7 @@ def test_start_prompt_falls_back_to_default_model_id(tmp_path, monkeypatch):
 def test_start_prompt_errors_when_agent_has_no_model(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     agent_manager = Mock()
@@ -741,7 +741,7 @@ def test_start_prompt_errors_when_agent_has_no_model(tmp_path, monkeypatch):
 def test_start_prompt_uses_agent_system_prompt(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     agent_manager = Mock()
@@ -800,7 +800,7 @@ def test_start_prompt_uses_agent_system_prompt(tmp_path, monkeypatch):
 def test_run_prompt_executes_tool_calls_and_stores_final_answer(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     agent_manager = Mock()
@@ -870,7 +870,7 @@ def test_run_prompt_executes_tool_calls_and_stores_final_answer(tmp_path, monkey
 def test_reset_discussion_carries_system_prompt_forward(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -886,7 +886,7 @@ def test_reset_discussion_carries_system_prompt_forward(tmp_path, monkeypatch):
 def test_list_tree_returns_empty_for_new_user_until_a_discussion_exists(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()

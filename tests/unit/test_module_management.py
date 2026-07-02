@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from src.core.module_management import list_module_catalog, set_module_hidden, set_view_hidden
-from src.core.registry import ModuleMetadata, Registry, ViewContribution
+from apmatia.core.module_management import list_module_catalog, set_module_hidden, set_view_hidden
+from apmatia.core.registry import ModuleMetadata, Registry, ViewContribution
 
 
 def _registry_with_modules() -> Registry:
@@ -56,8 +56,8 @@ def test_list_module_catalog_combines_registry_and_hidden_settings():
     def fake_get_config_value(*keys, default=None):
         return values.get(keys, default)
 
-    with patch("src.core.module_management.get_application_registry", return_value=_registry_with_modules()), patch(
-        "src.core.module_management.get_config_value", side_effect=fake_get_config_value
+    with patch("apmatia.core.module_management.get_application_registry", return_value=_registry_with_modules()), patch(
+        "apmatia.core.module_management.get_config_value", side_effect=fake_get_config_value
     ):
         catalog = list_module_catalog()
 
@@ -84,10 +84,10 @@ def test_set_module_hidden_persists_sorted_unique_hidden_module_ids():
     def fake_get_config_value(*keys, default=None):
         return values.get(keys, default)
 
-    with patch("src.core.module_management.get_application_registry", return_value=_registry_with_modules()), patch(
-        "src.core.module_management.get_config_value", side_effect=fake_get_config_value
-    ), patch("src.core.module_management.set_config_value") as mock_set_config_value, patch(
-        "src.core.module_management.get_module_catalog_entry",
+    with patch("apmatia.core.module_management.get_application_registry", return_value=_registry_with_modules()), patch(
+        "apmatia.core.module_management.get_config_value", side_effect=fake_get_config_value
+    ), patch("apmatia.core.module_management.set_config_value") as mock_set_config_value, patch(
+        "apmatia.core.module_management.get_module_catalog_entry",
         return_value={"module_id": "apmatia_ipe", "hidden": True},
     ):
         result = set_module_hidden("apmatia_ipe", hidden=True)
@@ -108,10 +108,10 @@ def test_set_view_hidden_removes_view_from_hidden_list_when_showing():
     def fake_get_config_value(*keys, default=None):
         return values.get(keys, default)
 
-    with patch("src.core.module_management.get_application_registry", return_value=_registry_with_modules()), patch(
-        "src.core.module_management.get_config_value", side_effect=fake_get_config_value
-    ), patch("src.core.module_management.set_config_value") as mock_set_config_value, patch(
-        "src.core.module_management.get_view_catalog_entry",
+    with patch("apmatia.core.module_management.get_application_registry", return_value=_registry_with_modules()), patch(
+        "apmatia.core.module_management.get_config_value", side_effect=fake_get_config_value
+    ), patch("apmatia.core.module_management.set_config_value") as mock_set_config_value, patch(
+        "apmatia.core.module_management.get_view_catalog_entry",
         return_value={"view_id": "apmatia_ipe.task.view", "hidden": False},
     ):
         result = set_view_hidden("apmatia_ipe.task.view", hidden=False)
@@ -134,6 +134,6 @@ def test_set_view_hidden_removes_view_from_hidden_list_when_showing():
 def test_visibility_updates_reject_unknown_ids(function_name: str, identifier: str, message: str):
     function = {"set_module_hidden": set_module_hidden, "set_view_hidden": set_view_hidden}[function_name]
 
-    with patch("src.core.module_management.get_application_registry", return_value=_registry_with_modules()):
+    with patch("apmatia.core.module_management.get_application_registry", return_value=_registry_with_modules()):
         with pytest.raises(ValueError, match=message):
             function(identifier, hidden=True)

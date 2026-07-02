@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 
-from src.api.http.routes.settings_routes import SettingsPayload
+from apmatia.api.http.routes.settings_routes import SettingsPayload
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -13,10 +13,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 def test_show_auth_form_returns_true_when_api_session_is_authenticated(mock_streamlit):
     """Auth form short-circuits when the API session is already active."""
     with patch(
-        "src.interfaces.streamlit.api_client.get_auth_session",
+        "apmatia.interfaces.streamlit.api_client.get_auth_session",
         return_value={"authenticated": True, "username": "testuser"},
     ):
-        import src.interfaces.streamlit.pages.login as login_page
+        import apmatia.interfaces.streamlit.pages.login as login_page
 
         login_page = importlib.reload(login_page)
         result = login_page.show_auth_form()
@@ -31,16 +31,16 @@ def test_show_auth_form_logs_in_via_api(mock_streamlit):
     mock_streamlit.form_submit_button.side_effect = [True, False]
 
     with patch(
-        "src.interfaces.streamlit.api_client.get_auth_session",
+        "apmatia.interfaces.streamlit.api_client.get_auth_session",
         side_effect=[
             {"authenticated": False, "has_users": True},
             {"authenticated": True, "user_id": 7, "username": "testuser"},
         ],
     ), patch(
-        "src.interfaces.streamlit.api_client.login",
+        "apmatia.interfaces.streamlit.api_client.login",
         return_value={"status": "authenticated", "username": "testuser"},
     ) as mock_login:
-        import src.interfaces.streamlit.pages.login as login_page
+        import apmatia.interfaces.streamlit.pages.login as login_page
 
         login_page = importlib.reload(login_page)
         result = login_page.show_auth_form()
@@ -80,7 +80,7 @@ def test_api_client_hydrates_cookie_from_browser_context(mock_streamlit):
     mock_test_client.return_value.__enter__.return_value = mock_client
     mock_test_client.return_value.__exit__.return_value = False
 
-    import src.interfaces.streamlit.api_client as api_client
+    import apmatia.interfaces.streamlit.api_client as api_client
 
     api_client = importlib.reload(api_client)
 
@@ -117,12 +117,12 @@ def test_settings_page_loads_and_saves(mock_streamlit):
     )
 
     with patch(
-        "src.interfaces.streamlit.api_client.get_settings",
+        "apmatia.interfaces.streamlit.api_client.get_settings",
         return_value=current_settings,
     ), patch(
-        "src.interfaces.streamlit.api_client.save_settings",
+        "apmatia.interfaces.streamlit.api_client.save_settings",
     ) as mock_save:
-        import src.interfaces.streamlit.pages.settings as settings_page
+        import apmatia.interfaces.streamlit.pages.settings as settings_page
 
         settings_page = importlib.reload(settings_page)
         settings_page.render()
@@ -167,20 +167,20 @@ def test_agent_management_page_loads_creates_and_lists(mock_streamlit):
     mock_streamlit.selectbox.side_effect = selectbox_side_effect
     mock_streamlit.form_submit_button.return_value = False
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
     ), patch(
-        "src.interfaces.streamlit.api_client.get_compiled_agent_prompt",
+        "apmatia.interfaces.streamlit.api_client.get_compiled_agent_prompt",
         return_value="You are Planner.",
     ) as mock_compiled_prompt, patch(
-        "src.interfaces.streamlit.api_client.get_agent_prompt",
+        "apmatia.interfaces.streamlit.api_client.get_agent_prompt",
         return_value=None,
-    ), patch("src.interfaces.streamlit.api_client.create_agent") as mock_create, patch(
-        "src.interfaces.streamlit.api_client.update_agent"
+    ), patch("apmatia.interfaces.streamlit.api_client.create_agent") as mock_create, patch(
+        "apmatia.interfaces.streamlit.api_client.update_agent"
     ) as mock_update, patch(
-        "src.interfaces.streamlit.api_client.delete_agent"
+        "apmatia.interfaces.streamlit.api_client.delete_agent"
     ) as mock_delete:
-        import src.interfaces.streamlit.pages.agent_management as agent_management_page
+        import apmatia.interfaces.streamlit.pages.agent_management as agent_management_page
 
         agent_management_page = importlib.reload(agent_management_page)
         agent_management_page.render()
@@ -225,23 +225,23 @@ def test_agent_management_clone_button_prefills_new_agent_form(mock_streamlit):
     mock_streamlit.form_submit_button.return_value = False
     mock_streamlit.button.side_effect = lambda label, **_kwargs: label == "Clone selected agent"
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
     ), patch(
-        "src.interfaces.streamlit.api_client.get_compiled_agent_prompt",
+        "apmatia.interfaces.streamlit.api_client.get_compiled_agent_prompt",
         return_value="You are Planner.",
     ), patch(
-        "src.interfaces.streamlit.api_client.get_agent_prompt",
+        "apmatia.interfaces.streamlit.api_client.get_agent_prompt",
         return_value={
             "personality": "Warm and practical.",
             "skills": "Planning and memory work.",
         },
-    ), patch("src.interfaces.streamlit.api_client.create_agent") as mock_create, patch(
-        "src.interfaces.streamlit.api_client.update_agent"
+    ), patch("apmatia.interfaces.streamlit.api_client.create_agent") as mock_create, patch(
+        "apmatia.interfaces.streamlit.api_client.update_agent"
     ) as mock_update, patch(
-        "src.interfaces.streamlit.api_client.delete_agent"
+        "apmatia.interfaces.streamlit.api_client.delete_agent"
     ) as mock_delete:
-        import src.interfaces.streamlit.pages.agent_management as agent_management_page
+        import apmatia.interfaces.streamlit.pages.agent_management as agent_management_page
 
         agent_management_page = importlib.reload(agent_management_page)
         agent_management_page.render()
@@ -286,16 +286,16 @@ def test_agent_management_delete_requires_confirmation(mock_streamlit):
     mock_streamlit.form_submit_button.return_value = False
     mock_streamlit.button.side_effect = lambda label, **_kwargs: label == "Delete selected agent"
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=[]
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=[]
     ), patch(
-        "src.interfaces.streamlit.api_client.get_compiled_agent_prompt",
+        "apmatia.interfaces.streamlit.api_client.get_compiled_agent_prompt",
         return_value="You are Planner.",
     ), patch(
-        "src.interfaces.streamlit.api_client.delete_agent",
+        "apmatia.interfaces.streamlit.api_client.delete_agent",
         return_value=True,
     ) as mock_delete:
-        import src.interfaces.streamlit.pages.agent_management as agent_management_page
+        import apmatia.interfaces.streamlit.pages.agent_management as agent_management_page
 
         agent_management_page = importlib.reload(agent_management_page)
         agent_management_page.render()
@@ -338,16 +338,16 @@ def test_agent_management_confirmed_delete_clears_selected_form_state(mock_strea
     mock_streamlit.form_submit_button.return_value = False
     mock_streamlit.button.side_effect = lambda label, **kwargs: label == "Delete" and kwargs.get("key") == "confirm_delete_agent_1"
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=[]
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=[]
     ), patch(
-        "src.interfaces.streamlit.api_client.get_compiled_agent_prompt",
+        "apmatia.interfaces.streamlit.api_client.get_compiled_agent_prompt",
         return_value="You are Planner.",
     ), patch(
-        "src.interfaces.streamlit.api_client.delete_agent",
+        "apmatia.interfaces.streamlit.api_client.delete_agent",
         return_value=True,
     ) as mock_delete:
-        import src.interfaces.streamlit.pages.agent_management as agent_management_page
+        import apmatia.interfaces.streamlit.pages.agent_management as agent_management_page
 
         agent_management_page = importlib.reload(agent_management_page)
         agent_management_page.render()
@@ -412,23 +412,23 @@ def test_tool_management_page_executes_safe_tool_calls(mock_streamlit):
     mock_streamlit.checkbox.side_effect = lambda _label, value=False, **_kwargs: value
     mock_streamlit.form_submit_button.side_effect = [False, False, True]
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_tool_definitions", return_value=tools
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_tool_definitions", return_value=tools
     ), patch(
-        "src.interfaces.streamlit.api_client.list_agent_tool_assignments", return_value=assignments
+        "apmatia.interfaces.streamlit.api_client.list_agent_tool_assignments", return_value=assignments
     ), patch(
-        "src.interfaces.streamlit.api_client.list_tools_available_to_agent", return_value=tools
+        "apmatia.interfaces.streamlit.api_client.list_tools_available_to_agent", return_value=tools
     ), patch(
-        "src.interfaces.streamlit.api_client.create_tool_definition"
+        "apmatia.interfaces.streamlit.api_client.create_tool_definition"
     ) as mock_create, patch(
-        "src.interfaces.streamlit.api_client.assign_tool_to_agent"
+        "apmatia.interfaces.streamlit.api_client.assign_tool_to_agent"
     ) as mock_assign, patch(
-        "src.interfaces.streamlit.api_client.unassign_tool_from_agent"
+        "apmatia.interfaces.streamlit.api_client.unassign_tool_from_agent"
     ) as mock_unassign, patch(
-        "src.interfaces.streamlit.api_client.execute_tool_call",
+        "apmatia.interfaces.streamlit.api_client.execute_tool_call",
         return_value={"call_id": "call_123", "status": "success", "result": {"text": "Hello from Apmatia"}, "error": None, "metadata": {"tool_id": 1}},
     ) as mock_execute:
-        import src.interfaces.streamlit.pages.tool_management as tool_management_page
+        import apmatia.interfaces.streamlit.pages.tool_management as tool_management_page
 
         tool_management_page = importlib.reload(tool_management_page)
         tool_management_page.render()
@@ -518,22 +518,22 @@ def test_tool_management_page_grants_multiple_tools_with_checklists(mock_streaml
     mock_streamlit.checkbox.side_effect = checkbox_side_effect
     mock_streamlit.form_submit_button.side_effect = [True, False, False]
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_tool_definitions", return_value=tools
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_tool_definitions", return_value=tools
     ), patch(
-        "src.interfaces.streamlit.api_client.list_agent_tool_assignments", return_value=assignments
+        "apmatia.interfaces.streamlit.api_client.list_agent_tool_assignments", return_value=assignments
     ), patch(
-        "src.interfaces.streamlit.api_client.list_tools_available_to_agent", return_value=tools
+        "apmatia.interfaces.streamlit.api_client.list_tools_available_to_agent", return_value=tools
     ), patch(
-        "src.interfaces.streamlit.api_client.assign_tool_to_agent",
+        "apmatia.interfaces.streamlit.api_client.assign_tool_to_agent",
         side_effect=[
             {**tools[0], "agent_id": 7, "tool_id": 1},
             {**tools[1], "agent_id": 7, "tool_id": 2},
         ],
     ) as mock_assign, patch(
-        "src.interfaces.streamlit.api_client.execute_tool_call"
+        "apmatia.interfaces.streamlit.api_client.execute_tool_call"
     ) as mock_execute:
-        import src.interfaces.streamlit.pages.tool_management as tool_management_page
+        import apmatia.interfaces.streamlit.pages.tool_management as tool_management_page
 
         tool_management_page = importlib.reload(tool_management_page)
         tool_management_page.render()
@@ -571,19 +571,19 @@ def test_tool_management_page_updates_existing_tool(mock_streamlit):
     mock_streamlit.checkbox.side_effect = lambda label, value=False, **_kwargs: (False if label == "Enabled" else value)
     mock_streamlit.form_submit_button.side_effect = [False, True, False]
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_tool_definitions", return_value=tools
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_tool_definitions", return_value=tools
     ), patch(
-        "src.interfaces.streamlit.api_client.list_agent_tool_assignments", return_value=[]
+        "apmatia.interfaces.streamlit.api_client.list_agent_tool_assignments", return_value=[]
     ), patch(
-        "src.interfaces.streamlit.api_client.list_tools_available_to_agent", return_value=[]
+        "apmatia.interfaces.streamlit.api_client.list_tools_available_to_agent", return_value=[]
     ), patch(
-        "src.interfaces.streamlit.api_client.update_tool_definition",
+        "apmatia.interfaces.streamlit.api_client.update_tool_definition",
         return_value={**tools[0], "enabled": False},
     ) as mock_update, patch(
-        "src.interfaces.streamlit.api_client.create_tool_definition"
+        "apmatia.interfaces.streamlit.api_client.create_tool_definition"
     ) as mock_create:
-        import src.interfaces.streamlit.pages.tool_management as tool_management_page
+        import apmatia.interfaces.streamlit.pages.tool_management as tool_management_page
 
         tool_management_page = importlib.reload(tool_management_page)
         tool_management_page.render()
@@ -646,22 +646,22 @@ def test_memory_management_page_loads_saved_memories(mock_streamlit):
         search_memories_calls.append((query, kwargs))
         return memories
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_memories", side_effect=_list_memories
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_memories", side_effect=_list_memories
     ), patch(
-        "src.interfaces.streamlit.api_client.get_memory", return_value=memories[0]
+        "apmatia.interfaces.streamlit.api_client.get_memory", return_value=memories[0]
     ), patch(
-        "src.interfaces.streamlit.api_client.search_memories", side_effect=_search_memories
+        "apmatia.interfaces.streamlit.api_client.search_memories", side_effect=_search_memories
     ), patch(
-        "src.interfaces.streamlit.api_client.create_memory"
+        "apmatia.interfaces.streamlit.api_client.create_memory"
     ) as mock_create, patch(
-        "src.interfaces.streamlit.api_client.update_memory"
+        "apmatia.interfaces.streamlit.api_client.update_memory"
     ) as mock_update, patch(
-        "src.interfaces.streamlit.api_client.archive_memory"
+        "apmatia.interfaces.streamlit.api_client.archive_memory"
     ) as mock_archive, patch(
-        "src.interfaces.streamlit.api_client.delete_memory"
+        "apmatia.interfaces.streamlit.api_client.delete_memory"
     ) as mock_delete:
-        import src.interfaces.streamlit.pages.memory_management as memory_management_page
+        import apmatia.interfaces.streamlit.pages.memory_management as memory_management_page
 
         memory_management_page = importlib.reload(memory_management_page)
         memory_management_page.render()
@@ -703,12 +703,12 @@ def test_memory_management_page_limits_owner_agent_choices_to_writable_agents(mo
 
     mock_streamlit.selectbox.side_effect = _selectbox
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_memories", return_value=memories
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_memories", return_value=memories
     ), patch(
-        "src.interfaces.streamlit.api_client.search_memories", return_value=memories
+        "apmatia.interfaces.streamlit.api_client.search_memories", return_value=memories
     ):
-        import src.interfaces.streamlit.pages.memory_management as memory_management_page
+        import apmatia.interfaces.streamlit.pages.memory_management as memory_management_page
 
         memory_management_page = importlib.reload(memory_management_page)
         memory_management_page.render()
@@ -737,8 +737,8 @@ def test_model_management_page_shows_saved_model_url(mock_streamlit):
     mock_streamlit.number_input.side_effect = lambda _label, value=0, **_kwargs: value
     mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
 
-    with patch("src.interfaces.streamlit.api_client.list_llm_configs", return_value=configs):
-        import src.interfaces.streamlit.pages.model_management as model_management_page
+    with patch("apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=configs):
+        import apmatia.interfaces.streamlit.pages.model_management as model_management_page
 
         model_management_page = importlib.reload(model_management_page)
         model_management_page.render()
@@ -768,11 +768,11 @@ def test_model_management_page_can_test_ai_model(mock_streamlit):
     mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
     mock_streamlit.button.side_effect = lambda label, *args, **_kwargs: label == "Test"
 
-    with patch("src.interfaces.streamlit.api_client.list_llm_configs", return_value=configs), patch(
-        "src.interfaces.streamlit.api_client.test_llm_config",
+    with patch("apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=configs), patch(
+        "apmatia.interfaces.streamlit.api_client.test_llm_config",
         return_value={"reply_preview": "ready and connected"},
     ) as mock_test:
-        import src.interfaces.streamlit.pages.model_management as model_management_page
+        import apmatia.interfaces.streamlit.pages.model_management as model_management_page
 
         model_management_page = importlib.reload(model_management_page)
         model_management_page.render()
@@ -794,13 +794,13 @@ def test_model_management_page_uses_ai_model_labels(mock_streamlit):
     mock_streamlit.form_submit_button.return_value = False
 
     with patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
-    ), patch("src.interfaces.streamlit.api_client.create_llm_config") as mock_create, patch(
-        "src.interfaces.streamlit.api_client.update_llm_config"
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
+    ), patch("apmatia.interfaces.streamlit.api_client.create_llm_config") as mock_create, patch(
+        "apmatia.interfaces.streamlit.api_client.update_llm_config"
     ) as mock_update, patch(
-        "src.interfaces.streamlit.api_client.delete_llm_config"
+        "apmatia.interfaces.streamlit.api_client.delete_llm_config"
     ) as mock_delete:
-        import src.interfaces.streamlit.pages.model_management as model_management_page
+        import apmatia.interfaces.streamlit.pages.model_management as model_management_page
 
         model_management_page = importlib.reload(model_management_page)
         model_management_page.render()
@@ -848,29 +848,29 @@ def test_user_management_page_loads_and_manages_groups(mock_streamlit):
         {"id": 101, "group_id": 10, "user_id": 2, "role": "member", "is_enabled": True},
     ]
 
-    with patch("src.interfaces.streamlit.api_client.list_users", return_value=users), patch(
-        "src.interfaces.streamlit.api_client.list_groups", return_value=groups
+    with patch("apmatia.interfaces.streamlit.api_client.list_users", return_value=users), patch(
+        "apmatia.interfaces.streamlit.api_client.list_groups", return_value=groups
     ), patch(
-        "src.interfaces.streamlit.api_client.create_user"
+        "apmatia.interfaces.streamlit.api_client.create_user"
     ) as mock_create_user, patch(
-        "src.interfaces.streamlit.api_client.update_user"
+        "apmatia.interfaces.streamlit.api_client.update_user"
     ) as mock_update_user, patch(
-        "src.interfaces.streamlit.api_client.delete_user"
+        "apmatia.interfaces.streamlit.api_client.delete_user"
     ) as mock_delete_user, patch(
-        "src.interfaces.streamlit.api_client.create_group"
+        "apmatia.interfaces.streamlit.api_client.create_group"
     ) as mock_create_group, patch(
-        "src.interfaces.streamlit.api_client.update_group"
+        "apmatia.interfaces.streamlit.api_client.update_group"
     ) as mock_update_group, patch(
-        "src.interfaces.streamlit.api_client.delete_group"
+        "apmatia.interfaces.streamlit.api_client.delete_group"
     ) as mock_delete_group, patch(
-        "src.interfaces.streamlit.api_client.list_group_members",
+        "apmatia.interfaces.streamlit.api_client.list_group_members",
         return_value=memberships,
     ) as mock_list_group_members, patch(
-        "src.interfaces.streamlit.api_client.add_group_member"
+        "apmatia.interfaces.streamlit.api_client.add_group_member"
     ) as mock_add_group_member, patch(
-        "src.interfaces.streamlit.api_client.set_group_membership_enabled"
+        "apmatia.interfaces.streamlit.api_client.set_group_membership_enabled"
     ) as mock_set_membership_enabled:
-        import src.interfaces.streamlit.pages.user_management as user_management_page
+        import apmatia.interfaces.streamlit.pages.user_management as user_management_page
 
         user_management_page = importlib.reload(user_management_page)
         user_management_page.render()
@@ -916,18 +916,18 @@ def test_discussion_page_uses_agent_and_discussion_backend(mock_streamlit):
     mock_streamlit.form_submit_button.return_value = True
     mock_streamlit.button.return_value = False
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_tree",
+        "apmatia.interfaces.streamlit.api_client.discussion_tree",
         return_value=tree,
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_state",
+        "apmatia.interfaces.streamlit.api_client.discussion_state",
         return_value=snapshot,
     ), patch(
-        "src.interfaces.streamlit.api_client.prompt_discussion"
+        "apmatia.interfaces.streamlit.api_client.prompt_discussion"
     ) as mock_prompt:
-        import src.interfaces.streamlit.pages.discussion as discussion_page
+        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
         discussion_page = importlib.reload(discussion_page)
         discussion_page.render()
@@ -981,18 +981,18 @@ def test_discussion_page_can_update_participants(mock_streamlit):
     mock_streamlit.button.side_effect = lambda label, *args, **kwargs: label == "Save participants"
     mock_streamlit.form_submit_button.return_value = False
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_tree",
+        "apmatia.interfaces.streamlit.api_client.discussion_tree",
         return_value=tree,
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_state",
+        "apmatia.interfaces.streamlit.api_client.discussion_state",
         return_value=snapshot,
     ), patch(
-        "src.interfaces.streamlit.api_client.update_discussion"
+        "apmatia.interfaces.streamlit.api_client.update_discussion"
     ) as mock_update:
-        import src.interfaces.streamlit.pages.discussion as discussion_page
+        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
         discussion_page = importlib.reload(discussion_page)
         discussion_page.render()
@@ -1001,7 +1001,7 @@ def test_discussion_page_can_update_participants(mock_streamlit):
 
 
 def test_message_text_blocks_preserve_markdown_and_emoji(mock_streamlit):
-    import src.interfaces.streamlit.components.message_card as message_card
+    import apmatia.interfaces.streamlit.components.message_card as message_card
 
     importlib.reload(message_card)
     message_card.render_message_text_block("Hello **world**\nLine two 😀")
@@ -1011,8 +1011,8 @@ def test_message_text_blocks_preserve_markdown_and_emoji(mock_streamlit):
 
 def test_discussion_message_titles_use_user_and_agent_names(mock_streamlit):
     """Message cards show the authenticated username and selected agent name."""
-    import src.interfaces.streamlit.components.message_card as message_card
-    import src.interfaces.streamlit.pages.discussion as discussion_page
+    import apmatia.interfaces.streamlit.components.message_card as message_card
+    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
     importlib.reload(message_card)
     discussion_page = importlib.reload(discussion_page)
@@ -1099,25 +1099,25 @@ def test_tutor_page_loads_discussion_and_wiki_workspace(mock_streamlit):
     mock_streamlit.form_submit_button.return_value = False
     mock_streamlit.button.side_effect = lambda *args, **kwargs: False
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_tree",
+        "apmatia.interfaces.streamlit.api_client.discussion_tree",
         return_value=tree,
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_state",
+        "apmatia.interfaces.streamlit.api_client.discussion_state",
         return_value=snapshot,
     ), patch(
-        "src.interfaces.streamlit.api_client.list_wikis",
+        "apmatia.interfaces.streamlit.api_client.list_wikis",
         return_value=wikis,
     ), patch(
-        "src.interfaces.streamlit.api_client.get_wiki_tree",
+        "apmatia.interfaces.streamlit.api_client.get_wiki_tree",
         return_value=wiki_tree,
     ), patch(
-        "src.interfaces.streamlit.api_client.search_wiki",
+        "apmatia.interfaces.streamlit.api_client.search_wiki",
         return_value=[],
     ):
-        import src.interfaces.streamlit.pages.tutor as tutor_page
+        import apmatia.interfaces.streamlit.pages.tutor as tutor_page
 
         tutor_page = importlib.reload(tutor_page)
         tutor_page.render()
@@ -1186,27 +1186,27 @@ def test_tutor_page_hides_regular_discussions_from_saved_session_picker(mock_str
     mock_streamlit.form_submit_button.return_value = False
     mock_streamlit.button.side_effect = lambda *args, **kwargs: False
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_tree",
+        "apmatia.interfaces.streamlit.api_client.discussion_tree",
         return_value=tree,
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_state",
+        "apmatia.interfaces.streamlit.api_client.discussion_state",
         return_value=snapshot,
     ), patch(
-        "src.interfaces.streamlit.api_client.list_wikis",
+        "apmatia.interfaces.streamlit.api_client.list_wikis",
         return_value=wikis,
     ), patch(
-        "src.interfaces.streamlit.api_client.get_wiki_tree",
+        "apmatia.interfaces.streamlit.api_client.get_wiki_tree",
         return_value=wiki_tree,
     ), patch(
-        "src.interfaces.streamlit.api_client.search_wiki",
+        "apmatia.interfaces.streamlit.api_client.search_wiki",
         return_value=[],
     ), patch(
-        "src.interfaces.streamlit.api_client.open_discussion"
+        "apmatia.interfaces.streamlit.api_client.open_discussion"
     ) as mock_open:
-        import src.interfaces.streamlit.pages.tutor as tutor_page
+        import apmatia.interfaces.streamlit.pages.tutor as tutor_page
 
         tutor_page = importlib.reload(tutor_page)
         tutor_page.render()
@@ -1233,23 +1233,23 @@ def test_tutor_page_creates_wiki_without_session_state_error(mock_streamlit):
     mock_streamlit.form_submit_button.return_value = False
     mock_streamlit.button.side_effect = lambda *args, **kwargs: False
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_tree", return_value=tree
+        "apmatia.interfaces.streamlit.api_client.discussion_tree", return_value=tree
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_state", return_value=snapshot
+        "apmatia.interfaces.streamlit.api_client.discussion_state", return_value=snapshot
     ), patch(
-        "src.interfaces.streamlit.api_client.list_wikis", return_value=wikis
+        "apmatia.interfaces.streamlit.api_client.list_wikis", return_value=wikis
     ), patch(
-        "src.interfaces.streamlit.api_client.get_wiki_tree", return_value=wiki_tree
+        "apmatia.interfaces.streamlit.api_client.get_wiki_tree", return_value=wiki_tree
     ), patch(
-        "src.interfaces.streamlit.api_client.search_wiki", return_value=[]
+        "apmatia.interfaces.streamlit.api_client.search_wiki", return_value=[]
     ), patch(
-        "src.interfaces.streamlit.api_client.create_wiki",
+        "apmatia.interfaces.streamlit.api_client.create_wiki",
         return_value={"wiki": {"id": "wiki_123", "title": "Algebra Notes", "description": "Notes"}},
     ) as mock_create:
-        import src.interfaces.streamlit.pages.tutor as tutor_page
+        import apmatia.interfaces.streamlit.pages.tutor as tutor_page
 
         tutor_page = importlib.reload(tutor_page)
         tutor_page.render()
@@ -1288,16 +1288,16 @@ def test_tutor_live_discussion_uses_selected_tutor_agent(mock_streamlit):
     mock_streamlit.form_submit_button.return_value = True
     mock_streamlit.button.side_effect = lambda *args, **kwargs: False
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.discussion_state",
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.discussion_state",
         return_value=snapshot,
     ), patch(
-        "src.interfaces.streamlit.api_client.get_wiki_tree",
+        "apmatia.interfaces.streamlit.api_client.get_wiki_tree",
         return_value=wiki_tree,
     ), patch(
-        "src.interfaces.streamlit.api_client.prompt_discussion",
+        "apmatia.interfaces.streamlit.api_client.prompt_discussion",
     ) as mock_prompt:
-        import src.interfaces.streamlit.pages.tutor_live_discussion as live_page
+        import apmatia.interfaces.streamlit.pages.tutor_live_discussion as live_page
 
         live_page = importlib.reload(live_page)
         live_page.render()
@@ -1326,18 +1326,18 @@ def test_discussion_selectbox_auto_opens_selected_discussion(mock_streamlit):
     mock_streamlit.button.return_value = False
     mock_streamlit.form_submit_button.return_value = False
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_tree",
+        "apmatia.interfaces.streamlit.api_client.discussion_tree",
         return_value=tree,
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_state",
+        "apmatia.interfaces.streamlit.api_client.discussion_state",
         return_value=snapshot,
     ), patch(
-        "src.interfaces.streamlit.api_client.open_discussion"
+        "apmatia.interfaces.streamlit.api_client.open_discussion"
     ) as mock_open:
-        import src.interfaces.streamlit.pages.discussion as discussion_page
+        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
         discussion_page = importlib.reload(discussion_page)
         discussion_page.render()
@@ -1374,18 +1374,18 @@ def test_discussion_page_filters_discussions_by_selected_agent(mock_streamlit):
     mock_streamlit.button.return_value = False
     mock_streamlit.form_submit_button.return_value = False
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_tree",
+        "apmatia.interfaces.streamlit.api_client.discussion_tree",
         return_value=tree,
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_state",
+        "apmatia.interfaces.streamlit.api_client.discussion_state",
         return_value=snapshot,
     ), patch(
-        "src.interfaces.streamlit.api_client.open_discussion"
+        "apmatia.interfaces.streamlit.api_client.open_discussion"
     ) as mock_open:
-        import src.interfaces.streamlit.pages.discussion as discussion_page
+        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
         discussion_page = importlib.reload(discussion_page)
         discussion_page.render()
@@ -1409,18 +1409,18 @@ def test_discussion_delete_selected_button_calls_api(mock_streamlit):
     mock_streamlit.button.side_effect = lambda label, *args, **_kwargs: label == "Delete selected discussion"
     mock_streamlit.form_submit_button.return_value = False
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_tree",
+        "apmatia.interfaces.streamlit.api_client.discussion_tree",
         return_value=tree,
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_state",
+        "apmatia.interfaces.streamlit.api_client.discussion_state",
         return_value=snapshot,
     ), patch(
-        "src.interfaces.streamlit.api_client.delete_discussion"
+        "apmatia.interfaces.streamlit.api_client.delete_discussion"
     ) as mock_delete:
-        import src.interfaces.streamlit.pages.discussion as discussion_page
+        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
         discussion_page = importlib.reload(discussion_page)
         discussion_page.render()
@@ -1445,21 +1445,21 @@ def test_discussion_delete_last_discussion_does_not_open_replacement(mock_stream
     mock_streamlit.button.side_effect = lambda label, *args, **_kwargs: label == "Delete selected discussion"
     mock_streamlit.form_submit_button.return_value = False
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_tree",
+        "apmatia.interfaces.streamlit.api_client.discussion_tree",
         return_value=tree,
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_state",
+        "apmatia.interfaces.streamlit.api_client.discussion_state",
         return_value=snapshot,
     ), patch(
-        "src.interfaces.streamlit.api_client.delete_discussion",
+        "apmatia.interfaces.streamlit.api_client.delete_discussion",
         return_value={"status": "deleted", "result": {"discussion_id": "IDabc123", "next_discussion_id": None}},
     ) as mock_delete, patch(
-        "src.interfaces.streamlit.api_client.open_discussion"
+        "apmatia.interfaces.streamlit.api_client.open_discussion"
     ) as mock_open:
-        import src.interfaces.streamlit.pages.discussion as discussion_page
+        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
         discussion_page = importlib.reload(discussion_page)
         discussion_page.render()
@@ -1471,8 +1471,8 @@ def test_discussion_delete_last_discussion_does_not_open_replacement(mock_stream
 def test_discussion_message_copy_action_renders_html_button(mock_streamlit):
     """The message copy action renders a browser-side copy button."""
 
-    import src.interfaces.streamlit.components.message_card as message_card
-    import src.interfaces.streamlit.pages.discussion as discussion_page
+    import apmatia.interfaces.streamlit.components.message_card as message_card
+    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
     importlib.reload(message_card)
     discussion_page = importlib.reload(discussion_page)
@@ -1494,7 +1494,7 @@ def test_discussion_message_copy_action_renders_html_button(mock_streamlit):
 
 def test_clipboard_button_component_renders_main_dom_copy_control(mock_streamlit):
     """The reusable clipboard component writes directly to the browser clipboard."""
-    import src.interfaces.streamlit.components.clipboard_button as clipboard_button
+    import apmatia.interfaces.streamlit.components.clipboard_button as clipboard_button
 
     clipboard_button = importlib.reload(clipboard_button)
     clipboard_button.render_clipboard_button("Hello", "copy-hello", aria_label="Copy message")
@@ -1509,7 +1509,7 @@ def test_clipboard_button_component_renders_main_dom_copy_control(mock_streamlit
 
 def test_clipboard_image_paste_bridge_renders_paste_listener(mock_streamlit):
     """The paste bridge listens for clipboard images without blocking text paste."""
-    import src.interfaces.streamlit.components.clipboard_button as clipboard_button
+    import apmatia.interfaces.streamlit.components.clipboard_button as clipboard_button
 
     clipboard_button = importlib.reload(clipboard_button)
     clipboard_button.render_clipboard_image_paste_bridge("discussion-attachments")
@@ -1524,7 +1524,7 @@ def test_clipboard_image_paste_bridge_renders_paste_listener(mock_streamlit):
 
 def test_message_card_css_hides_streamlit_code_copy_button(mock_streamlit):
     """Only Apmatia's footer copy control is shown on message cards."""
-    import src.interfaces.streamlit.components.message_card as message_card
+    import apmatia.interfaces.streamlit.components.message_card as message_card
 
     message_card = importlib.reload(message_card)
     message_card.apply_message_card_css()
@@ -1540,7 +1540,7 @@ def test_message_card_css_hides_streamlit_code_copy_button(mock_streamlit):
 
 def test_render_message_text_block_uses_markdown(mock_streamlit):
     """Message text rendering preserves markdown formatting and emoji."""
-    import src.interfaces.streamlit.components.message_card as message_card
+    import apmatia.interfaces.streamlit.components.message_card as message_card
 
     message_card = importlib.reload(message_card)
     message_card.render_message_text_block("Hello <Nick>\nWorld 😀")
@@ -1549,7 +1549,7 @@ def test_render_message_text_block_uses_markdown(mock_streamlit):
 
 
 def test_message_card_css_includes_emoji_safe_font_stack(mock_streamlit):
-    import src.interfaces.streamlit.components.message_card as message_card
+    import apmatia.interfaces.streamlit.components.message_card as message_card
 
     message_card = importlib.reload(message_card)
     message_card.apply_message_card_css()
@@ -1564,8 +1564,8 @@ def test_discussion_message_edit_action_sets_target_and_reruns(mock_streamlit):
     """The message edit action opens inline editing on the first click."""
     mock_streamlit.button.side_effect = lambda _label, *args, **kwargs: kwargs.get("help") == "Edit"
 
-    import src.interfaces.streamlit.components.message_card as message_card
-    import src.interfaces.streamlit.pages.discussion as discussion_page
+    import apmatia.interfaces.streamlit.components.message_card as message_card
+    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
     importlib.reload(message_card)
     discussion_page = importlib.reload(discussion_page)
@@ -1589,8 +1589,8 @@ def test_discussion_message_delete_action_sets_target_and_reruns(mock_streamlit)
     """The message delete action opens confirmation on the first click."""
     mock_streamlit.button.side_effect = lambda _label, *args, **kwargs: kwargs.get("help") == "Delete"
 
-    import src.interfaces.streamlit.components.message_card as message_card
-    import src.interfaces.streamlit.pages.discussion as discussion_page
+    import apmatia.interfaces.streamlit.components.message_card as message_card
+    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
     importlib.reload(message_card)
     discussion_page = importlib.reload(discussion_page)
@@ -1612,7 +1612,7 @@ def test_discussion_message_delete_action_sets_target_and_reruns(mock_streamlit)
 
 def test_discussion_activity_status_text_includes_generation_and_server_details(mock_streamlit):
     """The live status subtitle should describe the agent and llama.cpp stats once."""
-    import src.interfaces.streamlit.pages.discussion as discussion_page
+    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
     discussion_page = importlib.reload(discussion_page)
 
@@ -1656,7 +1656,7 @@ def test_discussion_activity_status_text_includes_generation_and_server_details(
 
 def test_discussion_message_card_renders_llama_stats_caption(mock_streamlit):
     """Assistant responses should show persisted llama.cpp stats beneath the message."""
-    import src.interfaces.streamlit.pages.discussion as discussion_page
+    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
     discussion_page = importlib.reload(discussion_page)
     message = {
@@ -1698,7 +1698,7 @@ def test_discussion_message_card_renders_llama_stats_caption(mock_streamlit):
 
 def test_discussion_message_card_ignores_unrelated_live_status(mock_streamlit):
     """A finished message should keep its own stats when another agent is currently active."""
-    import src.interfaces.streamlit.pages.discussion as discussion_page
+    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
     discussion_page = importlib.reload(discussion_page)
     message = {
@@ -1760,7 +1760,7 @@ def test_discussion_message_card_ignores_unrelated_live_status(mock_streamlit):
 
 def test_discussion_activity_status_text_includes_tool_details(mock_streamlit):
     """Tool activity should say which agent is executing the tool and with what parameters."""
-    import src.interfaces.streamlit.pages.discussion as discussion_page
+    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
     discussion_page = importlib.reload(discussion_page)
 
@@ -1789,7 +1789,7 @@ def test_discussion_activity_status_text_includes_tool_details(mock_streamlit):
 
 def test_discussion_render_messages_places_live_activity_in_placeholder_card(mock_streamlit):
     """A new active turn should render as its own live card instead of rewriting the previous message."""
-    import src.interfaces.streamlit.pages.discussion as discussion_page
+    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
     discussion_page = importlib.reload(discussion_page)
     snapshot = {
@@ -1879,18 +1879,18 @@ def test_discussion_page_shows_stop_button_while_streaming(mock_streamlit):
     mock_streamlit.text_area.return_value = "Write a status update."
     mock_streamlit.button.side_effect = lambda label, *args, **kwargs: label == "Stop"
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_tree",
+        "apmatia.interfaces.streamlit.api_client.discussion_tree",
         return_value=tree,
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_state",
+        "apmatia.interfaces.streamlit.api_client.discussion_state",
         return_value=snapshot,
     ), patch(
-        "src.interfaces.streamlit.api_client.stop_discussion"
+        "apmatia.interfaces.streamlit.api_client.stop_discussion"
     ) as mock_stop:
-        import src.interfaces.streamlit.pages.discussion as discussion_page
+        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
         discussion_page = importlib.reload(discussion_page)
         discussion_page.stop_discussion = mock_stop
@@ -1929,18 +1929,18 @@ def test_discussion_page_returns_to_send_message_when_streaming_finishes(mock_st
     mock_streamlit.fragment.__module__ = "streamlit.testing"
     mock_streamlit.fragment.side_effect = lambda run_every=0.5: (lambda func: func)
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_tree",
+        "apmatia.interfaces.streamlit.api_client.discussion_tree",
         return_value=tree,
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_state",
+        "apmatia.interfaces.streamlit.api_client.discussion_state",
         side_effect=[streaming_snapshot, finished_snapshot],
     ), patch(
-        "src.interfaces.streamlit.api_client.stop_discussion"
+        "apmatia.interfaces.streamlit.api_client.stop_discussion"
     ) as mock_stop:
-        import src.interfaces.streamlit.pages.discussion as discussion_page
+        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
         discussion_page = importlib.reload(discussion_page)
     discussion_page.render()
@@ -1971,18 +1971,18 @@ def test_discussion_page_keeps_stop_mode_while_streaming(mock_streamlit):
     mock_streamlit.fragment.__module__ = "streamlit.testing"
     mock_streamlit.fragment.side_effect = lambda run_every=0.5: (lambda func: func)
 
-    with patch("src.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "src.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_tree",
+        "apmatia.interfaces.streamlit.api_client.discussion_tree",
         return_value=tree,
     ), patch(
-        "src.interfaces.streamlit.api_client.discussion_state",
+        "apmatia.interfaces.streamlit.api_client.discussion_state",
         return_value=snapshot,
     ), patch(
-        "src.interfaces.streamlit.api_client.stop_discussion"
+        "apmatia.interfaces.streamlit.api_client.stop_discussion"
     ) as mock_stop:
-        import src.interfaces.streamlit.pages.discussion as discussion_page
+        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
         discussion_page = importlib.reload(discussion_page)
     discussion_page.render()
@@ -1993,7 +1993,7 @@ def test_discussion_page_keeps_stop_mode_while_streaming(mock_streamlit):
 
 def test_discussion_history_collapses_older_messages_and_skips_active_message(mock_streamlit):
     """The static transcript should keep only recent messages visible while streaming."""
-    import src.interfaces.streamlit.pages.discussion as discussion_page
+    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
     discussion_page = importlib.reload(discussion_page)
     snapshot = {
@@ -2038,7 +2038,7 @@ def test_discussion_history_collapses_older_messages_and_skips_active_message(mo
 
 def test_discussion_streaming_view_renders_only_the_active_message(mock_streamlit):
     """The live fragment should update only the in-flight assistant message."""
-    import src.interfaces.streamlit.pages.discussion as discussion_page
+    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
     discussion_page = importlib.reload(discussion_page)
     snapshot = {
@@ -2091,7 +2091,7 @@ def test_main_function_authenticated_routes_to_settings(mock_streamlit):
     """Authenticated users can navigate to settings through the sidebar."""
     mock_streamlit.sidebar.button.side_effect = lambda label, *args, **kwargs: label == "⚙️ Settings"
 
-    import src.interfaces.streamlit.app as app
+    import apmatia.interfaces.streamlit.app as app
 
     app = importlib.reload(app)
 
@@ -2111,7 +2111,7 @@ def test_main_function_authenticated_routes_to_settings(mock_streamlit):
         app,
         "logout",
     ) as mock_logout, patch(
-        "src.interfaces.streamlit.pages.settings.render"
+        "apmatia.interfaces.streamlit.pages.settings.render"
     ) as mock_settings_render:
         app.main()
 
@@ -2182,7 +2182,7 @@ def test_render_sidebar_shows_visible_module_with_active_subpages(mock_streamlit
     ]
     mock_streamlit.sidebar.button.return_value = False
 
-    import src.interfaces.streamlit.app as app
+    import apmatia.interfaces.streamlit.app as app
 
     app = importlib.reload(app)
 
@@ -2226,7 +2226,7 @@ def test_render_sidebar_clicking_module_selects_first_visible_view(mock_streamli
         }
     ]
 
-    import src.interfaces.streamlit.app as app
+    import apmatia.interfaces.streamlit.app as app
 
     app = importlib.reload(app)
 
@@ -2244,15 +2244,15 @@ def test_main_function_authenticated_routes_to_agent_management(mock_streamlit):
     mock_streamlit.sidebar.button.side_effect = lambda label, *args, **kwargs: label == "🤖 Agents"
 
     with patch(
-        "src.interfaces.streamlit.api_client.get_auth_session",
+        "apmatia.interfaces.streamlit.api_client.get_auth_session",
         return_value={"authenticated": True, "username": "testuser"},
     ), patch(
-        "src.interfaces.streamlit.api_client.get_settings",
+        "apmatia.interfaces.streamlit.api_client.get_settings",
         return_value={"theme": "dark"},
     ), patch(
-        "src.interfaces.streamlit.pages.agent_management.render"
+        "apmatia.interfaces.streamlit.pages.agent_management.render"
     ) as mock_agent_render:
-        import src.interfaces.streamlit.app as app
+        import apmatia.interfaces.streamlit.app as app
 
         app = importlib.reload(app)
         app.main()
@@ -2266,15 +2266,15 @@ def test_main_function_authenticated_routes_to_user_management(mock_streamlit):
     mock_streamlit.sidebar.button.side_effect = lambda label, *args, **kwargs: label == "👥 Users & Groups"
 
     with patch(
-        "src.interfaces.streamlit.api_client.get_auth_session",
+        "apmatia.interfaces.streamlit.api_client.get_auth_session",
         return_value={"authenticated": True, "username": "testuser"},
     ), patch(
-        "src.interfaces.streamlit.api_client.get_settings",
+        "apmatia.interfaces.streamlit.api_client.get_settings",
         return_value={"theme": "dark"},
     ), patch(
-        "src.interfaces.streamlit.pages.user_management.render"
+        "apmatia.interfaces.streamlit.pages.user_management.render"
     ) as mock_user_render:
-        import src.interfaces.streamlit.app as app
+        import apmatia.interfaces.streamlit.app as app
 
         app = importlib.reload(app)
         app.main()
@@ -2291,13 +2291,13 @@ def test_header_menu_settings_button_selects_settings_page(mock_streamlit):
     mock_streamlit.rerun.side_effect = RuntimeError("rerun")
 
     with patch(
-        "src.interfaces.streamlit.api_client.get_auth_session",
+        "apmatia.interfaces.streamlit.api_client.get_auth_session",
         return_value={"authenticated": True, "username": "testuser"},
     ), patch(
-        "src.interfaces.streamlit.api_client.get_settings",
+        "apmatia.interfaces.streamlit.api_client.get_settings",
         return_value={"theme": "dark"},
     ):
-        import src.interfaces.streamlit.app as app
+        import apmatia.interfaces.streamlit.app as app
 
         app = importlib.reload(app)
         with pytest.raises(RuntimeError, match="rerun"):
@@ -2311,12 +2311,12 @@ def test_header_menu_settings_button_selects_settings_page(mock_streamlit):
 def test_main_function_shows_auth_when_unauthenticated(mock_streamlit):
     """Unauthenticated users are sent to the auth page."""
     with patch(
-        "src.interfaces.streamlit.api_client.get_auth_session",
+        "apmatia.interfaces.streamlit.api_client.get_auth_session",
         return_value={"authenticated": False, "username": None},
     ), patch(
-        "src.interfaces.streamlit.pages.login.show_auth_form"
+        "apmatia.interfaces.streamlit.pages.login.show_auth_form"
     ) as mock_show_auth_form:
-        import src.interfaces.streamlit.app as app
+        import apmatia.interfaces.streamlit.app as app
 
         app = importlib.reload(app)
         app.main()
@@ -2353,21 +2353,27 @@ def test_start_script_mounts_persistent_user_state():
     """The standard launcher must mount the same host persistence directories used by compose."""
     launcher = (REPO_ROOT / "start.sh").read_text()
 
-    assert '-v "$APMATIA_HOME_HOST":/root/.apmatia' in launcher
-    assert '-v "$APMATIA_DATA_DIR_HOST":/root/.local/share/apmatia' in launcher
-    assert '-v "$APMATIA_CONFIG_DIR_HOST":/root/.config/apmatia' in launcher
-    assert '-e APMATIA_HOME=/root/.apmatia' in launcher
-    assert '-e APMATIA_DATA_DIR=/root/.local/share/apmatia' in launcher
-    assert '-v "$APMATIA_WORKSPACE_DIR_HOST":/app/workspace' in launcher
-    assert '-e APMATIA_WORKSPACE_ROOT=/app/workspace/modules' in launcher
+    assert '-v "$APMATIA_HOME_HOST":"$APMATIA_CONTAINER_HOME_DIR"' in launcher
+    assert '-v "$APMATIA_DATA_DIR_HOST":"$APMATIA_CONTAINER_DATA_DIR"' in launcher
+    assert '-v "$APMATIA_CONFIG_DIR_HOST":"$APMATIA_CONTAINER_CONFIG_DIR"' in launcher
+    assert '-e HOME="$APMATIA_CONTAINER_HOME"' in launcher
+    assert '-e APMATIA_HOME="$APMATIA_CONTAINER_HOME_DIR"' in launcher
+    assert '-e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR"' in launcher
+    assert '-v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR"' in launcher
+    assert '-e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules"' in launcher
+    assert '--user "$(id -u):$(id -g)"' in launcher
 
 
 def test_start_script_bootstraps_workspace_modules_on_the_host():
-    """The standard launcher must create the repo workspace instead of nesting it under ~/.apmatia."""
+    """The standard launcher must create the user workspace under ~/.apmatia."""
     launcher = (REPO_ROOT / "start.sh").read_text()
 
-    assert 'APMATIA_WORKSPACE_DIR_HOST="${APMATIA_WORKSPACE_DIR:-$REPO_ROOT/workspace}"' in launcher
+    assert 'APMATIA_WORKSPACE_DIR_HOST="${APMATIA_WORKSPACE_DIR:-$HOME/.apmatia/workspace}"' in launcher
     assert 'APMATIA_WORKSPACE_ROOT_HOST="$APMATIA_WORKSPACE_DIR_HOST/modules"' in launcher
+    assert "repair_host_permissions()" in launcher
+    assert 'ensure_host_permissions "$APMATIA_HOME_HOST" "$APMATIA_HOME_HOST"' in launcher
+    assert 'ensure_host_permissions "$APMATIA_DATA_DIR_HOST" "$APMATIA_DATA_DIR_HOST"' in launcher
+    assert 'ensure_host_permissions "$APMATIA_CONFIG_DIR_HOST" "$APMATIA_CONFIG_DIR_HOST"' in launcher
     assert 'mkdir -p "$APMATIA_WORKSPACE_ROOT_HOST"' in launcher
     assert 'mkdir -p "$APMATIA_HOME_HOST/workspace/modules"' not in launcher
 
@@ -2384,7 +2390,7 @@ def test_windows_launcher_bootstraps_persistent_directories():
     """The Windows launcher must create the same directories before compose starts."""
     launcher = (REPO_ROOT / "scripts" / "start.bat").read_text()
 
-    assert 'mkdir "%REPO_ROOT%\\workspace\\modules"' in launcher
+    assert 'mkdir "%USERPROFILE%\\.apmatia\\workspace\\modules"' in launcher
     assert 'mkdir "%USERPROFILE%\\.apmatia"' in launcher
     assert 'mkdir "%USERPROFILE%\\.config\\apmatia"' in launcher
     assert 'mkdir "%USERPROFILE%\\.local\\share\\apmatia"' in launcher

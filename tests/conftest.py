@@ -1,8 +1,23 @@
 """Pytest configuration and shared fixtures for apmatia tests."""
+import os
+from pathlib import Path
+import sys
 from types import SimpleNamespace
 
 import pytest
 from unittest.mock import MagicMock
+
+
+SRC_DIR = Path(__file__).resolve().parents[1] / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+existing_pythonpath = os.environ.get("PYTHONPATH")
+if existing_pythonpath:
+    if str(SRC_DIR) not in existing_pythonpath.split(":"):
+        os.environ["PYTHONPATH"] = f"{SRC_DIR}:{existing_pythonpath}"
+else:
+    os.environ["PYTHONPATH"] = str(SRC_DIR)
 
 
 # =============================================================================

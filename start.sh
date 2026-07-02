@@ -45,9 +45,42 @@ fi
 APMATIA_HOME_HOST="${APMATIA_HOME:-$HOME/.apmatia}"
 APMATIA_DATA_DIR_HOST="${APMATIA_DATA_DIR:-$HOME/.local/share/apmatia}"
 APMATIA_CONFIG_DIR_HOST="${APMATIA_CONFIG_DIR:-$HOME/.config/apmatia}"
-APMATIA_WORKSPACE_DIR_HOST="${APMATIA_WORKSPACE_DIR:-$REPO_ROOT/workspace}"
+APMATIA_WORKSPACE_DIR_HOST="${APMATIA_WORKSPACE_DIR:-$HOME/.apmatia/workspace}"
 APMATIA_WORKSPACE_ROOT_HOST="$APMATIA_WORKSPACE_DIR_HOST/modules"
 APMATIA_LLAMA_SERVER_LOG_DIR_HOST="${APMATIA_LLAMA_SERVER_LOG_DIR:-${LLAMA_LOG_DIR:-}}"
+APMATIA_CONTAINER_HOME="/home/apmatia"
+APMATIA_CONTAINER_HOME_DIR="$APMATIA_CONTAINER_HOME/.apmatia"
+APMATIA_CONTAINER_DATA_DIR="$APMATIA_CONTAINER_HOME/.local/share/apmatia"
+APMATIA_CONTAINER_CONFIG_DIR="$APMATIA_CONTAINER_HOME/.config/apmatia"
+APMATIA_CONTAINER_WORKSPACE_DIR="$APMATIA_CONTAINER_HOME_DIR/workspace"
+
+repair_host_permissions() {
+    local host_dir="$1"
+    local container_dir="$2"
+    local host_uid
+    local host_gid
+
+    host_uid="$(id -u)"
+    host_gid="$(id -g)"
+
+    echo "Repairing permissions for $host_dir..."
+    docker run --rm \
+        -v "$host_dir":"$container_dir" \
+        --entrypoint /bin/bash \
+        "$IMAGE_NAME" \
+        -lc "mkdir -p '$container_dir' && chown -R ${host_uid}:${host_gid} '$container_dir'"
+}
+
+ensure_host_permissions() {
+    local host_dir="$1"
+    local container_dir="$2"
+
+    mkdir -p "$host_dir" 2>/dev/null || true
+    if [ ! -d "$host_dir" ] || [ ! -w "$host_dir" ]; then
+        repair_host_permissions "$host_dir" "$container_dir"
+    fi
+    mkdir -p "$host_dir"
+}
 
 if [ -z "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST" ] && [ -f "$APMATIA_CONFIG_DIR_HOST/config.json" ]; then
     APMATIA_LLAMA_SERVER_LOG_DIR_HOST="$(python3 -c 'import json, sys
@@ -68,7 +101,9 @@ if isinstance(data, dict):
 print(str(value).strip())' "$APMATIA_CONFIG_DIR_HOST/config.json")"
 fi
 
-mkdir -p "$APMATIA_HOME_HOST" "$APMATIA_DATA_DIR_HOST" "$APMATIA_CONFIG_DIR_HOST"
+ensure_host_permissions "$APMATIA_HOME_HOST" "$APMATIA_HOME_HOST"
+ensure_host_permissions "$APMATIA_DATA_DIR_HOST" "$APMATIA_DATA_DIR_HOST"
+ensure_host_permissions "$APMATIA_CONFIG_DIR_HOST" "$APMATIA_CONFIG_DIR_HOST"
 mkdir -p "$APMATIA_WORKSPACE_ROOT_HOST"
 if [ -n "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST" ]; then
     mkdir -p "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
@@ -95,13 +130,15 @@ if [ "$MODE" = "streamlit" ]; then
         --name "$CONTAINER_NAME" \
         -p 0.0.0.0:8501:8501 \
         -v "$REPO_ROOT":/app \
-        -v "$APMATIA_WORKSPACE_DIR_HOST":/app/workspace \
-        -v "$APMATIA_HOME_HOST":/root/.apmatia \
-        -v "$APMATIA_CONFIG_DIR_HOST":/root/.config/apmatia \
-        -v "$APMATIA_DATA_DIR_HOST":/root/.local/share/apmatia \
-        -e APMATIA_HOME=/root/.apmatia \
-        -e APMATIA_DATA_DIR=/root/.local/share/apmatia \
-        -e APMATIA_WORKSPACE_ROOT=/app/workspace/modules \
+        -v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR" \
+        -v "$APMATIA_HOME_HOST":"$APMATIA_CONTAINER_HOME_DIR" \
+        -v "$APMATIA_CONFIG_DIR_HOST":"$APMATIA_CONTAINER_CONFIG_DIR" \
+        -v "$APMATIA_DATA_DIR_HOST":"$APMATIA_CONTAINER_DATA_DIR" \
+        -e HOME="$APMATIA_CONTAINER_HOME" \
+        -e APMATIA_HOME="$APMATIA_CONTAINER_HOME_DIR" \
+        -e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR" \
+        -e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules" \
+        --user "$(id -u):$(id -g)" \
         "${LOG_DIR_ARGS[@]}" \
         --entrypoint /bin/bash \
         "$IMAGE_NAME" /app/scripts/entrypoint.sh
@@ -117,13 +154,15 @@ else
         --name "$CONTAINER_NAME" \
         -p 0.0.0.0:8000:8000 \
         -v "$REPO_ROOT":/app \
-        -v "$APMATIA_WORKSPACE_DIR_HOST":/app/workspace \
-        -v "$APMATIA_HOME_HOST":/root/.apmatia \
-        -v "$APMATIA_CONFIG_DIR_HOST":/root/.config/apmatia \
-        -v "$APMATIA_DATA_DIR_HOST":/root/.local/share/apmatia \
-        -e APMATIA_HOME=/root/.apmatia \
-        -e APMATIA_DATA_DIR=/root/.local/share/apmatia \
-        -e APMATIA_WORKSPACE_ROOT=/app/workspace/modules \
+        -v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR" \
+        -v "$APMATIA_HOME_HOST":"$APMATIA_CONTAINER_HOME_DIR" \
+        -v "$APMATIA_CONFIG_DIR_HOST":"$APMATIA_CONTAINER_CONFIG_DIR" \
+        -v "$APMATIA_DATA_DIR_HOST":"$APMATIA_CONTAINER_DATA_DIR" \
+        -e HOME="$APMATIA_CONTAINER_HOME" \
+        -e APMATIA_HOME="$APMATIA_CONTAINER_HOME_DIR" \
+        -e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR" \
+        -e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules" \
+        --user "$(id -u):$(id -g)" \
         "${LOG_DIR_ARGS[@]}" \
         --entrypoint /bin/bash \
         "$IMAGE_NAME" /app/scripts/entrypoint.sh

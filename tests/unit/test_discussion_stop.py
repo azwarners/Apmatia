@@ -9,7 +9,7 @@ def test_stop_prompt_sets_event_and_returns_discussion_id(tmp_path, monkeypatch)
 
     import importlib
 
-    discussions = importlib.import_module("src.lib.discussions")
+    discussions = importlib.import_module("apmatia.lib.discussions")
     importlib.reload(discussions)
 
     state = discussions.DiscussionState()
@@ -26,11 +26,11 @@ def test_stop_prompt_sets_event_and_returns_discussion_id(tmp_path, monkeypatch)
     assert stop_event.is_set()
 
 
-@patch("src.lib.discussions.prompt_llm.execute")
-@patch("src.lib.discussions.prompt_llm.TextFileStorage")
-@patch("src.lib.discussions.prompt_llm.KoboldCppBackend")
+@patch("apmatia.lib.discussions.prompt_llm.execute")
+@patch("apmatia.lib.discussions.prompt_llm.TextFileStorage")
+@patch("apmatia.lib.discussions.prompt_llm.KoboldCppBackend")
 def test_prompt_llm_passes_stop_event(mock_backend_class, mock_storage_class, mock_execute, tmp_path):
-    from src.lib.discussions.prompt_llm import prompt_llm
+    from apmatia.lib.discussions.prompt_llm import prompt_llm
 
     output_file = tmp_path / "output.txt"
     output_file.write_text("done", encoding="utf-8")
@@ -43,11 +43,11 @@ def test_prompt_llm_passes_stop_event(mock_backend_class, mock_storage_class, mo
     assert request.stop_event is stop_event
 
 
-@patch("src.lib.discussions.prompt_llm.execute")
-@patch("src.lib.discussions.prompt_llm.TextFileStorage")
-@patch("src.lib.discussions.prompt_llm.KoboldCppBackend")
+@patch("apmatia.lib.discussions.prompt_llm.execute")
+@patch("apmatia.lib.discussions.prompt_llm.TextFileStorage")
+@patch("apmatia.lib.discussions.prompt_llm.KoboldCppBackend")
 def test_prompt_llm_streams_chunks_to_callback(mock_backend_class, mock_storage_class, mock_execute, tmp_path):
-    from src.lib.discussions.prompt_llm import prompt_llm
+    from apmatia.lib.discussions.prompt_llm import prompt_llm
 
     output_file = tmp_path / "output.txt"
     output_file.write_text("Hello there", encoding="utf-8")

@@ -1,4 +1,4 @@
-from src.lib.discussions.group_chat import (
+from apmatia.lib.discussions.group_chat import (
     GroupChatParticipant,
     build_group_chat_plan,
     build_turn_prompt,

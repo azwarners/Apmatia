@@ -4,8 +4,8 @@ import tempfile
 
 import pytest
 
-from src.lib.memory_management.models import MemoryItem
-from src.lib.memory_management.sqlite_repositories import (
+from apmatia.lib.memory_management.models import MemoryItem
+from apmatia.lib.memory_management.sqlite_repositories import (
     MemoryManagementTables,
     SQLiteMemoryManagementBundle,
     SQLiteMemoryRepository,
@@ -23,7 +23,7 @@ def memory_repo(temp_db_path):
     try:
         from persistence import SQLiteStore
     except ModuleNotFoundError:
-        from src.lib.persistence.persistence import SQLiteStore
+        from apmatia.lib.persistence.persistence import SQLiteStore
     store = SQLiteStore(temp_db_path)
     return SQLiteMemoryRepository(store, MemoryManagementTables())
 

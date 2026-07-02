@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from src.core.module_view_runtime import ModuleViewContext
-from src.core.registry import CommandContribution, ViewContribution
-from src.modules.apmatia_ipe.module_views import ApmatiaIpeModuleViewProvider
-from src.modules.apmatia_ipe.services import ApmatiaIpeService
-from src.modules.apmatia_ipe.sqlite_repositories import SQLiteIpeBundle
+from apmatia.core.module_view_runtime import ModuleViewContext
+from apmatia.core.registry import CommandContribution, ViewContribution
+from apmatia.modules.apmatia_ipe.module_views import ApmatiaIpeModuleViewProvider
+from apmatia.modules.apmatia_ipe.services import ApmatiaIpeService
+from apmatia.modules.apmatia_ipe.sqlite_repositories import SQLiteIpeBundle
 
 
 def test_apmatia_ipe_module_view_provider_creates_and_lists_ideas(tmp_path):

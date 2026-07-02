@@ -6,18 +6,18 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.lib.agent_management.models import Agent
-from src.lib.agent_management.services import AgentService
-from src.lib.memory_management.models import MemoryItem
-from src.lib.memory_management.module import MemoryManager
-from src.lib.memory_management.repositories import MemoryRepository
-from src.lib.memory_management.tooling import build_memory_tool_providers, memory_tool_definitions
-from src.lib.tool_management.models import ToolCall
-from src.lib.tool_management.module import ToolManager
-from src.lib.tool_management.repositories import AgentToolAssignmentRepository, ToolDefinitionRepository
-from src.lib.wiki_management.module import WikiManager
-from src.lib.wiki_management.repositories import WikiNodeRepository, WikiRepository
-from src.lib.wiki_management.tooling import build_wiki_tool_providers, wiki_tool_definitions
+from apmatia.lib.agent_management.models import Agent
+from apmatia.lib.agent_management.services import AgentService
+from apmatia.lib.memory_management.models import MemoryItem
+from apmatia.lib.memory_management.module import MemoryManager
+from apmatia.lib.memory_management.repositories import MemoryRepository
+from apmatia.lib.memory_management.tooling import build_memory_tool_providers, memory_tool_definitions
+from apmatia.lib.tool_management.models import ToolCall
+from apmatia.lib.tool_management.module import ToolManager
+from apmatia.lib.tool_management.repositories import AgentToolAssignmentRepository, ToolDefinitionRepository
+from apmatia.lib.wiki_management.module import WikiManager
+from apmatia.lib.wiki_management.repositories import WikiNodeRepository, WikiRepository
+from apmatia.lib.wiki_management.tooling import build_wiki_tool_providers, wiki_tool_definitions
 
 
 class InMemoryToolDefinitionRepository(ToolDefinitionRepository):
@@ -474,7 +474,7 @@ def test_memory_create_tool_errors_when_agent_has_no_owner_user_id():
 
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(
-            "src.lib.discussions.discussion_state._get_discussion",
+            "apmatia.lib.discussions.discussion_state._get_discussion",
             lambda discussion_id: None,
         )
         result = tool_manager.execute_tool_call(
@@ -506,7 +506,7 @@ def test_memory_tool_repairs_ownerless_agent_from_discussion_owner():
 
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(
-            "src.lib.discussions.discussion_state._get_discussion",
+            "apmatia.lib.discussions.discussion_state._get_discussion",
             lambda discussion_id: SimpleNamespace(owner_user_id=77) if discussion_id == "disc-9" else None,
         )
         result = tool_manager.execute_tool_call(
@@ -546,7 +546,7 @@ def test_wiki_tools_execute_against_focused_discussion_wiki():
 
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(
-            "src.lib.discussions.discussion_state._get_discussion",
+            "apmatia.lib.discussions.discussion_state._get_discussion",
             lambda discussion_id: SimpleNamespace(owner_user_id=1, focused_wiki_id=wiki.wiki_id)
             if discussion_id == "disc-tutor"
             else None,

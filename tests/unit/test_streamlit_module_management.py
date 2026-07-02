@@ -33,8 +33,8 @@ def test_module_management_page_lists_modules(mock_streamlit):
         }
     ]
 
-    with patch("src.interfaces.streamlit.api_client.list_modules", return_value=modules):
-        import src.interfaces.streamlit.pages.module_management as module_management_page
+    with patch("apmatia.interfaces.streamlit.api_client.list_modules", return_value=modules):
+        import apmatia.interfaces.streamlit.pages.module_management as module_management_page
 
         module_management_page = importlib.reload(module_management_page)
         module_management_page.render()
@@ -60,10 +60,10 @@ def test_module_management_page_toggles_module_visibility(mock_streamlit):
     ]
     mock_streamlit.button.side_effect = lambda label, **_kwargs: label == "Hide module"
 
-    with patch("src.interfaces.streamlit.api_client.list_modules", return_value=modules), patch(
-        "src.interfaces.streamlit.api_client.set_module_visibility"
+    with patch("apmatia.interfaces.streamlit.api_client.list_modules", return_value=modules), patch(
+        "apmatia.interfaces.streamlit.api_client.set_module_visibility"
     ) as mock_set_module_visibility:
-        import src.interfaces.streamlit.pages.module_management as module_management_page
+        import apmatia.interfaces.streamlit.pages.module_management as module_management_page
 
         module_management_page = importlib.reload(module_management_page)
         module_management_page.render()
@@ -95,10 +95,10 @@ def test_module_management_page_toggles_view_visibility(mock_streamlit):
     ]
     mock_streamlit.button.side_effect = lambda label, **_kwargs: label == "Hide view"
 
-    with patch("src.interfaces.streamlit.api_client.list_modules", return_value=modules), patch(
-        "src.interfaces.streamlit.api_client.set_module_view_visibility"
+    with patch("apmatia.interfaces.streamlit.api_client.list_modules", return_value=modules), patch(
+        "apmatia.interfaces.streamlit.api_client.set_module_view_visibility"
     ) as mock_set_module_view_visibility:
-        import src.interfaces.streamlit.pages.module_management as module_management_page
+        import apmatia.interfaces.streamlit.pages.module_management as module_management_page
 
         module_management_page = importlib.reload(module_management_page)
         module_management_page.render()

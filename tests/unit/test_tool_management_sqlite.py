@@ -2,8 +2,8 @@
 
 import tempfile
 
-from src.lib.tool_management.models import AgentToolAssignment, ToolDefinition
-from src.lib.tool_management.sqlite_repositories import (
+from apmatia.lib.tool_management.models import AgentToolAssignment, ToolDefinition
+from apmatia.lib.tool_management.sqlite_repositories import (
     SQLiteAgentToolAssignmentRepository,
     SQLiteToolDefinitionRepository,
     ToolManagementTables,
@@ -14,7 +14,7 @@ def _make_store(path: str):
     try:
         from persistence import SQLiteStore
     except ModuleNotFoundError:
-        from src.lib.persistence.persistence import SQLiteStore
+        from apmatia.lib.persistence.persistence import SQLiteStore
     return SQLiteStore(path)
 
 

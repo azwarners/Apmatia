@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from src.api.internal import tools as internal_tools
+from apmatia.api.internal import tools as internal_tools
 
 
 class MockTool:
@@ -38,7 +38,7 @@ def test_list_tool_definitions_serializes_manager_results():
     mock_manager = MagicMock()
     mock_manager.list_tool_definitions.return_value = [MockTool(id=1, name="echo")]
 
-    with patch("src.api.internal.tools.get_tool_manager", return_value=mock_manager):
+    with patch("apmatia.api.internal.tools.get_tool_manager", return_value=mock_manager):
         result = internal_tools.list_tool_definitions()
 
     assert result[0]["id"] == 1
@@ -50,7 +50,7 @@ def test_assign_tool_to_agent_returns_assignment_dict():
     mock_manager = MagicMock()
     mock_manager.assign_tool_to_agent.return_value = MockAssignment(id=3, agent_id=7, tool_id=2)
 
-    with patch("src.api.internal.tools.get_tool_manager", return_value=mock_manager):
+    with patch("apmatia.api.internal.tools.get_tool_manager", return_value=mock_manager):
         result = internal_tools.assign_tool_to_agent(7, 2, enabled=True)
 
     mock_manager.assign_tool_to_agent.assert_called_once_with(
@@ -80,7 +80,7 @@ def test_execute_tool_call_returns_structured_result():
         metadata={"tool_id": 1},
     )
 
-    with patch("src.api.internal.tools.get_tool_manager", return_value=mock_manager):
+    with patch("apmatia.api.internal.tools.get_tool_manager", return_value=mock_manager):
         result = internal_tools.execute_tool_call(
             tool_id=1,
             arguments={"text": "hi"},
@@ -101,7 +101,7 @@ def test_update_tool_definition_returns_serialized_tool():
     mock_manager = MagicMock()
     mock_manager.update_tool_definition.return_value = MockTool(id=2, name="echo", enabled=False)
 
-    with patch("src.api.internal.tools.get_tool_manager", return_value=mock_manager):
+    with patch("apmatia.api.internal.tools.get_tool_manager", return_value=mock_manager):
         result = internal_tools.update_tool_definition(2, enabled=False)
 
     mock_manager.update_tool_definition.assert_called_once_with(2, enabled=False)

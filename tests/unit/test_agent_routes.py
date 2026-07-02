@@ -1,15 +1,15 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from src.api.http.routes import agent_routes
+from apmatia.api.http.routes import agent_routes
 
 
 def test_create_new_agent_assigns_authenticated_owner():
     request = SimpleNamespace()
     session = SimpleNamespace(user_id=42)
 
-    with patch("src.api.http.routes.agent_routes.require_session", return_value=session), patch(
-        "src.api.http.routes.agent_routes.create_agent",
+    with patch("apmatia.api.http.routes.agent_routes.require_session", return_value=session), patch(
+        "apmatia.api.http.routes.agent_routes.create_agent",
         return_value={"id": 1, "name": "Planner"},
     ) as mock_create:
         result = agent_routes.create_new_agent(
@@ -46,13 +46,13 @@ def test_update_agent_allows_patching_ownership_fields():
     session = SimpleNamespace(user_id=42)
     agent = SimpleNamespace(owner_user_id=1, owner_group_id=None)
 
-    with patch("src.api.http.routes.agent_routes.require_session", return_value=session), patch(
-        "src.api.http.routes.agent_routes.get_agent_manager"
+    with patch("apmatia.api.http.routes.agent_routes.require_session", return_value=session), patch(
+        "apmatia.api.http.routes.agent_routes.get_agent_manager"
     ) as mock_manager, patch(
-        "src.api.http.routes.agent_routes.can_write",
+        "apmatia.api.http.routes.agent_routes.can_write",
         return_value=True,
     ), patch(
-        "src.api.http.routes.agent_routes.update_agent",
+        "apmatia.api.http.routes.agent_routes.update_agent",
         return_value={"id": 1, "name": "Planner"},
     ) as mock_update:
         mock_manager.return_value.get_agent.return_value = agent
@@ -86,16 +86,16 @@ def test_update_ownerless_agent_allows_repair_by_current_user():
     session = SimpleNamespace(user_id=42)
     agent = SimpleNamespace(owner_user_id=None, owner_group_id=None)
 
-    with patch("src.api.http.routes.agent_routes.require_session", return_value=session), patch(
-        "src.api.http.routes.agent_routes.get_agent_manager"
+    with patch("apmatia.api.http.routes.agent_routes.require_session", return_value=session), patch(
+        "apmatia.api.http.routes.agent_routes.get_agent_manager"
     ) as mock_manager, patch(
-        "src.api.http.routes.agent_routes.member_group_ids",
+        "apmatia.api.http.routes.agent_routes.member_group_ids",
         return_value=set(),
     ), patch(
-        "src.api.http.routes.agent_routes.can_write",
+        "apmatia.api.http.routes.agent_routes.can_write",
         return_value=False,
     ), patch(
-        "src.api.http.routes.agent_routes.update_agent",
+        "apmatia.api.http.routes.agent_routes.update_agent",
         return_value={"id": 1, "name": "Planner"},
     ) as mock_update:
         mock_manager.return_value.get_agent.return_value = agent
@@ -124,16 +124,16 @@ def test_update_locked_owned_agent_repairs_mode():
     session = SimpleNamespace(user_id=42)
     agent = SimpleNamespace(owner_user_id=42, owner_group_id=None, mode=0)
 
-    with patch("src.api.http.routes.agent_routes.require_session", return_value=session), patch(
-        "src.api.http.routes.agent_routes.get_agent_manager"
+    with patch("apmatia.api.http.routes.agent_routes.require_session", return_value=session), patch(
+        "apmatia.api.http.routes.agent_routes.get_agent_manager"
     ) as mock_manager, patch(
-        "src.api.http.routes.agent_routes.member_group_ids",
+        "apmatia.api.http.routes.agent_routes.member_group_ids",
         return_value=set(),
     ), patch(
-        "src.api.http.routes.agent_routes.can_write",
+        "apmatia.api.http.routes.agent_routes.can_write",
         return_value=False,
     ), patch(
-        "src.api.http.routes.agent_routes.update_agent",
+        "apmatia.api.http.routes.agent_routes.update_agent",
         return_value={"id": 1, "name": "Planner"},
     ) as mock_update:
         mock_manager.return_value.get_agent.return_value = agent

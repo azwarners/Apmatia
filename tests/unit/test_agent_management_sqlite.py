@@ -4,8 +4,8 @@ import tempfile
 
 import pytest
 
-from src.lib.agent_management.models import Agent
-from src.lib.agent_management.sqlite_repositories import (
+from apmatia.lib.agent_management.models import Agent
+from apmatia.lib.agent_management.sqlite_repositories import (
     SQLiteAgentRepository,
     SQLiteAgentManagementBundle,
     AgentManagementTables,
@@ -31,7 +31,7 @@ def agent_repo(temp_db_path, tables):
     try:
         from persistence import SQLiteStore
     except ModuleNotFoundError:
-        from src.lib.persistence.persistence import SQLiteStore
+        from apmatia.lib.persistence.persistence import SQLiteStore
     store = SQLiteStore(temp_db_path)
     return SQLiteAgentRepository(store, tables)
 

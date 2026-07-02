@@ -1,15 +1,15 @@
 from datetime import datetime
 from unittest.mock import patch
 
-from src.lib.model_management.models import LLM
-from src.lib.model_management.module import LLMManager
+from apmatia.lib.model_management.models import LLM
+from apmatia.lib.model_management.module import LLMManager
 
 
 def test_list_configs_normalizes_missing_base_fields():
     manager = LLMManager()
 
     with patch(
-        "src.lib.model_management.module.get_config_value",
+        "apmatia.lib.model_management.module.get_config_value",
         return_value=[
             {
                 "id": 1,
@@ -38,10 +38,10 @@ def test_create_config_persists_base_fields():
     def fake_save(config):
         saved.update(config)
 
-    with patch("src.lib.model_management.module.get_config_value", return_value=[]), patch(
-        "src.lib.model_management.module.load_app_config",
+    with patch("apmatia.lib.model_management.module.get_config_value", return_value=[]), patch(
+        "apmatia.lib.model_management.module.load_app_config",
         return_value={"llm": {"configs": []}},
-    ), patch("src.lib.model_management.module.save_app_config", side_effect=fake_save):
+    ), patch("apmatia.lib.model_management.module.save_app_config", side_effect=fake_save):
         created = manager.create_config(
             LLM(
                 user_alias="Local",
@@ -79,7 +79,7 @@ def test_probe_config_uses_limited_prompt_response():
             )
         ],
     ), patch(
-        "src.lib.model_management.module.prompt_llm",
+        "apmatia.lib.discussions.prompt_llm.prompt_llm",
         return_value="ready and connected",
     ) as mock_prompt:
         result = manager.probe_config(4)

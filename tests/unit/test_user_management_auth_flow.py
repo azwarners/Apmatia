@@ -1,9 +1,9 @@
 """
 Tests for the complete authentication flow: user registration followed by login/session creation.
 """
-from src.lib.user_management.auth import SessionManager
-from src.lib.user_management.module import UserManager
-from src.lib.user_management.sqlite_repositories import SQLiteUserManagementBundle
+from apmatia.lib.user_management.auth import SessionManager
+from apmatia.lib.user_management.module import UserManager
+from apmatia.lib.user_management.sqlite_repositories import SQLiteUserManagementBundle
 
 
 def _bundle(tmp_path):

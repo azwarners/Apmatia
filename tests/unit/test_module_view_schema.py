@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from src.core.module_view_schema import build_collection_view_schema
-from src.modules.apmatia_ipe.models import CapturedIdea
+from apmatia.core.module_view_schema import build_collection_view_schema
+from apmatia.modules.apmatia_ipe.models import CapturedIdea
 
 
 def test_build_collection_view_schema_infers_field_entries_from_dataclass():

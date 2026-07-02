@@ -1,7 +1,7 @@
 import tempfile
 
-from src.lib.wiki_management.module import WikiManager
-from src.lib.wiki_management.sqlite_repositories import SQLiteWikiManagementBundle
+from apmatia.lib.wiki_management.module import WikiManager
+from apmatia.lib.wiki_management.sqlite_repositories import SQLiteWikiManagementBundle
 
 
 def test_wiki_sqlite_round_trip():

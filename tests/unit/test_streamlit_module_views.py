@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 from unittest.mock import patch
 
-from src.interfaces.streamlit.module_views.models import (
+from apmatia.interfaces.streamlit.module_views.models import (
     CollectionViewDescriptor,
     ModuleViewActionDescriptor,
     ModuleViewFormDescriptor,
@@ -13,7 +13,7 @@ from src.interfaces.streamlit.module_views.models import (
 
 
 def test_module_views_page_shows_help_when_no_view_is_bound(mock_streamlit):
-    import src.interfaces.streamlit.pages.module_views as module_views_page
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
     with patch.object(module_views_page, "list_modules", return_value=[]):
@@ -24,7 +24,7 @@ def test_module_views_page_shows_help_when_no_view_is_bound(mock_streamlit):
 
 
 def test_module_views_page_renders_selected_catalog_view(mock_streamlit):
-    import src.interfaces.streamlit.pages.module_views as module_views_page
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
     mock_streamlit.session_state["selected_module_id"] = "example"
@@ -58,7 +58,7 @@ def test_module_views_page_renders_selected_catalog_view(mock_streamlit):
 
 
 def test_module_views_page_submits_create_form(mock_streamlit):
-    import src.interfaces.streamlit.pages.module_views as module_views_page
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
     mock_streamlit.session_state["selected_module_id"] = "example"
@@ -129,7 +129,7 @@ def test_module_views_page_submits_create_form(mock_streamlit):
 
 
 def test_module_views_page_submits_edit_form(mock_streamlit):
-    import src.interfaces.streamlit.pages.module_views as module_views_page
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
     mock_streamlit.session_state["selected_module_id"] = "example"
@@ -190,7 +190,7 @@ def test_module_views_page_submits_edit_form(mock_streamlit):
 
 
 def test_module_views_page_prompts_before_deleting_item(mock_streamlit):
-    import src.interfaces.streamlit.pages.module_views as module_views_page
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
     mock_streamlit.session_state["selected_module_id"] = "example"
@@ -258,7 +258,7 @@ def test_module_views_page_prompts_before_deleting_item(mock_streamlit):
 
 
 def test_module_views_page_confirms_delete_item(mock_streamlit):
-    import src.interfaces.streamlit.pages.module_views as module_views_page
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
     mock_streamlit.session_state["selected_module_id"] = "example"

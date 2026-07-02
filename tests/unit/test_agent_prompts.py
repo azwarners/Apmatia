@@ -1,7 +1,7 @@
 import tempfile
 
-from src.lib.agent_management.agent_prompt import AgentPrompt, compile_agent_system_prompt, default_agent_prompt
-from src.lib.agent_management.prompt_repositories import (
+from apmatia.lib.agent_management.agent_prompt import AgentPrompt, compile_agent_system_prompt, default_agent_prompt
+from apmatia.lib.agent_management.prompt_repositories import (
     AgentPromptManagementTables,
     SQLiteAgentPromptRepository,
 )
@@ -11,7 +11,7 @@ def _store(path):
     try:
         from persistence import SQLiteStore
     except ModuleNotFoundError:
-        from src.lib.persistence.persistence import SQLiteStore
+        from apmatia.lib.persistence.persistence import SQLiteStore
     return SQLiteStore(path)
 
 

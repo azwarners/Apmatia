@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.core.modules import (
+from apmatia.core.modules import (
     ModuleWorkspaceEditor,
     WorkspaceFileNotFoundError,
     WorkspaceModuleNotFoundError,
@@ -163,7 +163,7 @@ def guarded_import(name, *args, **kwargs):
     return original_import(name, *args, **kwargs)
 
 builtins.__import__ = guarded_import
-from src.core.modules import ModuleWorkspaceEditor
+from apmatia.core.modules import ModuleWorkspaceEditor
 assert ModuleWorkspaceEditor is not None
 """
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)

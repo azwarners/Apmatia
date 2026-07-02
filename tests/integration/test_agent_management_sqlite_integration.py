@@ -8,11 +8,11 @@ import pytest
 try:
     from persistence import SQLiteStore
 except ModuleNotFoundError:
-    from src.lib.persistence.persistence import SQLiteStore
+    from apmatia.lib.persistence.persistence import SQLiteStore
 
-from src.lib.agent_management.models import Agent
-from src.lib.agent_management.module import AgentManager
-from src.lib.agent_management.sqlite_repositories import (
+from apmatia.lib.agent_management.models import Agent
+from apmatia.lib.agent_management.module import AgentManager
+from apmatia.lib.agent_management.sqlite_repositories import (
     SQLiteAgentRepository,
     AgentManagementTables,
     SQLiteAgentManagementBundle,

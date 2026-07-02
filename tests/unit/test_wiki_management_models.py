@@ -1,4 +1,4 @@
-from src.lib.wiki_management.models import KnowledgeObject, Wiki, WikiNode
+from apmatia.lib.wiki_management.models import KnowledgeObject, Wiki, WikiNode
 
 
 def test_knowledge_object_preserves_owner_fields():

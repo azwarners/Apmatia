@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from src.core.module_view_runtime import (
+from apmatia.core.module_view_runtime import (
     execute_module_command,
     list_module_view_items,
     register_module_view_provider,
 )
-from src.core.registry import CommandContribution, ModuleMetadata, Registry, ViewContribution
+from apmatia.core.registry import CommandContribution, ModuleMetadata, Registry, ViewContribution
 
 
 class _StubProvider:
@@ -50,7 +50,7 @@ def test_module_view_runtime_dispatches_to_registered_provider():
     provider = _StubProvider()
     register_module_view_provider("example", provider)
 
-    with patch("src.core.module_view_runtime.get_application_registry", return_value=_registry()):
+    with patch("apmatia.core.module_view_runtime.get_application_registry", return_value=_registry()):
         items = list_module_view_items("example.items.view", user_id=7, group_ids={3})
         result = execute_module_command(
             "example.items.create",

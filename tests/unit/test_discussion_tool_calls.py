@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from src.lib.discussions.tool_calls import (
+from apmatia.lib.discussions.tool_calls import (
     build_tool_runtime_instructions,
     extend_system_prompt_with_tools,
     format_tool_result_message,

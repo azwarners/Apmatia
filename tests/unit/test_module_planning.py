@@ -4,7 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from src.core.modules import create_module_scaffold, plan_module_scaffold
+from apmatia.core.modules import create_module_scaffold, plan_module_scaffold
 
 
 def test_plan_module_scaffold_returns_expected_path_and_files(tmp_path: Path):
@@ -81,7 +81,7 @@ def guarded_import(name, *args, **kwargs):
     return original_import(name, *args, **kwargs)
 
 builtins.__import__ = guarded_import
-from src.core.modules import plan_module_scaffold
+from apmatia.core.modules import plan_module_scaffold
 result = plan_module_scaffold("productivity", display_name="Productivity", base_dir=Path({str(tmp_path)!r}))
 assert result.passed is True
 """

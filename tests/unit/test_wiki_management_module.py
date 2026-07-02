@@ -4,9 +4,9 @@ from dataclasses import replace
 
 import pytest
 
-from src.lib.wiki_management.models import Wiki, WikiNode
-from src.lib.wiki_management.module import WikiManager
-from src.lib.wiki_management.repositories import WikiNodeRepository, WikiRepository
+from apmatia.lib.wiki_management.models import Wiki, WikiNode
+from apmatia.lib.wiki_management.module import WikiManager
+from apmatia.lib.wiki_management.repositories import WikiNodeRepository, WikiRepository
 
 
 class InMemoryWikiRepository(WikiRepository):

@@ -33,8 +33,9 @@ COPY tests/ tests/
 # Make the entrypoint executable
 RUN chmod +x scripts/entrypoint.sh && mkdir -p /home/apmatia && chmod 0777 /home/apmatia
 
-# Set PYTHONPATH so 'src' module is discoverable
-ENV PYTHONPATH="/app"
+# Set PYTHONPATH so both the legacy `src.*` imports and the new `apmatia.*`
+# package layout are discoverable.
+ENV PYTHONPATH="/app:/app/src"
 
 # Pass MODE to the container
 ENV MODE="$MODE"

@@ -4,7 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from src.core.modules import create_module_scaffold, validate_module
+from apmatia.core.modules import create_module_scaffold, validate_module
 
 
 def test_validate_module_passes_for_valid_scaffold(tmp_path: Path):
@@ -145,7 +145,7 @@ def test_validate_module_register_raising_fails(tmp_path: Path):
     module_path = tmp_path / "src/modules/productivity/module.py"
     module_path.write_text(
         "from __future__ import annotations\n\n"
-        "from src.core.registry import ModuleMetadata\n\n"
+        "from apmatia.core.registry import ModuleMetadata\n\n"
         "PRODUCTIVITY_MODULE = ModuleMetadata(module_id='productivity', name='Productivity')\n\n"
         "def register(registry):\n"
         "    raise RuntimeError('boom')\n",
@@ -218,7 +218,7 @@ def guarded_import(name, *args, **kwargs):
     return original_import(name, *args, **kwargs)
 
 builtins.__import__ = guarded_import
-from src.core.modules import validate_module
+from apmatia.core.modules import validate_module
 result = validate_module("productivity", base_dir=Path({str(tmp_path)!r}))
 assert result.passed is True
 """

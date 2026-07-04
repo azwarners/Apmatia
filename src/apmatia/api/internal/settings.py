@@ -13,6 +13,10 @@ def get_settings_payload() -> dict:
 def save_settings_payload(
     *,
     llama_server_log_dir: str,
+    gguf_directories: str,
+    auto_scan_gguf_directory: bool,
+    llama_server_executable_path: str,
+    llama_server_default_args: str,
     theme: str,
     font_family: str,
     accent_color: str,
@@ -22,6 +26,10 @@ def save_settings_payload(
 ) -> None:
     _save_settings_payload(
         llama_server_log_dir=llama_server_log_dir,
+        gguf_directories=gguf_directories,
+        auto_scan_gguf_directory=auto_scan_gguf_directory,
+        llama_server_executable_path=llama_server_executable_path,
+        llama_server_default_args=llama_server_default_args,
         theme=theme,
         font_family=font_family,
         accent_color=accent_color,

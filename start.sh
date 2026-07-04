@@ -47,6 +47,8 @@ APMATIA_DATA_DIR_HOST="${APMATIA_DATA_DIR:-$HOME/.local/share/apmatia}"
 APMATIA_CONFIG_DIR_HOST="${APMATIA_CONFIG_DIR:-$HOME/.config/apmatia}"
 APMATIA_WORKSPACE_DIR_HOST="${APMATIA_WORKSPACE_DIR:-$HOME/.apmatia/workspace}"
 APMATIA_WORKSPACE_ROOT_HOST="$APMATIA_WORKSPACE_DIR_HOST/modules"
+APMATIA_GGUF_DIRECTORY_HOST="${APMATIA_GGUF_DIRECTORY:-}"
+APMATIA_GGUF_DIRECTORIES_HOST="${APMATIA_GGUF_DIRECTORIES:-}"
 APMATIA_LLAMA_SERVER_LOG_DIR_HOST="${APMATIA_LLAMA_SERVER_LOG_DIR:-${LLAMA_LOG_DIR:-}}"
 APMATIA_CONTAINER_HOME="/home/apmatia"
 APMATIA_CONTAINER_HOME_DIR="$APMATIA_CONTAINER_HOME/.apmatia"
@@ -101,6 +103,39 @@ if isinstance(data, dict):
 print(str(value).strip())' "$APMATIA_CONFIG_DIR_HOST/config.json")"
 fi
 
+if [ -z "$APMATIA_GGUF_DIRECTORIES_HOST" ] && [ -f "$APMATIA_CONFIG_DIR_HOST/config.json" ]; then
+    APMATIA_GGUF_DIRECTORIES_HOST="$(python3 -c 'import json, sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    raise SystemExit(0)
+
+values = []
+if isinstance(data, dict):
+    ai_model_manager = data.get("ai_model_manager")
+    if isinstance(ai_model_manager, dict):
+        raw_values = ai_model_manager.get("gguf_directories") or []
+        if isinstance(raw_values, list):
+            values = [str(item).strip() for item in raw_values if str(item).strip()]
+        if not values:
+            value = ai_model_manager.get("gguf_directory") or ""
+            if value:
+                values = [str(value).strip()]
+
+print("\n".join(values))' "$APMATIA_CONFIG_DIR_HOST/config.json")"
+fi
+
+if [ -z "$APMATIA_GGUF_DIRECTORIES_HOST" ] && [ -n "$APMATIA_GGUF_DIRECTORY_HOST" ]; then
+    APMATIA_GGUF_DIRECTORIES_HOST="$APMATIA_GGUF_DIRECTORY_HOST"
+fi
+
+if [ -n "$APMATIA_GGUF_DIRECTORIES_HOST" ]; then
+    APMATIA_GGUF_DIRECTORIES_HOST="$(printf '%s' "$APMATIA_GGUF_DIRECTORIES_HOST" | tr ':' '\n')"
+fi
+
 ensure_host_permissions "$APMATIA_HOME_HOST" "$APMATIA_HOME_HOST"
 ensure_host_permissions "$APMATIA_DATA_DIR_HOST" "$APMATIA_DATA_DIR_HOST"
 ensure_host_permissions "$APMATIA_CONFIG_DIR_HOST" "$APMATIA_CONFIG_DIR_HOST"
@@ -126,6 +161,35 @@ if [ "$MODE" = "streamlit" ]; then
             -e APMATIA_LLAMA_SERVER_LOG_DIR="$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
         )
     fi
+    GGUF_DIR_ARGS=()
+    if [ -n "$APMATIA_GGUF_DIRECTORIES_HOST" ]; then
+        GGUF_DIRECTORY_ENV=""
+        GGUF_DIRECTORY_FIRST=""
+        while IFS= read -r gguf_directory_host; do
+            if [ -z "$gguf_directory_host" ] || [ ! -d "$gguf_directory_host" ]; then
+                continue
+            fi
+            GGUF_DIR_ARGS+=(
+                -v "$gguf_directory_host":"$gguf_directory_host"
+            )
+            if [ -z "$GGUF_DIRECTORY_FIRST" ]; then
+                GGUF_DIRECTORY_FIRST="$gguf_directory_host"
+            fi
+            if [ -z "$GGUF_DIRECTORY_ENV" ]; then
+                GGUF_DIRECTORY_ENV="$gguf_directory_host"
+            else
+                GGUF_DIRECTORY_ENV="$GGUF_DIRECTORY_ENV:$gguf_directory_host"
+            fi
+        done <<EOF
+$APMATIA_GGUF_DIRECTORIES_HOST
+EOF
+        if [ -n "$GGUF_DIRECTORY_ENV" ]; then
+            GGUF_DIR_ARGS+=(
+                -e APMATIA_GGUF_DIRECTORY="$GGUF_DIRECTORY_FIRST"
+                -e APMATIA_GGUF_DIRECTORIES="$GGUF_DIRECTORY_ENV"
+            )
+        fi
+    fi
     docker run \
         --name "$CONTAINER_NAME" \
         -p 0.0.0.0:8501:8501 \
@@ -140,6 +204,7 @@ if [ "$MODE" = "streamlit" ]; then
         -e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules" \
         --user "$(id -u):$(id -g)" \
         "${LOG_DIR_ARGS[@]}" \
+        "${GGUF_DIR_ARGS[@]}" \
         --entrypoint /bin/bash \
         "$IMAGE_NAME" /app/scripts/entrypoint.sh
 else
@@ -149,6 +214,35 @@ else
             -v "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST":"$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
             -e APMATIA_LLAMA_SERVER_LOG_DIR="$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
         )
+    fi
+    GGUF_DIR_ARGS=()
+    if [ -n "$APMATIA_GGUF_DIRECTORIES_HOST" ]; then
+        GGUF_DIRECTORY_ENV=""
+        GGUF_DIRECTORY_FIRST=""
+        while IFS= read -r gguf_directory_host; do
+            if [ -z "$gguf_directory_host" ] || [ ! -d "$gguf_directory_host" ]; then
+                continue
+            fi
+            GGUF_DIR_ARGS+=(
+                -v "$gguf_directory_host":"$gguf_directory_host"
+            )
+            if [ -z "$GGUF_DIRECTORY_FIRST" ]; then
+                GGUF_DIRECTORY_FIRST="$gguf_directory_host"
+            fi
+            if [ -z "$GGUF_DIRECTORY_ENV" ]; then
+                GGUF_DIRECTORY_ENV="$gguf_directory_host"
+            else
+                GGUF_DIRECTORY_ENV="$GGUF_DIRECTORY_ENV:$gguf_directory_host"
+            fi
+        done <<EOF
+$APMATIA_GGUF_DIRECTORIES_HOST
+EOF
+        if [ -n "$GGUF_DIRECTORY_ENV" ]; then
+            GGUF_DIR_ARGS+=(
+                -e APMATIA_GGUF_DIRECTORY="$GGUF_DIRECTORY_FIRST"
+                -e APMATIA_GGUF_DIRECTORIES="$GGUF_DIRECTORY_ENV"
+            )
+        fi
     fi
     docker run \
         --name "$CONTAINER_NAME" \
@@ -164,6 +258,7 @@ else
         -e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules" \
         --user "$(id -u):$(id -g)" \
         "${LOG_DIR_ARGS[@]}" \
+        "${GGUF_DIR_ARGS[@]}" \
         --entrypoint /bin/bash \
         "$IMAGE_NAME" /app/scripts/entrypoint.sh
 fi

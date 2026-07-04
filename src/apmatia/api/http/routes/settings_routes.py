@@ -9,6 +9,11 @@ router = APIRouter()
 
 class SettingsPayload(BaseModel):
     llama_server_log_dir: str = ""
+    gguf_directories: str = ""
+    gguf_directory: str = ""
+    auto_scan_gguf_directory: bool = True
+    llama_server_executable_path: str = "llama-server"
+    llama_server_default_args: str = ""
     theme: str = "dark"
     font_family: str = "system-ui"
     accent_color: str = "#ff6b6b"
@@ -29,6 +34,10 @@ def save_settings(request: Request, payload: SettingsPayload):
     try:
         save_settings_payload(
             llama_server_log_dir=payload.llama_server_log_dir,
+            gguf_directories=payload.gguf_directories or payload.gguf_directory,
+            auto_scan_gguf_directory=payload.auto_scan_gguf_directory,
+            llama_server_executable_path=payload.llama_server_executable_path,
+            llama_server_default_args=payload.llama_server_default_args,
             theme=payload.theme,
             font_family=payload.font_family,
             accent_color=payload.accent_color,

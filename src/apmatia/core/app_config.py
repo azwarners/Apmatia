@@ -16,6 +16,18 @@ _DEFAULT_LEGACY_STATE_FILE = LEGACY_STATE_FILE
 
 
 PREFERRED_CONFIG_DIR = Path.home() / ".config" / "apmatia"
+
+
+def _dir_is_writable(path: Path) -> bool:
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(dir=path, prefix=".apmatia-write-test-", delete=True):
+            pass
+    except OSError:
+        return False
+    return True
+
+
 def _resolve_config_dir() -> Path:
     env_override = os.getenv("APMATIA_CONFIG_DIR")
     if env_override:
@@ -29,11 +41,14 @@ def _resolve_config_dir() -> Path:
     preferred = PREFERRED_CONFIG_DIR
     try:
         preferred.mkdir(parents=True, exist_ok=True)
-        return preferred
+        if _dir_is_writable(preferred):
+            return preferred
     except OSError:
-        fallback = Path(tempfile.gettempdir()) / "apmatia"
-        fallback.mkdir(parents=True, exist_ok=True)
-        return fallback
+        pass
+
+    fallback = Path(tempfile.gettempdir()) / "apmatia"
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
 
 
 def _config_file() -> Path:
@@ -58,6 +73,22 @@ def _default_config() -> dict[str, Any]:
         "discussion": {
             "current_discussion_id": None,
             "system_prompt": "",
+        },
+        "ai_model_manager": {
+            "gguf_directory": "",
+            "gguf_directories": [],
+            "auto_scan_gguf_directory": True,
+        },
+        "ai_model_executor": {
+            "runtime_config": {
+                "runtime_id": "llama_cpp",
+                "executable_path": "llama-server",
+                "default_args": [],
+                "host": "127.0.0.1",
+                "default_port": 8000,
+                "stop_conflicting_models": True,
+                "log_dir": "",
+            }
         },
         "llama_server": {
             "log_dir": "",
@@ -93,6 +124,23 @@ def _set_nested(config: dict[str, Any], keys: tuple[str, ...], value: Any) -> No
     current[keys[-1]] = value
 
 
+def _get_nested(config: dict[str, Any], keys: tuple[str, ...]) -> Any:
+    current: Any = config
+    for key in keys:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
+
+
+def _is_empty_value(value: Any) -> bool:
+    if value in (None, "", [], (), {}):
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    return False
+
+
 def _seed_from_env(config: dict[str, Any]) -> dict[str, Any]:
     env_map: dict[str, tuple[str, ...]] = {
         "LLM_MODEL": ("llm", "model_name"),
@@ -102,6 +150,10 @@ def _seed_from_env(config: dict[str, Any]) -> dict[str, Any]:
         "OPENAI_COMPAT_API_KEY": ("llm", "openai_compatible", "api_key"),
         "OPENAI_COMPAT_MODEL": ("llm", "openai_compatible", "model_name"),
         "KOBOLDCPP_URL": ("llm", "koboldcpp", "base_url"),
+        "APMATIA_GGUF_DIRECTORY": ("ai_model_manager", "gguf_directory"),
+        "APMATIA_GGUF_DIRECTORIES": ("ai_model_manager", "gguf_directories"),
+        "APMATIA_LLAMA_SERVER_EXECUTABLE_PATH": ("ai_model_executor", "runtime_config", "executable_path"),
+        "APMATIA_LLAMA_SERVER_DEFAULT_ARGS": ("ai_model_executor", "runtime_config", "default_args"),
         "APMATIA_LLAMA_SERVER_LOG_DIR": ("llama_server", "log_dir"),
     }
 
@@ -111,11 +163,19 @@ def _seed_from_env(config: dict[str, Any]) -> dict[str, Any]:
         if env_value is None or env_value == "":
             continue
 
+        if env_key in {"APMATIA_GGUF_DIRECTORY", "APMATIA_GGUF_DIRECTORIES"} and not _is_empty_value(_get_nested(seeded, cfg_keys)):
+            continue
+
         if env_key == "LLM_MAX_TOKENS":
             try:
                 _set_nested(seeded, cfg_keys, int(env_value))
             except ValueError:
                 continue
+        elif env_key == "APMATIA_LLAMA_SERVER_DEFAULT_ARGS":
+            _set_nested(seeded, cfg_keys, [part.strip() for part in env_value.split() if part.strip()])
+        elif env_key == "APMATIA_GGUF_DIRECTORIES":
+            directories = [part.strip() for part in env_value.replace(os.pathsep, "\n").splitlines() if part.strip()]
+            _set_nested(seeded, cfg_keys, directories)
         else:
             _set_nested(seeded, cfg_keys, env_value)
     return seeded

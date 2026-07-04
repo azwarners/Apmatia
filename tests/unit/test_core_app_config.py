@@ -33,6 +33,15 @@ class TestResolveConfigDir:
         expected_fallback = Path(tempfile.gettempdir()) / "apmatia"
         assert result == expected_fallback
 
+    def test_falls_back_to_temp_dir_when_preferred_dir_is_not_writable(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with patch("apmatia.core.app_config.PREFERRED_CONFIG_DIR") as mock_preferred:
+                mock_preferred.mkdir.return_value = None
+                with patch("apmatia.core.app_config._dir_is_writable", return_value=False):
+                    result = app_config._resolve_config_dir()
+        expected_fallback = Path(tempfile.gettempdir()) / "apmatia"
+        assert result == expected_fallback
+
 
 class TestDefaultConfig:
     def test_returns_expected_structure(self):
@@ -40,6 +49,8 @@ class TestDefaultConfig:
 
         assert "llm" in config
         assert "discussion" in config
+        assert "ai_model_manager" in config
+        assert "ai_model_executor" in config
         assert "llama_server" in config
         assert "ui" in config
 
@@ -70,6 +81,20 @@ class TestDefaultConfig:
         config = app_config._default_config()
 
         assert config["llama_server"]["log_dir"] == ""
+
+    def test_ai_model_manager_config_structure(self):
+        config = app_config._default_config()
+
+        assert config["ai_model_manager"]["gguf_directory"] == ""
+        assert config["ai_model_manager"]["auto_scan_gguf_directory"] is True
+
+    def test_ai_model_executor_config_structure(self):
+        config = app_config._default_config()
+
+        runtime_config = config["ai_model_executor"]["runtime_config"]
+        assert runtime_config["executable_path"] == "llama-server"
+        assert runtime_config["default_args"] == []
+        assert runtime_config["stop_conflicting_models"] is True
 
 
 class TestMergeDicts:
@@ -167,6 +192,9 @@ class TestSeedFromEnv:
             "OPENAI_COMPAT_API_KEY": "test-key",
             "OPENAI_COMPAT_MODEL": "gpt-3.5-turbo",
             "KOBOLDCPP_URL": "http://localhost:8001",
+            "APMATIA_GGUF_DIRECTORY": "/models/gguf",
+            "APMATIA_LLAMA_SERVER_EXECUTABLE_PATH": "/usr/bin/llama-server",
+            "APMATIA_LLAMA_SERVER_DEFAULT_ARGS": "--ctx-size 4096 --host 0.0.0.0",
             "APMATIA_LLAMA_SERVER_LOG_DIR": "/var/log/llama.cpp",
         }
         with patch.dict(os.environ, env_vars):
@@ -179,7 +207,27 @@ class TestSeedFromEnv:
         assert result["llm"]["openai_compatible"]["api_key"] == "test-key"
         assert result["llm"]["openai_compatible"]["model_name"] == "gpt-3.5-turbo"
         assert result["llm"]["koboldcpp"]["base_url"] == "http://localhost:8001"
+        assert result["ai_model_manager"]["gguf_directory"] == "/models/gguf"
+        assert result["ai_model_executor"]["runtime_config"]["executable_path"] == "/usr/bin/llama-server"
+        assert result["ai_model_executor"]["runtime_config"]["default_args"] == ["--ctx-size", "4096", "--host", "0.0.0.0"]
         assert result["llama_server"]["log_dir"] == "/var/log/llama.cpp"
+
+    def test_does_not_override_existing_saved_values_with_env_defaults(self):
+        config = {
+            "ai_model_manager": {
+                "gguf_directory": "/saved/models",
+                "gguf_directories": ["/saved/models", "/saved/vision"],
+            }
+        }
+        env_vars = {
+            "APMATIA_GGUF_DIRECTORY": "/startup/models",
+            "APMATIA_GGUF_DIRECTORIES": "/startup/models:/startup/vision",
+        }
+        with patch.dict(os.environ, env_vars):
+            result = app_config._seed_from_env(config)
+
+        assert result["ai_model_manager"]["gguf_directory"] == "/saved/models"
+        assert result["ai_model_manager"]["gguf_directories"] == ["/saved/models", "/saved/vision"]
 
 
 class TestMigrateLegacyState:

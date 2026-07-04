@@ -1,0 +1,17 @@
+[module]
+module_id = "apmatia_ai_model_executor"
+name = "Apmatia AI Model Executor"
+version = "0.1.0"
+description = "Local llama.cpp execution control with feasibility checks and process tracking."
+author = "Nick"
+
+[metadata]
+category = "models"
+tags = ["llama.cpp", "execution", "resources", "gpu", "processes"]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []

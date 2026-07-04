@@ -248,6 +248,72 @@ def test_llm_config(config_id: int) -> dict[str, Any]:
     return _request("POST", f"/model-configs/{config_id}/test")
 
 
+def list_ai_models() -> list[dict[str, Any]]:
+    return _request("GET", "/ai-models")
+
+
+def create_ai_model(**payload: Any) -> dict[str, Any]:
+    return _request("POST", "/ai-models", json=payload)
+
+
+def update_ai_model(model_id: int, **payload: Any) -> dict[str, Any]:
+    return _request("PUT", f"/ai-models/{model_id}", json=payload)
+
+
+def delete_ai_model(model_id: int) -> bool:
+    return _request("DELETE", f"/ai-models/{model_id}")
+
+
+def show_ai_model(model_id: int) -> dict[str, Any]:
+    return _request("GET", f"/ai-models/{model_id}")
+
+
+def scan_ai_models(directory: str, *, recursive: bool = True) -> dict[str, Any]:
+    return _request("POST", "/ai-models/scan", json={"directory": directory, "recursive": recursive})
+
+
+def list_ai_model_preferences() -> list[dict[str, Any]]:
+    return _request("GET", "/ai-model-preferences")
+
+
+def create_ai_model_preference(**payload: Any) -> dict[str, Any]:
+    return _request("POST", "/ai-model-preferences", json=payload)
+
+
+def update_ai_model_preference(preference_id: int, **payload: Any) -> dict[str, Any]:
+    return _request("PUT", f"/ai-model-preferences/{preference_id}", json=payload)
+
+
+def delete_ai_model_preference(preference_id: int) -> bool:
+    return _request("DELETE", f"/ai-model-preferences/{preference_id}")
+
+
+def get_ai_model_executor_resources() -> dict[str, Any]:
+    return _request("GET", "/ai-model-executor/resources")
+
+
+def can_ai_model_run(model_id: int) -> dict[str, Any]:
+    return _request("GET", f"/ai-model-executor/can-run/{model_id}")
+
+
+def list_ai_model_executions(model_id: int | None = None) -> list[dict[str, Any]]:
+    params = {"model_id": model_id} if model_id is not None else None
+    return _request("GET", "/ai-model-executions", params=params)
+
+
+def get_ai_model_execution_status(model_id: int | None = None) -> dict[str, Any]:
+    params = {"model_id": model_id} if model_id is not None else None
+    return _request("GET", "/ai-model-executions/status", params=params)
+
+
+def start_ai_model_execution(model_id: int, **payload: Any) -> dict[str, Any]:
+    return _request("POST", f"/ai-model-executor/start/{model_id}", json=payload)
+
+
+def stop_ai_model_execution(model_id: int, **payload: Any) -> dict[str, Any]:
+    return _request("POST", f"/ai-model-executor/stop/{model_id}", json=payload)
+
+
 def list_modules() -> list[dict[str, Any]]:
     return _request("GET", "/modules")
 

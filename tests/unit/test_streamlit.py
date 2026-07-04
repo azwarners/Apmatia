@@ -99,8 +99,14 @@ def test_settings_page_loads_and_saves(mock_streamlit):
     """Settings page loads grouped values and posts them back through the API."""
     current_settings = {
         "llama_server_log_dir": "/var/log/llama.cpp",
+        "gguf_directories": "/models/gguf\n/alt/models/gguf",
+        "gguf_directory": "/models/gguf",
+        "auto_scan_gguf_directory": True,
+        "llama_server_executable_path": "/usr/bin/llama-server",
+        "llama_server_default_args": "--ctx-size 4096\n--host 0.0.0.0",
         "theme": "dark",
         "font_family": "system-ui",
+        "accent_color": "#ff6b6b",
         "font_size": 16,
         "title_bar_height": 56,
         "title_bar_font_size": 20,
@@ -108,6 +114,9 @@ def test_settings_page_loads_and_saves(mock_streamlit):
     text_values = {
         "llama.cpp log directory": "/var/log/llama.cpp",
         "Font family": "system-ui",
+        "GGUF models directory": "/models/gguf",
+        "llama-server executable": "/usr/bin/llama-server",
+        "llama-server default args": "--ctx-size 4096\n--host 0.0.0.0",
     }
     mock_streamlit.text_input.side_effect = (
         lambda label, value="", **_kwargs: text_values.get(label, value)
@@ -115,6 +124,11 @@ def test_settings_page_loads_and_saves(mock_streamlit):
     mock_streamlit.text_area.side_effect = (
         lambda _label, value="", **_kwargs: value
     )
+    mock_streamlit.checkbox.side_effect = lambda _label, value=False, **_kwargs: value
+    mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
+    mock_streamlit.color_picker.side_effect = lambda _label, value="#ff6b6b", **_kwargs: value
+    mock_streamlit.slider.side_effect = lambda _label, min_value=0, max_value=100, value=0, **_kwargs: value
+    mock_streamlit.form_submit_button.side_effect = [True, False]
 
     with patch(
         "apmatia.interfaces.streamlit.api_client.get_settings",
@@ -126,11 +140,17 @@ def test_settings_page_loads_and_saves(mock_streamlit):
 
         settings_page = importlib.reload(settings_page)
         settings_page.render()
+        settings_page.render()
 
     mock_save.assert_called_once()
     payload = mock_save.call_args.args[0]
     assert isinstance(payload, SettingsPayload)
     assert payload.llama_server_log_dir == "/var/log/llama.cpp"
+    assert payload.gguf_directories == "/models/gguf\n/alt/models/gguf"
+    assert payload.gguf_directory == ""
+    assert payload.auto_scan_gguf_directory is True
+    assert payload.llama_server_executable_path == "/usr/bin/llama-server"
+    assert payload.llama_server_default_args == "--ctx-size 4096\n--host 0.0.0.0"
     assert payload.theme == "dark"
     mock_streamlit.success.assert_called_with("Settings saved.")
 
@@ -2384,6 +2404,17 @@ def test_start_script_uses_saved_llama_server_log_dir_when_env_is_missing():
 
     assert "config.json" in launcher
     assert "llama_server" in launcher
+
+
+def test_start_script_mounts_saved_gguf_directory_when_env_is_missing():
+    """The standard launcher should mount the saved GGUF directory into the container."""
+    launcher = (REPO_ROOT / "start.sh").read_text()
+
+    assert 'APMATIA_GGUF_DIRECTORIES_HOST="${APMATIA_GGUF_DIRECTORIES:-}"' in launcher
+    assert "ai_model_manager" in launcher
+    assert "gguf_directory" in launcher
+    assert "gguf_directories" in launcher
+    assert '-e APMATIA_GGUF_DIRECTORIES="$GGUF_DIRECTORY_ENV"' in launcher
 
 
 def test_windows_launcher_bootstraps_persistent_directories():

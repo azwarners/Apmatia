@@ -8,6 +8,10 @@ from apmatia.core.settings_service import get_settings_payload, save_settings_pa
 def _valid_payload() -> dict:
     return {
         "llama_server_log_dir": "/var/log/llama.cpp",
+        "gguf_directories": "/models/gguf\n/alt/models/gguf",
+        "auto_scan_gguf_directory": True,
+        "llama_server_executable_path": "/usr/bin/llama-server",
+        "llama_server_default_args": "--ctx-size 4096\n--host 0.0.0.0",
         "theme": "light",
         "font_family": "serif",
         "accent_color": "#123abc",
@@ -20,6 +24,11 @@ def _valid_payload() -> dict:
 def test_get_settings_payload_returns_ui_preferences():
     values = {
         ("llama_server", "log_dir"): "/var/log/llama.cpp",
+        ("ai_model_manager", "gguf_directories"): ["/models/gguf", "/alt/models/gguf"],
+        ("ai_model_manager", "gguf_directory"): "/models/gguf",
+        ("ai_model_manager", "auto_scan_gguf_directory"): True,
+        ("ai_model_executor", "runtime_config", "executable_path"): "/usr/bin/llama-server",
+        ("ai_model_executor", "runtime_config", "default_args"): ["--ctx-size 4096", "--host 0.0.0.0"],
         ("ui", "theme"): "light",
         ("ui", "font_family"): "monospace",
         ("ui", "accent_color"): "#123abc",
@@ -36,6 +45,11 @@ def test_get_settings_payload_returns_ui_preferences():
 
     assert payload == {
         "llama_server_log_dir": "/var/log/llama.cpp",
+        "gguf_directories": "/models/gguf\n/alt/models/gguf",
+        "gguf_directory": "/models/gguf",
+        "auto_scan_gguf_directory": True,
+        "llama_server_executable_path": "/usr/bin/llama-server",
+        "llama_server_default_args": "--ctx-size 4096\n--host 0.0.0.0",
         "theme": "light",
         "font_family": "monospace",
         "accent_color": "#123abc",
@@ -50,6 +64,11 @@ def test_save_settings_payload_persists_ui_settings(mock_set_config_value):
     save_settings_payload(**_valid_payload())
 
     mock_set_config_value.assert_any_call("llama_server", "log_dir", value="/var/log/llama.cpp")
+    mock_set_config_value.assert_any_call("ai_model_manager", "gguf_directories", value=["/models/gguf", "/alt/models/gguf"])
+    mock_set_config_value.assert_any_call("ai_model_manager", "gguf_directory", value="/models/gguf")
+    mock_set_config_value.assert_any_call("ai_model_manager", "auto_scan_gguf_directory", value=True)
+    mock_set_config_value.assert_any_call("ai_model_executor", "runtime_config", "executable_path", value="/usr/bin/llama-server")
+    mock_set_config_value.assert_any_call("ai_model_executor", "runtime_config", "default_args", value=["--ctx-size 4096", "--host 0.0.0.0"])
     mock_set_config_value.assert_any_call("ui", "theme", value="light")
     mock_set_config_value.assert_any_call("ui", "font_family", value="serif")
     mock_set_config_value.assert_any_call("ui", "accent_color", value="#123abc")
@@ -80,13 +99,99 @@ def test_get_settings_payload_falls_back_to_llama_server_env():
     def fake_get_config_value(*keys, default=None):
         if keys == ("llama_server", "log_dir"):
             return None
+        if keys == ("ai_model_manager", "gguf_directories"):
+            return ["/models/gguf", "/alt/models/gguf"]
+        if keys == ("ai_model_manager", "gguf_directory"):
+            return None
+        if keys == ("ai_model_manager", "auto_scan_gguf_directory"):
+            return True
+        if keys == ("ai_model_executor", "runtime_config", "executable_path"):
+            return None
+        if keys == ("ai_model_executor", "runtime_config", "default_args"):
+            return []
         return default
 
     with patch.dict(
         "os.environ",
-        {"APMATIA_LLAMA_SERVER_LOG_DIR": "/var/log/llama.cpp"},
+        {
+            "APMATIA_LLAMA_SERVER_LOG_DIR": "/var/log/llama.cpp",
+            "APMATIA_GGUF_DIRECTORY": "/models/gguf",
+            "APMATIA_LLAMA_SERVER_EXECUTABLE_PATH": "/usr/bin/llama-server",
+        },
         clear=True,
     ), patch("apmatia.core.settings_service.get_config_value", side_effect=fake_get_config_value):
         payload = get_settings_payload()
 
     assert payload["llama_server_log_dir"] == "/var/log/llama.cpp"
+    assert payload["gguf_directories"] == "/models/gguf\n/alt/models/gguf"
+    assert payload["gguf_directory"] == "/models/gguf"
+    assert payload["llama_server_executable_path"] == "/usr/bin/llama-server"
+    assert payload["llama_server_default_args"] == ""
+
+
+@patch("apmatia.core.settings_service.set_config_value")
+@patch("apmatia.modules.apmatia_ai_model_manager.AIModelManager")
+def test_save_settings_payload_auto_scans_gguf_directory(mock_manager_cls, mock_set_config_value, tmp_path):
+    gguf_dir = tmp_path / "models"
+    gguf_dir.mkdir()
+    (gguf_dir / "alpha-7b.gguf").write_bytes(b"gguf")
+
+    save_settings_payload(
+        llama_server_log_dir="",
+        gguf_directories=str(gguf_dir),
+        auto_scan_gguf_directory=True,
+        llama_server_executable_path="llama-server",
+        llama_server_default_args="",
+        theme="light",
+        font_family="serif",
+        accent_color="#123abc",
+        font_size=18,
+        title_bar_height=56,
+        title_bar_font_size=20,
+    )
+
+    mock_manager_cls.return_value.scan_gguf_directory.assert_called_once_with(gguf_dir, recursive=True)
+
+
+@patch("apmatia.core.settings_service.set_config_value")
+@patch("apmatia.modules.apmatia_ai_model_manager.AIModelManager")
+def test_save_settings_payload_scans_gguf_directory_even_when_auto_scan_disabled(mock_manager_cls, mock_set_config_value, tmp_path):
+    gguf_dir = tmp_path / "models"
+    gguf_dir.mkdir()
+    (gguf_dir / "alpha-7b.gguf").write_bytes(b"gguf")
+
+    save_settings_payload(
+        llama_server_log_dir="",
+        gguf_directories=str(gguf_dir),
+        auto_scan_gguf_directory=False,
+        llama_server_executable_path="llama-server",
+        llama_server_default_args="",
+        theme="light",
+        font_family="serif",
+        accent_color="#123abc",
+        font_size=18,
+        title_bar_height=56,
+        title_bar_font_size=20,
+    )
+
+    mock_manager_cls.return_value.scan_gguf_directory.assert_called_once_with(gguf_dir, recursive=True)
+
+
+@patch("apmatia.core.settings_service.set_config_value")
+def test_save_settings_payload_normalizes_multiple_gguf_directories(mock_set_config_value):
+    save_settings_payload(
+        llama_server_log_dir="",
+        gguf_directories="/models/gguf, /alt/models/gguf\n\n /third/models ",
+        auto_scan_gguf_directory=True,
+        llama_server_executable_path="llama-server",
+        llama_server_default_args="",
+        theme="light",
+        font_family="serif",
+        accent_color="#123abc",
+        font_size=18,
+        title_bar_height=56,
+        title_bar_font_size=20,
+    )
+
+    mock_set_config_value.assert_any_call("ai_model_manager", "gguf_directories", value=["/models/gguf", "/alt/models/gguf", "/third/models"])
+    mock_set_config_value.assert_any_call("ai_model_manager", "gguf_directory", value="/models/gguf")

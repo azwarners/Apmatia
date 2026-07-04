@@ -12,8 +12,17 @@ from apmatia.core.registry import bootstrap
 def test_load_bundled_modules_loads_bundled_modules():
     registry = load_bundled_modules(Registry())
 
-    assert [module.module_id for module in registry.list_modules()] == ["apmatia_ipe", "apmatia_worksim"]
+    assert [module.module_id for module in registry.list_modules()] == [
+        "apmatia_ai_model_executor",
+        "apmatia_ai_model_manager",
+        "apmatia_ipe",
+        "apmatia_worksim",
+    ]
     assert [action.action_id for action in registry.list_actions()] == [
+        "apmatia_ai_model_executor.executions",
+        "apmatia_ai_model_executor.resources",
+        "apmatia_ai_model_manager.models",
+        "apmatia_ai_model_manager.preferences",
         "apmatia_ipe.calendar_event",
         "apmatia_ipe.habit",
         "apmatia_ipe.idea",
@@ -22,6 +31,21 @@ def test_load_bundled_modules_loads_bundled_modules():
         "apmatia_worksim.org_chart_node",
     ]
     assert [command.command_id for command in registry.list_commands()] == [
+        "apmatia_ai_model_executor.executions.can_run",
+        "apmatia_ai_model_executor.executions.start",
+        "apmatia_ai_model_executor.executions.status",
+        "apmatia_ai_model_executor.executions.stop",
+        "apmatia_ai_model_executor.resources.inspect",
+        "apmatia_ai_model_manager.models.create",
+        "apmatia_ai_model_manager.models.delete",
+        "apmatia_ai_model_manager.models.edit",
+        "apmatia_ai_model_manager.models.list",
+        "apmatia_ai_model_manager.models.scan",
+        "apmatia_ai_model_manager.models.show",
+        "apmatia_ai_model_manager.preferences.create",
+        "apmatia_ai_model_manager.preferences.delete",
+        "apmatia_ai_model_manager.preferences.edit",
+        "apmatia_ai_model_manager.preferences.list",
         "apmatia_ipe.calendar_event.create",
         "apmatia_ipe.calendar_event.delete",
         "apmatia_ipe.calendar_event.edit",
@@ -48,6 +72,8 @@ def test_load_bundled_modules_loads_bundled_modules():
         "apmatia_worksim.org_chart_node.list",
     ]
     assert [view.view_id for view in registry.list_views()] == [
+        "apmatia_ai_model_manager.models.view",
+        "apmatia_ai_model_manager.preferences.view",
         "apmatia_ipe.calendar_event.view",
         "apmatia_ipe.habit.view",
         "apmatia_ipe.idea.view",
@@ -73,4 +99,9 @@ def test_get_application_registry_returns_cached_registry():
     second = get_application_registry()
 
     assert first is second
-    assert [module.module_id for module in first.list_modules()] == ["apmatia_ipe", "apmatia_worksim"]
+    assert [module.module_id for module in first.list_modules()] == [
+        "apmatia_ai_model_executor",
+        "apmatia_ai_model_manager",
+        "apmatia_ipe",
+        "apmatia_worksim",
+    ]

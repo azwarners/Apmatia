@@ -260,6 +260,8 @@ def _format_item_value(item: Any, key: str, empty_value: str) -> str:
     value = _item_value(item, key)
     if value in {None, ""}:
         return empty_value
+    if isinstance(value, bool):
+        return "yes" if value else "no"
     if isinstance(value, (dict, list, tuple)):
         return json.dumps(value, ensure_ascii=False, default=str)
     return str(value)

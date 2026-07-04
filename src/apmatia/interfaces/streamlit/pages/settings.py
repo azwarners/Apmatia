@@ -18,13 +18,52 @@ def render() -> None:
     st.title("Settings")
     st.caption("Configure Apmatia through the local API. Changes stay on this machine.")
 
+    saved_message = st.session_state.pop("settings_save_message", None)
+    if saved_message:
+        st.success(saved_message)
+
     with st.form("apmatia_settings_form"):
         st.subheader("Runtime")
-        llama_server_log_dir = st.text_input(
-            "llama.cpp log directory",
-            value=current.get("llama_server_log_dir", ""),
-            help="Directory containing the llama.cpp server log files. Leave blank to use an environment override.",
-        )
+        runtime_left, runtime_right = st.columns(2)
+        with runtime_left:
+            llama_server_log_dir = st.text_input(
+                "llama.cpp log directory",
+                value=current.get("llama_server_log_dir", ""),
+                help="Directory containing the llama.cpp server log files. Leave blank to use an environment override.",
+            )
+            llama_server_executable_path = st.text_input(
+                "llama-server executable",
+                value=current.get("llama_server_executable_path", "llama-server"),
+                help="Path to the local llama-server binary used for execution.",
+            )
+        with runtime_right:
+            llama_server_default_args = st.text_area(
+                "llama-server default args",
+                value=str(current.get("llama_server_default_args", "")),
+                height=120,
+                help="One argument per line. These are passed to every local launch.",
+            )
+
+        st.subheader("Model Discovery")
+        discovery_left, discovery_right = st.columns(2)
+        with discovery_left:
+            gguf_directories = st.text_area(
+                "GGUF model libraries",
+                value=current.get("gguf_directories", current.get("gguf_directory", "")),
+                height=140,
+                help="Use one directory per line or separate them with commas. The scanner will recurse through subdirectories in each library.",
+            )
+            st.caption("Example: `/home/nick/ServerData/models/llm` or `/home/nick/ServerData/models/llm, /home/nick/ServerData/models/vision`.")
+            auto_scan_gguf_directory = st.checkbox(
+                "Auto-scan GGUF directory on save",
+                value=bool(current.get("auto_scan_gguf_directory", True)),
+                help="Stored as a preference for future automation. GGUF directories are rescanned immediately when saved.",
+            )
+        with discovery_right:
+            st.info(
+                "The scanner records every GGUF file it finds recursively. "
+                "At launch time, the executor will use the first GGUF file in a model directory."
+            )
 
         st.subheader("Appearance")
         appearance_left, appearance_right = st.columns(2)
@@ -69,6 +108,10 @@ def render() -> None:
 
     payload = SettingsPayload(
         llama_server_log_dir=llama_server_log_dir,
+        gguf_directories=gguf_directories,
+        auto_scan_gguf_directory=auto_scan_gguf_directory,
+        llama_server_executable_path=llama_server_executable_path,
+        llama_server_default_args=llama_server_default_args,
         theme=theme,
         font_family=font_family,
         accent_color=accent_color,
@@ -78,7 +121,8 @@ def render() -> None:
     )
 
     try:
-        save_settings(payload)
+        with st.spinner("Saving settings..."):
+            save_settings(payload)
     except ApiError as error:
         st.error(f"Unable to save settings: {error.detail}")
         return
@@ -86,5 +130,5 @@ def render() -> None:
     st.session_state["ui_theme_preference"] = theme
     st.session_state["ui_font_family"] = font_family
     st.session_state["ui_accent_color"] = accent_color
-    st.success("Settings saved.")
+    st.session_state["settings_save_message"] = "Settings saved."
     st.rerun()

@@ -20,6 +20,10 @@ For the Streamlit app's custom upper-right menu, remember that Streamlit still r
 
 Module UI work should stay schema-first and adapter-driven. When adding or changing module views, update the registry-backed view metadata and the shared module-view adapter/schema layer rather than writing module-specific Streamlit screens. The `apmatia_ipe` module is the reference example for schema-inferred list and create views.
 
+Do not add new Streamlit pages under `src/apmatia/interfaces/streamlit/pages/` for module features. If a feature needs UI, expose it as a module view through the registry-backed module-view layer so the Streamlit shell stays replaceable.
+
+When a module needs a guided setup action such as SSH key preparation, keep that action inside the module view form or view metadata instead of creating a new Streamlit page. Prefer a module command that the shared Streamlit module-view layer can invoke, and avoid burying first-run setup only in troubleshooting text.
+
 When reporting changes back to the user, always include the full absolute path of at least one relevant file so it is obvious which repo instance and directory were touched. Prefer verbose path references when mentioning files in responses, especially after work that could otherwise be confused with a different checkout.
 
 Do not use relative paths like `apmatia/...`, `./...`, or bare filenames when describing changed files to the user. Use absolute paths such as `/home/nick/ServerData/repos/apmatia/...` so there is no ambiguity about which checkout is being discussed.

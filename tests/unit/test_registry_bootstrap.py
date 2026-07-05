@@ -13,12 +13,15 @@ def test_load_bundled_modules_loads_bundled_modules():
     registry = load_bundled_modules(Registry())
 
     assert [module.module_id for module in registry.list_modules()] == [
+        "apmatia_ai_host_management",
         "apmatia_ai_model_executor",
         "apmatia_ai_model_manager",
         "apmatia_ipe",
         "apmatia_worksim",
     ]
     assert [action.action_id for action in registry.list_actions()] == [
+        "apmatia_ai_host_management.hosts",
+        "apmatia_ai_host_management.resources",
         "apmatia_ai_model_executor.executions",
         "apmatia_ai_model_executor.resources",
         "apmatia_ai_model_manager.models",
@@ -31,6 +34,15 @@ def test_load_bundled_modules_loads_bundled_modules():
         "apmatia_worksim.org_chart_node",
     ]
     assert [command.command_id for command in registry.list_commands()] == [
+        "apmatia_ai_host_management.hosts.create",
+        "apmatia_ai_host_management.hosts.delete",
+        "apmatia_ai_host_management.hosts.disable",
+        "apmatia_ai_host_management.hosts.edit",
+        "apmatia_ai_host_management.hosts.list",
+        "apmatia_ai_host_management.hosts.prepare_ssh_copy_command",
+        "apmatia_ai_host_management.hosts.prepare_ssh_key",
+        "apmatia_ai_host_management.resources.inspect_local",
+        "apmatia_ai_host_management.resources.validate",
         "apmatia_ai_model_executor.executions.can_run",
         "apmatia_ai_model_executor.executions.start",
         "apmatia_ai_model_executor.executions.status",
@@ -72,6 +84,8 @@ def test_load_bundled_modules_loads_bundled_modules():
         "apmatia_worksim.org_chart_node.list",
     ]
     assert [view.view_id for view in registry.list_views()] == [
+        "apmatia_ai_host_management.hosts.view",
+        "apmatia_ai_host_management.resources.view",
         "apmatia_ai_model_manager.models.view",
         "apmatia_ai_model_manager.preferences.view",
         "apmatia_ipe.calendar_event.view",
@@ -100,6 +114,7 @@ def test_get_application_registry_returns_cached_registry():
 
     assert first is second
     assert [module.module_id for module in first.list_modules()] == [
+        "apmatia_ai_host_management",
         "apmatia_ai_model_executor",
         "apmatia_ai_model_manager",
         "apmatia_ipe",

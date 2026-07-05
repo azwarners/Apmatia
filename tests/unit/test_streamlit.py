@@ -2432,4 +2432,6 @@ def test_container_has_writable_non_root_home():
     dockerfile = (REPO_ROOT / "Dockerfile").read_text()
 
     assert "mkdir -p /home/apmatia" in dockerfile
-    assert "chmod 0777 /home/apmatia" in dockerfile
+    assert "useradd --uid 1000 --gid 1000" in dockerfile
+    assert "chown -R apmatia:apmatia /home/apmatia" in dockerfile
+    assert "USER apmatia" in dockerfile

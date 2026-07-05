@@ -23,6 +23,15 @@ class ModuleViewActionDescriptor:
 
 
 @dataclass(frozen=True, slots=True)
+class ModuleViewFormActionDescriptor:
+    key: str
+    label: str
+    intent: str
+    style: str = "secondary"
+    payload: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
 class ModuleViewIntent:
     view_id: str
     intent: str
@@ -55,6 +64,7 @@ class ModuleViewFormDescriptor:
     description: str = ""
     submit_label: str = "Save"
     cancel_label: str = "Cancel"
+    actions: tuple[ModuleViewFormActionDescriptor, ...] = ()
     fields: tuple[ModuleViewFormFieldDescriptor, ...] = ()
 
 

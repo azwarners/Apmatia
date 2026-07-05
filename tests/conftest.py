@@ -62,6 +62,7 @@ def mock_streamlit(monkeypatch):
     mock_st.divider = MagicMock()
     mock_st.container = MagicMock()
     mock_st.popover = MagicMock()
+    mock_st.json = MagicMock()
     mock_st.selectbox = MagicMock(side_effect=lambda _label, options, index=0, **_kwargs: options[index])
     mock_st.multiselect = MagicMock(return_value=[])
     mock_st.checkbox = MagicMock(side_effect=lambda _label, value=False, **_kwargs: value)

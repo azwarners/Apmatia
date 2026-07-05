@@ -292,6 +292,39 @@ def get_ai_model_executor_resources() -> dict[str, Any]:
     return _request("GET", "/ai-model-executor/resources")
 
 
+def list_ai_hosts() -> list[dict[str, Any]]:
+    return _request("GET", "/ai-hosts")
+
+
+def create_ai_host(**payload: Any) -> dict[str, Any]:
+    return _request("POST", "/ai-hosts", json=payload)
+
+
+def update_ai_host(host_id: int, **payload: Any) -> dict[str, Any]:
+    return _request("PUT", f"/ai-hosts/{host_id}", json=payload)
+
+
+def delete_ai_host(host_id: int) -> dict[str, Any]:
+    return _request("DELETE", f"/ai-hosts/{host_id}")
+
+
+def show_ai_host(host_id: int) -> dict[str, Any]:
+    return _request("GET", f"/ai-hosts/{host_id}")
+
+
+def disable_ai_host(host_id: int) -> dict[str, Any]:
+    return _request("POST", f"/ai-hosts/{host_id}/disable")
+
+
+def inspect_ai_host_resources(bootstrap_password: str | None = None) -> list[dict[str, Any]]:
+    params = {"bootstrap_password": bootstrap_password} if bootstrap_password else {}
+    return _request("GET", "/ai-host-resources", params=params)
+
+
+def validate_ai_host(**payload: Any) -> dict[str, Any]:
+    return _request("POST", "/ai-hosts/validate", json=payload)
+
+
 def can_ai_model_run(model_id: int) -> dict[str, Any]:
     return _request("GET", f"/ai-model-executor/can-run/{model_id}")
 

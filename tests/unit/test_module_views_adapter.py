@@ -4,7 +4,12 @@ import importlib
 
 from apmatia.core.registry import ViewContribution
 from apmatia.interfaces.streamlit.module_views.adapter import adapt_module_view
-from apmatia.interfaces.streamlit.module_views.models import ModuleViewIntent
+from apmatia.interfaces.streamlit.module_views.models import (
+    ModuleViewFormActionDescriptor,
+    ModuleViewFormDescriptor,
+    ModuleViewFormFieldDescriptor,
+    ModuleViewIntent,
+)
 
 
 def _collection_view() -> ViewContribution:
@@ -72,6 +77,30 @@ def test_adapt_module_view_parses_optional_create_form():
     assert spec.create_form.title == "Create example"
     assert spec.create_form.submit_label == "Save example"
     assert [field.key for field in spec.create_form.fields] == ["name", "details"]
+
+
+def test_adapt_module_view_parses_create_form_actions():
+    view = _collection_view()
+    view.metadata["ui"]["create_form"] = {
+        "key": "create_example",
+        "title": "Create example",
+        "actions": [
+            {
+                "key": "prepare_ssh_key",
+                "label": "Generate key",
+                "intent": "prepare_ssh_key",
+                "style": "secondary",
+            }
+        ],
+        "fields": [
+            {"key": "name", "label": "Name"},
+        ],
+    }
+
+    spec = adapt_module_view(view, items=[])
+
+    assert spec.create_form is not None
+    assert [action.key for action in spec.create_form.actions] == ["prepare_ssh_key"]
 
 
 def test_adapt_module_view_infers_columns_and_create_form_from_schema():
@@ -197,6 +226,68 @@ def test_render_module_view_renders_rows_and_emits_intents(mock_streamlit):
         disabled=False,
         use_container_width=True,
     )
+
+
+def test_render_module_view_renders_troubleshooting_footer(mock_streamlit):
+    import apmatia.interfaces.streamlit.module_views.renderers as renderers
+
+    renderers = importlib.reload(renderers)
+
+    spec = adapt_module_view(
+        _collection_view(),
+        items=[
+            {
+                "id": 1,
+                "name": "Alpha",
+                "status": "active",
+                "host_summary": "ID 1 | Alpha | 192.168.86.132",
+                "troubleshooting_hint": "The remote SSH session reached the host, but the remote command failed while resolving the session user. This is not a password prompt problem.",
+                "resource_error": "SSH inspection failed: No user exists for uid 1000",
+                "ssh_connection_test_command": "ssh -vvv nick@192.168.86.132",
+                "ssh_public_key_install_command": "ssh-copy-id -i ~/.ssh/id_ed25519.pub nick@192.168.86.132",
+            }
+        ],
+    )
+
+    renderers.render_module_view(spec)
+
+    mock_streamlit.subheader.assert_called_with("Troubleshooting")
+    mock_streamlit.write.assert_any_call("ID 1 | Alpha | 192.168.86.132")
+    mock_streamlit.write.assert_any_call(
+        "The remote SSH session reached the host, but the remote command failed while resolving the session user. This is not a password prompt problem."
+    )
+    mock_streamlit.write.assert_any_call("SSH inspection failed: No user exists for uid 1000")
+    mock_streamlit.caption.assert_any_call("Copy and run this from the machine running Apmatia to inspect the SSH handshake.")
+    mock_streamlit.caption.assert_called_with("Copy and run this from the machine running Apmatia after the key has been created.")
+    mock_streamlit.code.assert_any_call("ssh -vvv nick@192.168.86.132", language="bash")
+    mock_streamlit.code.assert_called_with("ssh-copy-id -i ~/.ssh/id_ed25519.pub nick@192.168.86.132", language="bash")
+
+
+def test_render_module_view_form_renders_action_button(mock_streamlit):
+    import apmatia.interfaces.streamlit.module_views.renderers as renderers
+
+    renderers = importlib.reload(renderers)
+    mock_streamlit.form_submit_button.side_effect = [True, False, False]
+
+    form = ModuleViewFormDescriptor(
+        key="create_example",
+        title="Create example",
+        actions=(
+            ModuleViewFormActionDescriptor(
+                key="prepare_ssh_key",
+                label="Generate/Prepare SSH key",
+                intent="prepare_ssh_key",
+            ),
+        ),
+        fields=(ModuleViewFormFieldDescriptor(key="name", label="Name"),),
+    )
+
+    submitted, cancelled, payload, action_key = renderers.render_module_view_form(form, form_key="form:key")
+
+    assert submitted is False
+    assert cancelled is False
+    assert action_key == "prepare_ssh_key"
+    assert payload["name"] == "testuser"
 
 
 def test_render_module_view_gracefully_handles_unsupported_modes(mock_streamlit):

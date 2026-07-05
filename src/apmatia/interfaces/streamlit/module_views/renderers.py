@@ -10,6 +10,7 @@ from apmatia.interfaces.streamlit.module_views.models import (
     CollectionViewDescriptor,
     ModuleViewFormDescriptor,
     ModuleViewFormFieldDescriptor,
+    ModuleViewFormActionDescriptor,
     ModuleViewActionDescriptor,
     ModuleViewIntent,
 )
@@ -81,6 +82,33 @@ def render_collection_view(
         with st.container(border=True):
             render_collection_row(spec, item, row_index=index, on_intent=on_intent)
 
+    troubleshooting_items = _troubleshooting_items(spec.items)
+    if troubleshooting_items:
+        st.subheader("Troubleshooting")
+        for index, item in enumerate(troubleshooting_items):
+            with st.container(border=True):
+                summary = str(_item_value(item, "host_summary") or _item_value(item, spec.item_key) or f"Row {index + 1}").strip()
+                error = str(_item_value(item, "resource_error") or "").strip()
+                hint = str(_item_value(item, "troubleshooting_hint") or "").strip()
+                connection_test = str(_item_value(item, "ssh_connection_test_command") or "").strip()
+                install_command = str(_item_value(item, "ssh_public_key_install_command") or "").strip()
+                resource_probe = str(_item_value(item, "ssh_resource_probe_command") or "").strip()
+                if summary:
+                    st.write(summary)
+                if hint:
+                    st.write(hint)
+                if error:
+                    st.write(error)
+                if connection_test:
+                    st.caption("Copy and run this from the machine running Apmatia to inspect the SSH handshake.")
+                    st.code(connection_test, language="bash")
+                if install_command:
+                    st.caption("Copy and run this from the machine running Apmatia after the key has been created.")
+                    st.code(install_command, language="bash")
+                if resource_probe:
+                    st.caption("Copy and run this exact probe from the machine running Apmatia to reproduce the resource check.")
+                    st.code(resource_probe, language="bash")
+
 
 def render_collection_row(
     spec: CollectionViewDescriptor,
@@ -119,18 +147,25 @@ def render_module_view_form(
     title: str | None = None,
     submit_label: str | None = None,
     initial_values: Mapping[str, Any] | None = None,
-) -> tuple[bool, bool, dict[str, Any]]:
+) -> tuple[bool, bool, dict[str, Any], str | None]:
     st.subheader(title or form.title)
     if form.description:
         st.caption(form.description)
 
     payload: dict[str, Any] = {}
+    action_key: str | None = None
     with st.form(form_key):
         for field in form.fields:
             payload[field.key] = _render_form_field(field, initial_value=None if initial_values is None else initial_values.get(field.key))
+        if form.actions:
+            action_columns = st.columns(len(form.actions))
+            for column, action in zip(action_columns, form.actions):
+                with column:
+                    if _form_button(action):
+                        action_key = action.key
         submitted = st.form_submit_button(submit_label or form.submit_label)
         cancelled = bool(st.form_submit_button(form.cancel_label)) if form.cancel_label else False
-    return submitted, cancelled, payload
+    return submitted, cancelled, payload, action_key
 
 
 def _render_item_actions(
@@ -192,6 +227,11 @@ def _button(action: ModuleViewActionDescriptor, *, key_prefix: str, disabled: bo
     )
 
 
+def _form_button(action: ModuleViewFormActionDescriptor) -> bool:
+    button_type = action.style if action.style in {"primary", "secondary"} else "secondary"
+    return st.form_submit_button(action.label, type=button_type, use_container_width=True)
+
+
 def _render_form_field(field: ModuleViewFormFieldDescriptor, *, initial_value: Any = None) -> Any:
     field_type = field.field_type.lower().strip()
     value = initial_value if initial_value not in (None, "") else field.default
@@ -237,6 +277,14 @@ def _render_form_field(field: ModuleViewFormFieldDescriptor, *, initial_value: A
             index=index,
             help=field.help_text or None,
         )
+    if field_type == "password":
+        return st.text_input(
+            field.label,
+            value=_stringify_form_value(value),
+            placeholder=field.placeholder,
+            type="password",
+            **common_kwargs,
+        )
 
     return st.text_input(
         field.label,
@@ -258,7 +306,7 @@ def _stringify_form_value(value: Any) -> str:
 
 def _format_item_value(item: Any, key: str, empty_value: str) -> str:
     value = _item_value(item, key)
-    if value in {None, ""}:
+    if value is None or value == "":
         return empty_value
     if isinstance(value, bool):
         return "yes" if value else "no"
@@ -291,3 +339,14 @@ def _item_key(item: Any, key: str, *, row_index: int) -> str:
     if item_id:
         return item_id
     return f"row-{row_index}"
+
+
+def _troubleshooting_items(items: tuple[Any, ...]) -> list[Any]:
+    matches: list[Any] = []
+    for item in items:
+        error = _item_value(item, "resource_error")
+        if error is None:
+            continue
+        if str(error).strip():
+            matches.append(item)
+    return matches

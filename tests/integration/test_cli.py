@@ -148,31 +148,65 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert exit_code == 0
     assert isinstance(payload, list)
     assert [item["module"]["module_id"] for item in payload] == [
+        "apmatia_ai_host_management",
         "apmatia_ai_model_executor",
         "apmatia_ai_model_manager",
         "apmatia_ipe",
         "apmatia_worksim",
     ]
-    assert payload[0]["module"]["name"] == "Apmatia AI Model Executor"
+    assert payload[0]["module"]["name"] == "Apmatia AI Host Management"
     assert payload[0]["module"]["version"] == "0.1.0"
-    assert payload[0]["source"] == "bundled"
-    assert payload[0]["is_workspace"] is False
-    assert payload[1]["module"]["name"] == "Apmatia AI Model Manager"
-    assert payload[1]["module"]["version"] == "0.1.0"
-    assert payload[1]["module"]["description"] == "Local GGUF model metadata management with size estimates and task routing preferences."
-    assert payload[1]["module"]["metadata"] == {"category": "models", "tags": ["gguf", "models", "preferences", "scanning", "estimates"]}
-    assert payload[1]["module"]["dependencies"] == {
+    assert payload[0]["module"]["description"] == "Track AI-capable hosts and inspect current resource utilization across registered hosts for future model placement."
+    assert payload[0]["module"]["metadata"] == {
+        "category": "infrastructure",
+        "tags": ["hosts", "resources", "ssh", "local", "inventory"],
+    }
+    assert payload[0]["module"]["dependencies"] == {
         "python": ">=3.10",
         "python_packages": [],
         "system_packages": [],
         "modules": [],
         "tools": [],
     }
-    assert payload[1]["actions"] == [
+    assert payload[0]["actions"] == [
+        "apmatia_ai_host_management.hosts",
+        "apmatia_ai_host_management.resources",
+    ]
+    assert payload[0]["commands"] == [
+        "apmatia_ai_host_management.hosts.create",
+        "apmatia_ai_host_management.hosts.delete",
+        "apmatia_ai_host_management.hosts.disable",
+        "apmatia_ai_host_management.hosts.edit",
+        "apmatia_ai_host_management.hosts.list",
+        "apmatia_ai_host_management.hosts.prepare_ssh_copy_command",
+        "apmatia_ai_host_management.hosts.prepare_ssh_key",
+        "apmatia_ai_host_management.resources.inspect_local",
+        "apmatia_ai_host_management.resources.validate",
+    ]
+    assert payload[0]["views"] == [
+        "apmatia_ai_host_management.hosts.view",
+        "apmatia_ai_host_management.resources.view",
+    ]
+    assert payload[0]["source"] == "bundled"
+    assert payload[0]["is_workspace"] is False
+    assert payload[1]["module"]["name"] == "Apmatia AI Model Executor"
+    assert payload[1]["module"]["version"] == "0.1.0"
+    assert payload[2]["module"]["name"] == "Apmatia AI Model Manager"
+    assert payload[2]["module"]["version"] == "0.1.0"
+    assert payload[2]["module"]["description"] == "Local GGUF model metadata management with size estimates and task routing preferences."
+    assert payload[2]["module"]["metadata"] == {"category": "models", "tags": ["gguf", "models", "preferences", "scanning", "estimates"]}
+    assert payload[2]["module"]["dependencies"] == {
+        "python": ">=3.10",
+        "python_packages": [],
+        "system_packages": [],
+        "modules": [],
+        "tools": [],
+    }
+    assert payload[2]["actions"] == [
         "apmatia_ai_model_manager.models",
         "apmatia_ai_model_manager.preferences",
     ]
-    assert payload[1]["commands"] == [
+    assert payload[2]["commands"] == [
         "apmatia_ai_model_manager.models.create",
         "apmatia_ai_model_manager.models.delete",
         "apmatia_ai_model_manager.models.edit",
@@ -184,27 +218,27 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "apmatia_ai_model_manager.preferences.edit",
         "apmatia_ai_model_manager.preferences.list",
     ]
-    assert payload[1]["views"] == [
+    assert payload[2]["views"] == [
         "apmatia_ai_model_manager.models.view",
         "apmatia_ai_model_manager.preferences.view",
     ]
-    assert payload[2]["module"]["module_id"] == "apmatia_ipe"
-    assert payload[2]["module"]["name"] == "Apmatia Integrated Productivity Environment"
-    assert payload[2]["module"]["version"] == "0.1.0"
-    assert payload[2]["module"]["description"] == "An integrated workspace for ideas, tasks, projects, habits, and calendar planning."
-    assert payload[2]["module"]["author"] == "Nick"
-    assert payload[2]["module"]["metadata"] == {
+    assert payload[3]["module"]["module_id"] == "apmatia_ipe"
+    assert payload[3]["module"]["name"] == "Apmatia Integrated Productivity Environment"
+    assert payload[3]["module"]["version"] == "0.1.0"
+    assert payload[3]["module"]["description"] == "An integrated workspace for ideas, tasks, projects, habits, and calendar planning."
+    assert payload[3]["module"]["author"] == "Nick"
+    assert payload[3]["module"]["metadata"] == {
         "category": "productivity",
         "tags": ["ideas", "tasks", "projects", "habits", "calendar", "assistant"],
     }
-    assert payload[2]["actions"] == [
+    assert payload[3]["actions"] == [
         "apmatia_ipe.calendar_event",
         "apmatia_ipe.habit",
         "apmatia_ipe.idea",
         "apmatia_ipe.project",
         "apmatia_ipe.task",
     ]
-    assert payload[2]["commands"] == [
+    assert payload[3]["commands"] == [
         "apmatia_ipe.calendar_event.create",
         "apmatia_ipe.calendar_event.delete",
         "apmatia_ipe.calendar_event.edit",
@@ -226,30 +260,30 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "apmatia_ipe.task.edit",
         "apmatia_ipe.task.list",
     ]
-    assert payload[2]["views"] == [
+    assert payload[3]["views"] == [
         "apmatia_ipe.calendar_event.view",
         "apmatia_ipe.habit.view",
         "apmatia_ipe.idea.view",
         "apmatia_ipe.project.view",
         "apmatia_ipe.task.view",
     ]
-    assert payload[3]["module"]["module_id"] == "apmatia_worksim"
-    assert payload[3]["module"]["name"] == "Apmatia Worksim"
-    assert payload[3]["module"]["version"] == "0.1.0"
-    assert payload[3]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
-    assert payload[3]["module"]["author"] == "Nick"
-    assert payload[3]["module"]["metadata"] == {
+    assert payload[4]["module"]["module_id"] == "apmatia_worksim"
+    assert payload[4]["module"]["name"] == "Apmatia Worksim"
+    assert payload[4]["module"]["version"] == "0.1.0"
+    assert payload[4]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
+    assert payload[4]["module"]["author"] == "Nick"
+    assert payload[4]["module"]["metadata"] == {
         "category": "workspace",
         "tags": ["wiki", "org-chart", "agents", "teams", "simulation"],
     }
-    assert payload[3]["actions"] == ["apmatia_worksim.org_chart_node"]
-    assert payload[3]["commands"] == [
+    assert payload[4]["actions"] == ["apmatia_worksim.org_chart_node"]
+    assert payload[4]["commands"] == [
         "apmatia_worksim.org_chart_node.create",
         "apmatia_worksim.org_chart_node.delete",
         "apmatia_worksim.org_chart_node.edit",
         "apmatia_worksim.org_chart_node.list",
     ]
-    assert payload[3]["views"] == ["apmatia_worksim.org_chart_node.view"]
+    assert payload[4]["views"] == ["apmatia_worksim.org_chart_node.view"]
 
 
 def test_cli_module_show_displays_worksim_module_details(capsys):

@@ -9,6 +9,7 @@ from apmatia.interfaces.streamlit.module_views.models import (
     CollectionViewDescriptor,
     ModuleViewFormDescriptor,
     ModuleViewFormFieldDescriptor,
+    ModuleViewFormActionDescriptor,
     ModuleViewActionDescriptor,
 )
 
@@ -170,6 +171,7 @@ def _parse_form_descriptor(raw_form: Any, *, default_key: str) -> ModuleViewForm
     description = str(raw_form.get("description") or "").strip()
     submit_label = str(raw_form.get("submit_label") or "Save").strip() or "Save"
     cancel_label = str(raw_form.get("cancel_label") or "Cancel").strip() or "Cancel"
+    actions = tuple(_parse_form_actions(raw_form.get("actions")))
     fields = tuple(_parse_form_fields(raw_form.get("fields")))
     return ModuleViewFormDescriptor(
         key=key,
@@ -177,8 +179,36 @@ def _parse_form_descriptor(raw_form: Any, *, default_key: str) -> ModuleViewForm
         description=description,
         submit_label=submit_label,
         cancel_label=cancel_label,
+        actions=actions,
         fields=fields,
     )
+
+
+def _parse_form_actions(raw_actions: Any) -> list[ModuleViewFormActionDescriptor]:
+    if not isinstance(raw_actions, Sequence) or isinstance(raw_actions, (str, bytes)):
+        return []
+
+    actions: list[ModuleViewFormActionDescriptor] = []
+    for entry in raw_actions:
+        if not isinstance(entry, Mapping):
+            continue
+        key = str(entry.get("key") or entry.get("intent") or "").strip()
+        intent = str(entry.get("intent") or key).strip()
+        label = str(entry.get("label") or intent.title()).strip()
+        style = str(entry.get("style") or "secondary").strip() or "secondary"
+        payload = dict(entry.get("payload") or {})
+        if not key:
+            continue
+        actions.append(
+            ModuleViewFormActionDescriptor(
+                key=key,
+                label=label,
+                intent=intent,
+                style=style,
+                payload=payload,
+            )
+        )
+    return actions
 
 
 def _parse_form_fields(raw_fields: Any) -> list[ModuleViewFormFieldDescriptor]:
@@ -293,14 +323,46 @@ def _form_from_schema(
             )
         )
 
-    if not fields:
-        return None
-
     section_key = "create" if field_flag == "create" else "edit"
     section_metadata = raw_schema.get(section_key)
     create_section = section_metadata if isinstance(section_metadata, Mapping) else {}
     fallback_section = raw_schema.get("create") if field_flag == "edit" else None
     fallback_section = fallback_section if isinstance(fallback_section, Mapping) else {}
+    if field_flag == "edit":
+        extra_fields = create_section.get("extra_fields") or fallback_section.get("extra_fields")
+    else:
+        extra_fields = create_section.get("extra_fields")
+    if isinstance(extra_fields, Sequence) and not isinstance(extra_fields, (str, bytes)):
+        for entry in extra_fields:
+            if not isinstance(entry, Mapping):
+                continue
+            key = str(entry.get("key") or "").strip()
+            if not key:
+                continue
+            options = entry.get("options") or ()
+            parsed_options = (
+                tuple(str(option) for option in options)
+                if isinstance(options, Sequence) and not isinstance(options, (str, bytes))
+                else ()
+            )
+            fields.append(
+                ModuleViewFormFieldDescriptor(
+                    key=key,
+                    label=str(entry.get("label") or key.replace("_", " ").title()),
+                    field_type=str(entry.get("field_type") or entry.get("input") or "text"),
+                    help_text=str(entry.get("help_text") or ""),
+                    placeholder=str(entry.get("placeholder") or ""),
+                    default=entry.get("default", ""),
+                    required=bool(entry.get("required", False)),
+                    min_value=entry.get("min_value"),
+                    max_value=entry.get("max_value"),
+                    step=entry.get("step"),
+                    options=parsed_options,
+                )
+            )
+
+    if not fields:
+        return None
     title = str(
         create_section.get("title")
         or (fallback_section.get("title") if field_flag == "edit" else "")
@@ -314,6 +376,7 @@ def _form_from_schema(
         description=str(create_section.get("description") or "").strip(),
         submit_label=str(create_section.get("submit_label") or "Save").strip() or "Save",
         cancel_label=str(create_section.get("cancel_label") or "Cancel").strip() or "Cancel",
+        actions=tuple(_parse_form_actions(create_section.get("actions"))),
         fields=tuple(fields),
     )
 

@@ -17,6 +17,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "apmatia_ai_model_executor",
         "apmatia_ai_model_manager",
         "apmatia_ipe",
+        "apmatia_source_inspection",
         "apmatia_worksim",
     ]
     assert [action.action_id for action in registry.list_actions()] == [
@@ -118,5 +119,6 @@ def test_get_application_registry_returns_cached_registry():
         "apmatia_ai_model_executor",
         "apmatia_ai_model_manager",
         "apmatia_ipe",
+        "apmatia_source_inspection",
         "apmatia_worksim",
     ]

@@ -152,6 +152,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "apmatia_ai_model_executor",
         "apmatia_ai_model_manager",
         "apmatia_ipe",
+        "apmatia_source_inspection",
         "apmatia_worksim",
     ]
     assert payload[0]["module"]["name"] == "Apmatia AI Host Management"
@@ -267,23 +268,42 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "apmatia_ipe.project.view",
         "apmatia_ipe.task.view",
     ]
-    assert payload[4]["module"]["module_id"] == "apmatia_worksim"
-    assert payload[4]["module"]["name"] == "Apmatia Worksim"
+    assert payload[4]["module"]["module_id"] == "apmatia_source_inspection"
+    assert payload[4]["module"]["name"] == "Apmatia Source Inspection"
     assert payload[4]["module"]["version"] == "0.1.0"
-    assert payload[4]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
+    assert payload[4]["module"]["description"] == "Developer tools for tree inspection, source reading, and dependency tracing."
     assert payload[4]["module"]["author"] == "Nick"
     assert payload[4]["module"]["metadata"] == {
+        "category": "developer-tools",
+        "tags": ["tree", "source", "imports", "inspection"],
+    }
+    assert payload[4]["module"]["dependencies"] == {
+        "python": ">=3.10",
+        "python_packages": [],
+        "system_packages": [],
+        "modules": [],
+        "tools": [],
+    }
+    assert payload[4]["actions"] == []
+    assert payload[4]["commands"] == []
+    assert payload[4]["views"] == []
+    assert payload[5]["module"]["module_id"] == "apmatia_worksim"
+    assert payload[5]["module"]["name"] == "Apmatia Worksim"
+    assert payload[5]["module"]["version"] == "0.1.0"
+    assert payload[5]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
+    assert payload[5]["module"]["author"] == "Nick"
+    assert payload[5]["module"]["metadata"] == {
         "category": "workspace",
         "tags": ["wiki", "org-chart", "agents", "teams", "simulation"],
     }
-    assert payload[4]["actions"] == ["apmatia_worksim.org_chart_node"]
-    assert payload[4]["commands"] == [
+    assert payload[5]["actions"] == ["apmatia_worksim.org_chart_node"]
+    assert payload[5]["commands"] == [
         "apmatia_worksim.org_chart_node.create",
         "apmatia_worksim.org_chart_node.delete",
         "apmatia_worksim.org_chart_node.edit",
         "apmatia_worksim.org_chart_node.list",
     ]
-    assert payload[4]["views"] == ["apmatia_worksim.org_chart_node.view"]
+    assert payload[5]["views"] == ["apmatia_worksim.org_chart_node.view"]
 
 
 def test_cli_module_show_displays_worksim_module_details(capsys):

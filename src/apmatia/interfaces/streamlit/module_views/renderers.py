@@ -12,6 +12,7 @@ from apmatia.interfaces.streamlit.module_views.models import (
     ModuleViewFormFieldDescriptor,
     ModuleViewFormActionDescriptor,
     ModuleViewActionDescriptor,
+    ModuleViewNavigationPaneDescriptor,
     ModuleViewIntent,
 )
 
@@ -140,6 +141,48 @@ def render_unsupported_view(spec: CollectionViewDescriptor) -> None:
     st.warning(message)
 
 
+def render_navigation_pane(
+    spec: CollectionViewDescriptor,
+    *,
+    items: list[dict[str, Any]],
+    active_item_id: str | None = None,
+) -> str | None:
+    nav_pane = spec.nav_pane
+    if nav_pane is None:
+        return None
+
+    st.sidebar.title(nav_pane.title)
+
+    if st.sidebar.button(nav_pane.top_exit_label, key=f"nav-pane-exit-top:{spec.view_id}", use_container_width=True):
+        return "__exit__"
+
+    if not items:
+        st.sidebar.info(nav_pane.empty_state)
+    else:
+        for index, item in enumerate(items):
+            item_id = str(item.get(nav_pane.item_value_key) or "").strip()
+            label = str(item.get(nav_pane.item_label_key) or "").strip() or f"Item {index + 1}"
+            subtitle = str(item.get(nav_pane.item_subtitle_key) or "").strip()
+            detail = str(item.get(nav_pane.item_detail_key) or "").strip()
+            if st.sidebar.button(
+                label,
+                key=f"nav-pane-item:{spec.view_id}:{item_id or index}",
+                type="primary" if active_item_id and item_id == active_item_id else "secondary",
+                use_container_width=True,
+            ):
+                st.session_state["contacts_selected_item"] = item
+                return item_id or None
+            if subtitle:
+                st.sidebar.caption(subtitle)
+            if detail:
+                st.sidebar.caption(detail)
+
+    if st.sidebar.button(nav_pane.bottom_exit_label, key=f"nav-pane-exit-bottom:{spec.view_id}", use_container_width=True):
+        return "__exit__"
+
+    return None
+
+
 def render_module_view_form(
     form: ModuleViewFormDescriptor,
     *,
@@ -248,12 +291,27 @@ def _render_form_field(field: ModuleViewFormFieldDescriptor, *, initial_value: A
         )
     if field_type == "number":
         number_value = value if isinstance(value, (int, float)) else field.default if isinstance(field.default, (int, float)) else 0
+        number_kwargs = {
+            "min_value": field.min_value,
+            "max_value": field.max_value,
+            "step": field.step,
+        }
+        if _uses_float_numbers(number_value, number_kwargs):
+            number_value = float(number_value)
+            if number_kwargs["min_value"] is not None:
+                number_kwargs["min_value"] = float(number_kwargs["min_value"])
+            if number_kwargs["max_value"] is not None:
+                number_kwargs["max_value"] = float(number_kwargs["max_value"])
+            if number_kwargs["step"] is not None:
+                number_kwargs["step"] = float(number_kwargs["step"])
+        else:
+            number_value = int(number_value)
         return st.number_input(
             field.label,
             value=number_value,
-            min_value=field.min_value,
-            max_value=field.max_value,
-            step=field.step,
+            min_value=number_kwargs["min_value"],
+            max_value=number_kwargs["max_value"],
+            step=number_kwargs["step"],
             **common_kwargs,
         )
     if field_type == "checkbox":
@@ -302,6 +360,15 @@ def _stringify_form_value(value: Any) -> str:
     if isinstance(value, dict):
         return json.dumps(value, ensure_ascii=False, default=str)
     return str(value)
+
+
+def _uses_float_numbers(number_value: int | float, number_kwargs: dict[str, Any]) -> bool:
+    if isinstance(number_value, float):
+        return True
+    for key in ("min_value", "max_value", "step"):
+        if isinstance(number_kwargs.get(key), float):
+            return True
+    return False
 
 
 def _format_item_value(item: Any, key: str, empty_value: str) -> str:

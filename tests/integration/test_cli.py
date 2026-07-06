@@ -151,6 +151,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "apmatia_ai_host_management",
         "apmatia_ai_model_executor",
         "apmatia_ai_model_manager",
+        "apmatia_contacts_and_discussions",
         "apmatia_ipe",
         "apmatia_source_inspection",
         "apmatia_worksim",
@@ -223,23 +224,73 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "apmatia_ai_model_manager.models.view",
         "apmatia_ai_model_manager.preferences.view",
     ]
-    assert payload[3]["module"]["module_id"] == "apmatia_ipe"
-    assert payload[3]["module"]["name"] == "Apmatia Integrated Productivity Environment"
+    assert payload[3]["module"]["module_id"] == "apmatia_contacts_and_discussions"
+    assert payload[3]["module"]["name"] == "Apmatia Contacts and Discussions"
     assert payload[3]["module"]["version"] == "0.1.0"
-    assert payload[3]["module"]["description"] == "An integrated workspace for ideas, tasks, projects, habits, and calendar planning."
+    assert payload[3]["module"]["description"] == "A topic-centered discussion system for organizing work, conversations, summaries, and chat targets."
     assert payload[3]["module"]["author"] == "Nick"
     assert payload[3]["module"]["metadata"] == {
+        "category": "knowledge-work",
+        "tags": ["topics", "discussions", "summaries", "chat-targets", "turns", "migration"],
+    }
+    assert payload[3]["module"]["dependencies"] == {
+        "python": ">=3.10",
+        "python_packages": [],
+        "system_packages": [],
+        "modules": [],
+        "tools": [],
+    }
+    assert payload[3]["actions"] == [
+        "apmatia_contacts_and_discussions.chat_targets",
+        "apmatia_contacts_and_discussions.discussions",
+        "apmatia_contacts_and_discussions.summaries",
+        "apmatia_contacts_and_discussions.topics",
+        "apmatia_contacts_and_discussions.turns",
+    ]
+    assert payload[3]["commands"] == [
+        "apmatia_contacts_and_discussions.chat_targets.create",
+        "apmatia_contacts_and_discussions.chat_targets.delete",
+        "apmatia_contacts_and_discussions.chat_targets.edit",
+        "apmatia_contacts_and_discussions.chat_targets.list",
+        "apmatia_contacts_and_discussions.discussions.create",
+        "apmatia_contacts_and_discussions.discussions.delete",
+        "apmatia_contacts_and_discussions.discussions.edit",
+        "apmatia_contacts_and_discussions.discussions.list",
+        "apmatia_contacts_and_discussions.summaries.create",
+        "apmatia_contacts_and_discussions.summaries.delete",
+        "apmatia_contacts_and_discussions.summaries.edit",
+        "apmatia_contacts_and_discussions.summaries.list",
+        "apmatia_contacts_and_discussions.topics.assess_transition",
+        "apmatia_contacts_and_discussions.topics.create",
+        "apmatia_contacts_and_discussions.topics.delete",
+        "apmatia_contacts_and_discussions.topics.edit",
+        "apmatia_contacts_and_discussions.topics.list",
+        "apmatia_contacts_and_discussions.topics.summarize",
+        "apmatia_contacts_and_discussions.turns.create",
+        "apmatia_contacts_and_discussions.turns.delete",
+        "apmatia_contacts_and_discussions.turns.edit",
+        "apmatia_contacts_and_discussions.turns.list",
+    ]
+    assert payload[3]["views"] == [
+        "apmatia_contacts_and_discussions.chat_targets.view",
+    ]
+    assert payload[4]["module"]["module_id"] == "apmatia_ipe"
+    assert payload[4]["module"]["name"] == "Apmatia Integrated Productivity Environment"
+    assert payload[4]["module"]["version"] == "0.1.0"
+    assert payload[4]["module"]["description"] == "An integrated workspace for ideas, tasks, projects, habits, and calendar planning."
+    assert payload[4]["module"]["author"] == "Nick"
+    assert payload[4]["module"]["metadata"] == {
         "category": "productivity",
         "tags": ["ideas", "tasks", "projects", "habits", "calendar", "assistant"],
     }
-    assert payload[3]["actions"] == [
+    assert payload[4]["actions"] == [
         "apmatia_ipe.calendar_event",
         "apmatia_ipe.habit",
         "apmatia_ipe.idea",
         "apmatia_ipe.project",
         "apmatia_ipe.task",
     ]
-    assert payload[3]["commands"] == [
+    assert payload[4]["commands"] == [
         "apmatia_ipe.calendar_event.create",
         "apmatia_ipe.calendar_event.delete",
         "apmatia_ipe.calendar_event.edit",
@@ -261,49 +312,49 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "apmatia_ipe.task.edit",
         "apmatia_ipe.task.list",
     ]
-    assert payload[3]["views"] == [
+    assert payload[4]["views"] == [
         "apmatia_ipe.calendar_event.view",
         "apmatia_ipe.habit.view",
         "apmatia_ipe.idea.view",
         "apmatia_ipe.project.view",
         "apmatia_ipe.task.view",
     ]
-    assert payload[4]["module"]["module_id"] == "apmatia_source_inspection"
-    assert payload[4]["module"]["name"] == "Apmatia Source Inspection"
-    assert payload[4]["module"]["version"] == "0.1.0"
-    assert payload[4]["module"]["description"] == "Developer tools for tree inspection, source reading, and dependency tracing."
-    assert payload[4]["module"]["author"] == "Nick"
-    assert payload[4]["module"]["metadata"] == {
+    assert payload[5]["module"]["module_id"] == "apmatia_source_inspection"
+    assert payload[5]["module"]["name"] == "Apmatia Source Inspection"
+    assert payload[5]["module"]["version"] == "0.1.0"
+    assert payload[5]["module"]["description"] == "Developer tools for tree inspection, source reading, and dependency tracing."
+    assert payload[5]["module"]["author"] == "Nick"
+    assert payload[5]["module"]["metadata"] == {
         "category": "developer-tools",
         "tags": ["tree", "source", "imports", "inspection"],
     }
-    assert payload[4]["module"]["dependencies"] == {
+    assert payload[5]["module"]["dependencies"] == {
         "python": ">=3.10",
         "python_packages": [],
         "system_packages": [],
         "modules": [],
         "tools": [],
     }
-    assert payload[4]["actions"] == []
-    assert payload[4]["commands"] == []
-    assert payload[4]["views"] == []
-    assert payload[5]["module"]["module_id"] == "apmatia_worksim"
-    assert payload[5]["module"]["name"] == "Apmatia Worksim"
-    assert payload[5]["module"]["version"] == "0.1.0"
-    assert payload[5]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
-    assert payload[5]["module"]["author"] == "Nick"
-    assert payload[5]["module"]["metadata"] == {
+    assert payload[5]["actions"] == []
+    assert payload[5]["commands"] == []
+    assert payload[5]["views"] == []
+    assert payload[6]["module"]["module_id"] == "apmatia_worksim"
+    assert payload[6]["module"]["name"] == "Apmatia Worksim"
+    assert payload[6]["module"]["version"] == "0.1.0"
+    assert payload[6]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
+    assert payload[6]["module"]["author"] == "Nick"
+    assert payload[6]["module"]["metadata"] == {
         "category": "workspace",
         "tags": ["wiki", "org-chart", "agents", "teams", "simulation"],
     }
-    assert payload[5]["actions"] == ["apmatia_worksim.org_chart_node"]
-    assert payload[5]["commands"] == [
+    assert payload[6]["actions"] == ["apmatia_worksim.org_chart_node"]
+    assert payload[6]["commands"] == [
         "apmatia_worksim.org_chart_node.create",
         "apmatia_worksim.org_chart_node.delete",
         "apmatia_worksim.org_chart_node.edit",
         "apmatia_worksim.org_chart_node.list",
     ]
-    assert payload[5]["views"] == ["apmatia_worksim.org_chart_node.view"]
+    assert payload[6]["views"] == ["apmatia_worksim.org_chart_node.view"]
 
 
 def test_cli_module_show_displays_worksim_module_details(capsys):

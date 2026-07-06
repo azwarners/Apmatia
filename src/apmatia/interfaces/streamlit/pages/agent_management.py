@@ -14,6 +14,7 @@ from apmatia.interfaces.streamlit.api_client import (
     get_compiled_agent_prompt,
     list_agents,
     list_llm_configs,
+    list_groups,
     update_agent_prompt,
     update_agent,
 )
@@ -155,6 +156,21 @@ def _authenticated_user_id() -> int | None:
         return None
 
 
+def _visible_agent(agent: dict[str, object], current_user_id: int | None, visible_group_ids: set[int]) -> bool:
+    if current_user_id is None:
+        return True
+    try:
+        owner_user_id = agent.get("owner_user_id")
+        owner_group_id = agent.get("owner_group_id")
+    except AttributeError:
+        return False
+    if owner_user_id == current_user_id:
+        return True
+    if owner_group_id is not None and owner_group_id in visible_group_ids:
+        return True
+    return False
+
+
 def _merge_agent_and_prompt(agent: dict[str, object], prompt_values: dict[str, object]) -> dict[str, object]:
     merged = {**_empty_form_values(), **dict(agent)}
     for key, value in prompt_values.items():
@@ -175,37 +191,48 @@ def render() -> None:
     except ApiError as error:
         st.error(f"Unable to load agent data: {error.detail}")
         return
+    try:
+        groups = list_groups()
+    except ApiError:
+        groups = []
 
     st.title("Agent Management")
     st.caption("Create, edit, and remove Agent objects through the local API.")
 
     model_options = [{"id": None, "user_alias": "None", "provider_name": ""}] + model_configs
+    current_user_id = _authenticated_user_id()
+    visible_group_ids = {
+        int(group.get("id"))
+        for group in groups
+        if isinstance(group, dict) and group.get("id") is not None
+    }
+    visible_agents = [agent for agent in agents if _visible_agent(agent, current_user_id, visible_group_ids)]
 
     if "agent_selected_id" not in st.session_state:
-        st.session_state["agent_selected_id"] = agents[0].get("id") if agents else None
+        st.session_state["agent_selected_id"] = visible_agents[0].get("id") if visible_agents else None
     if "agent_form_values" not in st.session_state:
         st.session_state["agent_form_values"] = _empty_form_values()
 
     selected_agent_id = st.session_state["agent_selected_id"]
-    if agents and selected_agent_id not in {agent.get("id") for agent in agents}:
-        selected_agent_id = agents[0].get("id")
+    if visible_agents and selected_agent_id not in {agent.get("id") for agent in visible_agents}:
+        selected_agent_id = visible_agents[0].get("id")
         st.session_state["agent_selected_id"] = selected_agent_id
 
     st.subheader("Agents")
-    if not agents:
+    if not visible_agents:
         st.info("No agents have been created yet.")
     else:
         selected_agent = st.selectbox(
             "Select an agent",
-            options=agents,
-            index=_selected_index(agents, selected_agent_id),
+            options=visible_agents,
+            index=_selected_index(visible_agents, selected_agent_id),
             format_func=_agent_label,
         )
         selected_agent_id = selected_agent.get("id")
         st.session_state["agent_selected_id"] = selected_agent_id
 
     if selected_agent_id is not None:
-        selected_agent = next((agent for agent in agents if agent.get("id") == selected_agent_id), None)
+        selected_agent = next((agent for agent in visible_agents if agent.get("id") == selected_agent_id), None)
     else:
         selected_agent = None
 

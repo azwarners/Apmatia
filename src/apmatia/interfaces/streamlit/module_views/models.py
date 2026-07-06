@@ -69,6 +69,18 @@ class ModuleViewFormDescriptor:
 
 
 @dataclass(frozen=True, slots=True)
+class ModuleViewNavigationPaneDescriptor:
+    title: str
+    top_exit_label: str = "Back to Apmatia"
+    bottom_exit_label: str = "Back to Apmatia"
+    empty_state: str = "No contacts are available yet."
+    item_label_key: str = "title"
+    item_subtitle_key: str = "chat_preview"
+    item_detail_key: str = "last_activity_at"
+    item_value_key: str = "id"
+
+
+@dataclass(frozen=True, slots=True)
 class CollectionViewDescriptor:
     view_id: str
     title: str
@@ -81,6 +93,7 @@ class CollectionViewDescriptor:
     view_actions: tuple[ModuleViewActionDescriptor, ...] = ()
     create_form: ModuleViewFormDescriptor | None = None
     edit_form: ModuleViewFormDescriptor | None = None
+    nav_pane: ModuleViewNavigationPaneDescriptor | None = None
     items: tuple[Any, ...] = ()
     unsupported_reason: str | None = None
 

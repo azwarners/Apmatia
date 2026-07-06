@@ -11,6 +11,7 @@ from apmatia.interfaces.streamlit.module_views.models import (
     ModuleViewFormFieldDescriptor,
     ModuleViewFormActionDescriptor,
     ModuleViewActionDescriptor,
+    ModuleViewNavigationPaneDescriptor,
 )
 
 
@@ -49,6 +50,7 @@ def adapt_module_view(
             caption=caption,
             empty_state=empty_state,
             item_key=item_key,
+            nav_pane=_parse_navigation_pane(_mapping_value(ui, "nav_pane", default=None)),
             items=resolved_items,
             unsupported_reason=f"Unsupported module view render mode: {render_mode}",
         )
@@ -63,9 +65,16 @@ def adapt_module_view(
     item_actions = tuple(_parse_actions(_mapping_value(ui, "item_actions", default=())))
     view_actions = tuple(_parse_actions(_mapping_value(ui, "view_actions", default=())))
     if not item_actions or not view_actions:
-        fallback_view_actions, fallback_item_actions = _actions_from_commands(
-            _mapping_value(metadata, "commands", default={})
-        )
+        fallback_commands = _mapping_value(ui, "commands", default={})
+        fallback_view_actions, fallback_item_actions = _actions_from_commands(fallback_commands)
+        if not fallback_view_actions or not fallback_item_actions:
+            metadata_fallback_view_actions, metadata_fallback_item_actions = _actions_from_commands(
+                _mapping_value(metadata, "commands", default={})
+            )
+            if not fallback_view_actions:
+                fallback_view_actions = metadata_fallback_view_actions
+            if not fallback_item_actions:
+                fallback_item_actions = metadata_fallback_item_actions
         if not view_actions:
             view_actions = fallback_view_actions
         if not item_actions:
@@ -99,6 +108,7 @@ def adapt_module_view(
                 field_flag="edit",
             )
         ),
+        nav_pane=_parse_navigation_pane(_mapping_value(ui, "nav_pane", default=None)),
         items=resolved_items,
     )
 
@@ -253,6 +263,30 @@ def _parse_form_fields(raw_fields: Any) -> list[ModuleViewFormFieldDescriptor]:
             )
         )
     return fields
+
+
+def _parse_navigation_pane(raw_nav_pane: Any) -> ModuleViewNavigationPaneDescriptor | None:
+    if not isinstance(raw_nav_pane, Mapping):
+        return None
+
+    title = str(raw_nav_pane.get("title") or "Contacts").strip() or "Contacts"
+    top_exit_label = str(raw_nav_pane.get("top_exit_label") or "Back to Apmatia").strip() or "Back to Apmatia"
+    bottom_exit_label = str(raw_nav_pane.get("bottom_exit_label") or top_exit_label).strip() or top_exit_label
+    empty_state = str(raw_nav_pane.get("empty_state") or "No contacts are available yet.").strip() or "No contacts are available yet."
+    item_label_key = str(raw_nav_pane.get("item_label_key") or "title").strip() or "title"
+    item_subtitle_key = str(raw_nav_pane.get("item_subtitle_key") or "chat_preview").strip() or "chat_preview"
+    item_detail_key = str(raw_nav_pane.get("item_detail_key") or "last_activity_at").strip() or "last_activity_at"
+    item_value_key = str(raw_nav_pane.get("item_value_key") or "id").strip() or "id"
+    return ModuleViewNavigationPaneDescriptor(
+        title=title,
+        top_exit_label=top_exit_label,
+        bottom_exit_label=bottom_exit_label,
+        empty_state=empty_state,
+        item_label_key=item_label_key,
+        item_subtitle_key=item_subtitle_key,
+        item_detail_key=item_detail_key,
+        item_value_key=item_value_key,
+    )
 
 
 def _columns_from_schema(raw_schema: Any) -> list[CollectionColumnDescriptor]:

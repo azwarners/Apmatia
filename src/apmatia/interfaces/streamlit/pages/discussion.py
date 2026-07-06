@@ -45,6 +45,9 @@ def _agent_label(agent: dict[str, object]) -> str:
 def _discussion_label(discussion: dict[str, object]) -> str:
     discussion_id = discussion.get("discussion_id")
     title = discussion.get("title") or "Untitled Discussion"
+    group_id = discussion.get("group_id")
+    if group_id is not None:
+        return f"{title} [Group {group_id}] (ID {discussion_id})"
     return f"{title} (ID {discussion_id})"
 
 
@@ -721,8 +724,183 @@ def _render_streaming_messages(
     return snapshot
 
 
+def _render_compact_message(
+    *,
+    snapshot: dict[str, object],
+    message: dict[str, object],
+    index: int,
+    username: str,
+    agent_name: str,
+) -> None:
+    discussion_id = str(snapshot.get("discussion_id") or "")
+    role = str(message.get("role", "Assistant"))
+    speaker_name = message.get("speaker_name") if isinstance(message.get("speaker_name"), str) else None
+    text = str(message.get("text", ""))
+    title = _message_title(
+        role,
+        username=username,
+        agent_name=agent_name,
+        speaker_name=speaker_name,
+    )
+
+    def _render_body() -> None:
+        _render_message_attachments(message)
+        render_message_text_block(text)
+
+    render_message_card(
+        title=title,
+        message_text=text,
+        card_key=f"contacts-{discussion_id}-{index}",
+        subtitle=None,
+        actions=None,
+        content=_render_body,
+        details=None,
+        details_label="",
+    )
+
+
+def _render_compact_messages(
+    snapshot: dict[str, object],
+    *,
+    username: str,
+    agent_name: str,
+    exclude_message_index: int | None = None,
+) -> None:
+    messages = snapshot.get("messages", [])
+    if not messages:
+        st.info("No messages yet.")
+        return
+
+    for index, message in enumerate(messages):
+        if exclude_message_index is not None and index == exclude_message_index:
+            continue
+        _render_compact_message(
+            snapshot=snapshot,
+            message=message,
+            index=index,
+            username=username,
+            agent_name=agent_name,
+        )
+
+
+def _render_contacts_shell() -> None:
+    contact_label = str(st.session_state.get("contacts_active_contact_label") or "Contact")
+    contact_type = str(st.session_state.get("contacts_active_contact_type") or "agent")
+    active_discussion_id = str(st.session_state.get("contacts_active_discussion_id") or "").strip()
+    if not active_discussion_id:
+        st.title("Discussion")
+        st.info("Pick a contact from the sidebar to begin chatting.")
+        return
+
+    try:
+        snapshot = discussion_state()
+    except ApiError as error:
+        st.error(f"Unable to load discussion state: {error.detail}")
+        return
+
+    current_discussion_id = str(snapshot.get("discussion_id") or "").strip()
+    if current_discussion_id != active_discussion_id:
+        try:
+            open_discussion(active_discussion_id)
+        except ApiError as error:
+            st.error(f"Unable to open discussion: {error.detail}")
+            return
+        try:
+            snapshot = discussion_state()
+        except ApiError as error:
+            st.error(f"Unable to load discussion state: {error.detail}")
+            return
+
+    st.title(contact_label)
+    st.caption("Conversation with the selected contact.")
+
+    username = _authenticated_username()
+    agent_name = contact_label
+
+    initial_is_streaming = bool(snapshot.get("is_streaming"))
+    if initial_is_streaming:
+        activity = snapshot.get("activity") if isinstance(snapshot.get("activity"), dict) else None
+        activity_message_index = _activity_message_index(snapshot.get("messages", []), activity)
+        _render_compact_messages(
+            snapshot,
+            username=username,
+            agent_name=agent_name,
+            exclude_message_index=activity_message_index,
+        )
+        fragment_factory = getattr(st, "fragment", None)
+        if getattr(fragment_factory, "__module__", "").startswith("streamlit"):
+            @fragment_factory(run_every=0.5)
+            def _contacts_fragment() -> dict[str, object]:
+                current_snapshot = discussion_state()
+                current_activity = current_snapshot.get("activity") if isinstance(current_snapshot.get("activity"), dict) else None
+                current_activity_message_index = _activity_message_index(
+                    current_snapshot.get("messages", []),
+                    current_activity,
+                )
+                if current_activity_message_index is not None and current_activity_message_index < len(current_snapshot.get("messages", [])):
+                    _render_compact_message(
+                        snapshot=current_snapshot,
+                        message=current_snapshot["messages"][current_activity_message_index],
+                        index=current_activity_message_index,
+                        username=username,
+                        agent_name=agent_name,
+                    )
+                else:
+                    _render_compact_messages(current_snapshot, username=username, agent_name=agent_name)
+                st.caption(f"{contact_label} is responding.")
+                if not current_snapshot.get("is_streaming"):
+                    st.rerun()
+                return current_snapshot
+
+            snapshot = _contacts_fragment()
+        else:
+            _render_compact_messages(snapshot, username=username, agent_name=agent_name)
+    else:
+        _render_compact_messages(snapshot, username=username, agent_name=agent_name)
+
+    if snapshot.get("last_error"):
+        st.error(f"Last error: {snapshot['last_error']}")
+
+    if bool(snapshot.get("is_streaming")):
+        st.caption(f"{contact_label} is responding.")
+        return
+
+    st.divider()
+
+    with st.form("apmatia_contacts_discussion_prompt_form", clear_on_submit=True):
+        prompt = st.text_area(
+            "Message",
+            height=140,
+            placeholder=f"Write a message to {contact_label}.",
+            disabled=bool(snapshot.get("is_streaming")),
+        )
+        submitted = st.form_submit_button("Send message", disabled=bool(snapshot.get("is_streaming")))
+
+    if not submitted:
+        return
+
+    if not prompt.strip():
+        st.warning("Please enter a message.")
+        return
+
+    try:
+        prompt_discussion(
+            prompt=prompt,
+            agent_id=st.session_state.get("contacts_active_agent_id") if contact_type == "agent" else None,
+            attachments=[],
+        )
+    except ApiError as error:
+        st.error(f"Unable to send message: {error.detail}")
+        return
+    st.success("Message sent. Refreshing discussion.")
+    st.rerun()
+
+
 def render() -> None:
     apply_message_card_css()
+    if st.session_state.get("contacts_shell_active"):
+        _render_contacts_shell()
+        return
     try:
         agents = list_agents()
         tree = discussion_tree()
@@ -732,7 +910,7 @@ def render() -> None:
         return
 
     st.title("Discussion")
-    st.caption("Choose an Agent, select a discussion, and send prompts through the discussion backend.")
+    st.caption("Choose an agent or view all chats, select a discussion, and send prompts through the discussion backend.")
 
     if not agents:
         st.info("Create an agent first so the discussion can resolve a model automatically.")
@@ -753,23 +931,29 @@ def render() -> None:
         st.subheader("Discussion controls")
         left, right = st.columns(2)
         with left:
+            agent_filter_options = [{"id": None, "name": "All chats"}] + agents
             selected_agent = st.selectbox(
                 "Agent",
-                options=agents,
-                index=_selected_index(agents, st.session_state["discussion_selected_agent_id"], "id"),
-                format_func=_agent_label,
+                options=agent_filter_options,
+                index=_selected_index(agent_filter_options, st.session_state["discussion_selected_agent_id"], "id"),
+                format_func=lambda agent: "All chats" if agent.get("id") is None else _agent_label(agent),
             )
             selected_agent_id = selected_agent.get("id")
             st.session_state["discussion_selected_agent_id"] = selected_agent_id
             model_summary = _selected_model_summary(selected_agent, model_lookup)
             if model_summary:
                 st.caption(model_summary)
+            elif selected_agent_id is None:
+                st.caption("Showing all chats and group discussions.")
         with right:
-            filtered_discussions = [
-                discussion
-                for discussion in discussions
-                if _discussion_belongs_to_agent(discussion, int(selected_agent_id))
-            ]
+            if selected_agent_id is None:
+                filtered_discussions = list(discussions)
+            else:
+                filtered_discussions = [
+                    discussion
+                    for discussion in discussions
+                    if _discussion_belongs_to_agent(discussion, int(selected_agent_id))
+                ]
             backend_current_discussion_id = tree.get("current_discussion_id")
             current_discussion_id = backend_current_discussion_id
             if not any(
@@ -893,7 +1077,7 @@ def render() -> None:
             if agent.get("id") is not None
         }
         with st.container(border=True):
-            st.subheader("Participants")
+            st.subheader("Chat roster")
             participant_options = list(agent_lookup.keys())
             default_participant_ids = [
                 agent_id for agent_id in current_participant_ids if agent_id in agent_lookup
@@ -901,7 +1085,7 @@ def render() -> None:
             if not default_participant_ids and int(selected_agent_id) in agent_lookup:
                 default_participant_ids = [int(selected_agent_id)]
             selected_participant_ids = st.multiselect(
-                "Discussion participants",
+                "Chat targets",
                 options=participant_options,
                 default=default_participant_ids,
                 format_func=lambda agent_id: _participant_label(agent_id, agent_lookup),
@@ -909,23 +1093,23 @@ def render() -> None:
             )
             if selected_participant_ids:
                 st.caption(
-                    "Participants: "
+                    "Chat targets: "
                     + ", ".join(_participant_label(agent_id, agent_lookup) for agent_id in selected_participant_ids)
                 )
             else:
-                st.caption("No participants selected yet.")
+                st.caption("No chat targets selected yet.")
             save_participants_col, _ = st.columns([1, 5])
             with save_participants_col:
-                if st.button("Save participants", width="content"):
+                if st.button("Save chat targets", width="content"):
                     try:
                         update_discussion(
                             str(selected_discussion_id),
                             participant_agent_ids=[int(agent_id) for agent_id in selected_participant_ids],
                         )
                     except ApiError as error:
-                        st.error(f"Unable to update participants: {error.detail}")
+                        st.error(f"Unable to update chat targets: {error.detail}")
                     else:
-                        st.success("Participants updated.")
+                        st.success("Chat targets updated.")
                         st.rerun()
 
         with st.container(border=True):

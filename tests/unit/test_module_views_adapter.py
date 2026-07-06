@@ -172,6 +172,34 @@ def test_adapt_module_view_supports_existing_registry_collection_shape():
     assert spec.item_actions[1].confirmation is True
 
 
+def test_adapt_module_view_uses_ui_commands_when_present():
+    view = ViewContribution(
+        module_id="example",
+        action_id="example.participants",
+        view_id="example.participants.view",
+        name="Chat Targets View",
+        description="Track participants.",
+        metadata={
+            "object_type": "participant",
+            "plural_label": "Participants",
+            "ui": {
+                "render_mode": "collection",
+                "commands": {
+                    "create": "example.participants.create",
+                    "edit": "example.participants.edit",
+                    "delete": "example.participants.delete",
+                },
+            },
+        },
+    )
+
+    spec = adapt_module_view(view, items=[])
+
+    assert [action.intent for action in spec.view_actions] == ["create"]
+    assert [action.intent for action in spec.item_actions] == ["edit", "delete"]
+    assert spec.view_actions[0].payload == {"command_id": "example.participants.create"}
+
+
 def test_render_module_view_renders_empty_state(mock_streamlit):
     import apmatia.interfaces.streamlit.module_views.renderers as renderers
 

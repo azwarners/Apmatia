@@ -6,6 +6,7 @@ from apmatia.interfaces.streamlit.module_views.models import (
     CollectionViewDescriptor,
     ModuleViewActionDescriptor,
     ModuleViewIntent,
+    ModuleViewNavigationPaneDescriptor,
     ModuleViewRenderModel,
 )
 
@@ -14,6 +15,7 @@ __all__ = [
     "CollectionViewDescriptor",
     "ModuleViewActionDescriptor",
     "ModuleViewIntent",
+    "ModuleViewNavigationPaneDescriptor",
     "ModuleViewRenderModel",
     "adapt_module_view",
 ]

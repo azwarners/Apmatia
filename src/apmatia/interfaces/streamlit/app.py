@@ -4,7 +4,18 @@ from pathlib import Path
 import streamlit as st
 
 from apmatia.api.internal.apmatia_ipe import ensure_ipe_coach_agent_for_user
-from apmatia.interfaces.streamlit.api_client import ApiError, get_auth_session, get_settings, list_modules as list_module_catalog, logout
+from apmatia.interfaces.streamlit.api_client import (
+    ApiError,
+    create_discussion,
+    discussion_tree,
+    get_auth_session,
+    get_settings,
+    list_agents,
+    list_groups,
+    list_modules as list_module_catalog,
+    logout,
+    open_discussion,
+)
 from apmatia.interfaces.streamlit.pages.login import show_auth_form
 from apmatia.interfaces.streamlit.pages import (
     settings,
@@ -473,9 +484,12 @@ hr {
 
 def render_sidebar():
     """Render the sidebar navigation."""
-    st.sidebar.title("Apmatia")
     if "selected_page" not in st.session_state or st.session_state["selected_page"] not in PAGE_OPTIONS:
         st.session_state["selected_page"] = "discussion"
+    if _contacts_shell_active():
+        return _render_contacts_sidebar()
+
+    st.sidebar.title("Apmatia")
     tutor_active = st.session_state["selected_page"] in {
         "tutor",
         "tutor_session_config",
@@ -519,6 +533,80 @@ def render_sidebar():
     return st.session_state["selected_page"]
 
 
+def _contacts_shell_active() -> bool:
+    return bool(st.session_state.get("contacts_shell_active"))
+
+
+def _current_user_id() -> int | None:
+    authenticated_user = st.session_state.get("authenticated_user")
+    if not isinstance(authenticated_user, dict):
+        return None
+    try:
+        user_id = authenticated_user.get("user_id")
+        return None if user_id is None else int(user_id)
+    except (TypeError, ValueError):
+        return None
+
+
+def _visible_agent(agent: dict[str, object], current_user_id: int | None, visible_group_ids: set[int]) -> bool:
+    if current_user_id is None:
+        return True
+    try:
+        owner_user_id = agent.get("owner_user_id")
+        owner_group_id = agent.get("owner_group_id")
+    except AttributeError:
+        return False
+    if owner_user_id == current_user_id:
+        return True
+    if owner_group_id is not None and owner_group_id in visible_group_ids:
+        return True
+    return False
+
+
+def _render_contacts_sidebar():
+    try:
+        contacts = _contact_roster()
+    except ApiError as error:
+        st.sidebar.title("Contacts")
+        st.sidebar.error(f"Unable to load contacts: {error.detail}")
+        return st.session_state["selected_page"]
+
+    if st.sidebar.button("Back to Apmatia", key="contacts_exit_top", use_container_width=True):
+        _deactivate_contacts_shell()
+        st.rerun()
+
+    st.sidebar.divider()
+    st.sidebar.title("Contacts")
+
+    active_contact_id = str(st.session_state.get("contacts_active_contact_id") or "")
+    if contacts and (not active_contact_id or active_contact_id not in {str(contact.get("contact_id") or "") for contact in contacts}):
+        _activate_contacts_contact(contacts[0])
+        st.rerun()
+
+    if not contacts:
+        pass
+    else:
+        for contact in contacts:
+            contact_id = str(contact.get("contact_id") or "")
+            contact_label = str(contact.get("label") or contact_id or "Contact")
+            button_type = "primary" if active_contact_id and contact_id == active_contact_id else "secondary"
+            if st.sidebar.button(
+                contact_label,
+                key=f"contacts_nav_{contact_id or contact_label}",
+                type=button_type,
+                use_container_width=True,
+            ):
+                _activate_contacts_contact(contact)
+                st.rerun()
+
+    st.sidebar.divider()
+    if st.sidebar.button("Back to Apmatia", key="contacts_exit_bottom", use_container_width=True):
+        _deactivate_contacts_shell()
+        st.rerun()
+
+    return "discussion"
+
+
 def _visible_module_catalog() -> list[dict[str, object]]:
     try:
         modules = list_module_catalog()
@@ -536,6 +624,144 @@ def _visible_module_catalog() -> list[dict[str, object]]:
         ]
         visible_modules.append({**module, "views": visible_views})
     return visible_modules
+
+
+def _contact_roster() -> list[dict[str, object]]:
+    try:
+        groups = list_groups()
+    except ApiError:
+        groups = []
+    current_user_id = _current_user_id()
+    visible_group_ids = {
+        int(group.get("id"))
+        for group in groups
+        if isinstance(group, dict) and group.get("id") is not None
+    }
+    agents = [
+        agent
+        for agent in list_agents()
+        if _visible_agent(agent, current_user_id, visible_group_ids)
+    ]
+    contacts: list[dict[str, object]] = []
+
+    for agent in agents:
+        agent_id = agent.get("id")
+        if agent_id is None:
+            continue
+        agent_key = str(agent_id)
+        contacts.append(
+            {
+                "contact_id": f"agent:{agent_key}",
+                "contact_type": "agent",
+                "label": str(agent.get("name") or f"Agent {agent_key}"),
+                "discussion_id": None,
+            }
+        )
+
+    for group in groups:
+        group_id = group.get("id")
+        if group_id is None:
+            continue
+        group_key = str(group_id)
+        contacts.append(
+            {
+                "contact_id": f"group:{group_key}",
+                "contact_type": "group",
+                "label": str(group.get("name") or f"Group {group_key}"),
+                "discussion_id": None,
+            }
+        )
+
+    return sorted(
+        contacts,
+        key=lambda contact: str(contact.get("label") or "").lower(),
+    )
+
+
+def _activate_contacts_contact(contact: dict[str, object]) -> None:
+    contact_id = str(contact.get("contact_id") or "").strip()
+    if not contact_id:
+        return
+    st.session_state["contacts_shell_active"] = True
+    st.session_state["contacts_active_contact_id"] = contact_id
+    st.session_state["contacts_active_contact_label"] = str(contact.get("label") or contact_id)
+    st.session_state["contacts_active_contact_type"] = str(contact.get("contact_type") or "")
+    contact_type, raw_contact_id = contact_id.split(":", 1)
+    try:
+        numeric_contact_id = int(raw_contact_id)
+    except ValueError:
+        numeric_contact_id = None
+    if contact_type == "agent" and numeric_contact_id is not None:
+        st.session_state["contacts_active_agent_id"] = numeric_contact_id
+    else:
+        st.session_state["contacts_active_agent_id"] = None
+
+    contact_discussion_ids = st.session_state.get("contacts_contact_discussion_ids")
+    if not isinstance(contact_discussion_ids, dict):
+        contact_discussion_ids = {}
+        st.session_state["contacts_contact_discussion_ids"] = contact_discussion_ids
+
+    discussion_id = str(contact_discussion_ids.get(contact_id) or "").strip() or None
+    if discussion_id is None:
+        discussion_id = _open_or_create_contact_discussion(
+            contact_type=contact_type,
+            contact_id=numeric_contact_id,
+            label=str(contact.get("label") or contact_id),
+        )
+        if discussion_id:
+            contact_discussion_ids[contact_id] = discussion_id
+    if discussion_id:
+        st.session_state["contacts_active_discussion_id"] = discussion_id
+
+
+def _contacts_agent_id(contact: dict[str, object]) -> int | None:
+    if str(contact.get("contact_type") or "") != "agent":
+        return None
+    contact_id = str(contact.get("contact_id") or "")
+    if ":" not in contact_id:
+        return None
+    try:
+        return int(contact_id.split(":", 1)[1])
+    except ValueError:
+        return None
+
+
+def _open_or_create_contact_discussion(*, contact_type: str, contact_id: int | None, label: str) -> str | None:
+    if contact_id is None:
+        return None
+
+    create_payload: dict[str, object] = {"title": label, "chat_mode": "single"}
+    if contact_type == "agent":
+        create_payload["agent_id"] = contact_id
+        create_payload["participant_agent_ids"] = [contact_id]
+    elif contact_type == "group":
+        create_payload["group_id"] = contact_id
+    else:
+        return None
+
+    try:
+        created = create_discussion(**create_payload)
+    except ApiError:
+        return None
+    discussion_id = str(created.get("discussion", {}).get("discussion_id") or "").strip() or None
+    if discussion_id is not None:
+        try:
+            open_discussion(discussion_id)
+        except ApiError:
+            pass
+    return discussion_id
+
+
+def _deactivate_contacts_shell() -> None:
+    for key in (
+        "contacts_shell_active",
+        "contacts_active_contact_id",
+        "contacts_active_contact_label",
+        "contacts_active_contact_type",
+        "contacts_active_agent_id",
+        "contacts_active_discussion_id",
+    ):
+        st.session_state.pop(key, None)
 
 
 def _render_module_sidebar_section(module: dict[str, object]) -> None:
@@ -576,14 +802,20 @@ def _render_module_sidebar_section(module: dict[str, object]) -> None:
 
 
 def _select_module_for_navigation(module_id: str, module_views: list[dict[str, object]]) -> None:
-    st.session_state["selected_page"] = "module_view"
-    st.session_state["selected_module_id"] = module_id
-    current_view_id = st.session_state.get("selected_module_view_id")
-    visible_view_ids = {str(view.get("view_id") or "") for view in module_views}
-    if current_view_id in visible_view_ids:
-        st.session_state["selected_module_view_id"] = current_view_id
+    if module_id == "apmatia_contacts_and_discussions":
+        st.session_state["selected_page"] = "discussion"
+        st.session_state["selected_module_id"] = module_id
+        st.session_state["selected_module_view_id"] = "apmatia_contacts_and_discussions.chat_targets.view"
+        st.session_state["contacts_shell_active"] = True
     else:
-        st.session_state["selected_module_view_id"] = None if not module_views else str(module_views[0].get("view_id") or "")
+        st.session_state["selected_page"] = "module_view"
+        st.session_state["selected_module_id"] = module_id
+        current_view_id = st.session_state.get("selected_module_view_id")
+        visible_view_ids = {str(view.get("view_id") or "") for view in module_views}
+        if current_view_id in visible_view_ids:
+            st.session_state["selected_module_view_id"] = current_view_id
+        else:
+            st.session_state["selected_module_view_id"] = None if not module_views else str(module_views[0].get("view_id") or "")
     st.rerun()
 
 

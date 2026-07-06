@@ -998,7 +998,7 @@ def test_discussion_page_can_update_participants(mock_streamlit):
     }
     mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
     mock_streamlit.multiselect.return_value = [7, 8]
-    mock_streamlit.button.side_effect = lambda label, *args, **kwargs: label == "Save participants"
+    mock_streamlit.button.side_effect = lambda label, *args, **kwargs: label == "Save chat targets"
     mock_streamlit.form_submit_button.return_value = False
 
     with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
@@ -1410,8 +1410,8 @@ def test_discussion_page_filters_discussions_by_selected_agent(mock_streamlit):
         discussion_page = importlib.reload(discussion_page)
         discussion_page.render()
 
-    assert [option["discussion_id"] for option in captured_discussion_options] == ["IDdef456", "IDghi789"]
-    mock_open.assert_called_once_with("IDdef456")
+    assert [option["discussion_id"] for option in captured_discussion_options] == ["IDabc123", "IDdef456"]
+    mock_open.assert_called_once_with("IDabc123")
 
 
 def test_discussion_delete_selected_button_calls_api(mock_streamlit):

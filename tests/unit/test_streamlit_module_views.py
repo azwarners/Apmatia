@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import importlib
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from apmatia.interfaces.streamlit.module_views.models import (
     CollectionViewDescriptor,
@@ -271,6 +271,241 @@ def test_module_views_page_prepares_ssh_key_from_form_action(mock_streamlit):
     mock_streamlit.rerun.assert_called()
 
 
+def test_module_views_page_creates_participant_for_agent_target(mock_streamlit):
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    module_views_page = importlib.reload(module_views_page)
+    mock_streamlit.session_state["selected_module_id"] = "example"
+    mock_streamlit.session_state["selected_module_view_id"] = "example.participants.view"
+    mock_streamlit.radio = MagicMock(return_value="agent")
+    modules = [
+        {
+            "module_id": "example",
+            "name": "Example Module",
+            "hidden": False,
+            "views": [
+                {
+                    "module_id": "example",
+                    "action_id": "example.participants",
+                    "view_id": "example.participants.view",
+                    "name": "Chat Targets View",
+                    "description": "Track participants.",
+                    "metadata": {"ui": {"render_mode": "collection", "commands": {"create": "example.participants.create"}}},
+                    "effective_hidden": False,
+                }
+            ],
+        }
+    ]
+    spec = CollectionViewDescriptor(
+        view_id="example.participants.view",
+        title="Chat Targets",
+        item_actions=(
+            ModuleViewActionDescriptor(
+                key="edit",
+                label="Edit",
+                intent="edit",
+                scope="item",
+                payload={"command_id": "example.participants.edit"},
+            ),
+        ),
+        view_actions=(
+            ModuleViewActionDescriptor(
+                key="create",
+                label="Create",
+                intent="create",
+                scope="view",
+                style="primary",
+                payload={"command_id": "example.participants.create"},
+            ),
+        ),
+    )
+
+    with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
+        module_views_page, "list_module_view_items", return_value=[]
+    ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
+        module_views_page, "render_module_view", return_value=[]
+    ), patch.object(
+        module_views_page, "list_agents", return_value=[{"id": 7, "name": "Karen Smith"}]
+    ), patch.object(
+        module_views_page, "list_groups", return_value=[]
+    ), patch.object(
+        module_views_page, "list_llm_configs", return_value=[{"id": 3, "user_alias": "gpt-4o", "provider_name": "openai"}]
+    ), patch.object(
+        module_views_page, "list_tool_definitions", return_value=[{"id": 11, "name": "wiki.read", "provider_id": "wiki"}]
+    ), patch.object(
+        module_views_page, "execute_module_command", return_value={"status": "created"}
+    ) as mock_execute, patch.object(
+        module_views_page, "discussion_tree", return_value={"current_discussion_id": None, "discussions": []}
+    ), patch.object(
+        module_views_page, "create_discussion", return_value={"discussion": {"discussion_id": "IDnew123"}}
+    ) as mock_create_discussion, patch.object(
+        module_views_page, "open_discussion"
+    ) as mock_open_discussion:
+        mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[1] if _label == "Model alias" and len(options) > 1 else options[index]
+        mock_streamlit.form_submit_button.side_effect = [True, False]
+        module_views_page.render()
+
+    mock_execute.assert_called_once_with(
+        "example.participants.create",
+        chat_target="agent:7 - Karen Smith",
+        role="agent",
+        selected_model_id=3,
+        temperature_override=0.0,
+        tool_restrictions=[],
+    )
+    mock_create_discussion.assert_called_once_with(
+        title="Karen Smith",
+        chat_mode="single",
+        agent_id=7,
+        participant_agent_ids=[7],
+    )
+    mock_open_discussion.assert_called_once_with("IDnew123")
+    assert mock_streamlit.session_state["selected_page"] == "discussion"
+    assert mock_streamlit.session_state["discussion_selected_agent_id"] == 7
+    mock_streamlit.success.assert_called_with("Target saved.")
+    mock_streamlit.rerun.assert_called()
+
+
+def test_module_views_page_opens_existing_group_discussion_from_participant_view(mock_streamlit):
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    module_views_page = importlib.reload(module_views_page)
+    mock_streamlit.session_state["selected_module_id"] = "example"
+    mock_streamlit.session_state["selected_module_view_id"] = "example.participants.view"
+    mock_streamlit.radio = MagicMock(return_value="group")
+    modules = [
+        {
+            "module_id": "example",
+            "name": "Example Module",
+            "hidden": False,
+            "views": [
+                {
+                    "module_id": "example",
+                    "action_id": "example.participants",
+                    "view_id": "example.participants.view",
+                    "name": "Chat Targets View",
+                    "description": "Track participants.",
+                    "metadata": {"ui": {"render_mode": "collection", "commands": {"create": "example.participants.create"}}},
+                    "effective_hidden": False,
+                }
+            ],
+        }
+    ]
+    spec = CollectionViewDescriptor(
+        view_id="example.participants.view",
+        title="Chat Targets",
+        view_actions=(
+            ModuleViewActionDescriptor(
+                key="create",
+                label="Create",
+                intent="create",
+                scope="view",
+                style="primary",
+                payload={"command_id": "example.participants.create"},
+            ),
+        ),
+    )
+    tree = {
+        "current_discussion_id": "IDgroup123",
+        "discussions": [
+            {"discussion_id": "IDgroup123", "title": "Research Team", "group_id": 9, "participant_agent_ids": []},
+        ],
+    }
+
+    with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
+        module_views_page, "list_module_view_items", return_value=[]
+    ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
+        module_views_page, "render_module_view", return_value=[]
+    ), patch.object(
+        module_views_page, "list_agents", return_value=[]
+    ), patch.object(
+        module_views_page, "list_groups", return_value=[{"id": 9, "name": "Research Team"}]
+    ), patch.object(
+        module_views_page, "list_llm_configs", return_value=[]
+    ), patch.object(
+        module_views_page, "list_tool_definitions", return_value=[]
+    ), patch.object(
+        module_views_page, "execute_module_command", return_value={"status": "created"}
+    ), patch.object(
+        module_views_page, "discussion_tree", return_value=tree
+    ), patch.object(
+        module_views_page, "open_discussion"
+    ) as mock_open_discussion, patch.object(
+        module_views_page, "create_discussion"
+    ) as mock_create_discussion:
+        mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
+        mock_streamlit.form_submit_button.side_effect = [True, False]
+        module_views_page.render()
+
+    mock_create_discussion.assert_not_called()
+    mock_open_discussion.assert_called_once_with("IDgroup123")
+    assert mock_streamlit.session_state["selected_page"] == "discussion"
+    assert mock_streamlit.session_state["discussion_selected_agent_id"] is None
+
+
+def test_module_views_page_creates_group_from_participant_view(mock_streamlit):
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    module_views_page = importlib.reload(module_views_page)
+    mock_streamlit.session_state["selected_module_id"] = "example"
+    mock_streamlit.session_state["selected_module_view_id"] = "example.participants.view"
+    mock_streamlit.radio = MagicMock(return_value="agent")
+    modules = [
+        {
+            "module_id": "example",
+            "name": "Example Module",
+            "hidden": False,
+            "views": [
+                {
+                    "module_id": "example",
+                    "action_id": "example.participants",
+                    "view_id": "example.participants.view",
+                    "name": "Chat Targets View",
+                    "description": "Track participants.",
+                    "metadata": {"ui": {"render_mode": "collection", "commands": {"create": "example.participants.create"}}},
+                    "effective_hidden": False,
+                }
+            ],
+        }
+    ]
+    spec = CollectionViewDescriptor(
+        view_id="example.participants.view",
+        title="Chat Targets",
+        view_actions=(
+            ModuleViewActionDescriptor(
+                key="create",
+                label="Create",
+                intent="create",
+                scope="view",
+                style="primary",
+                payload={"command_id": "example.participants.create"},
+            ),
+        ),
+    )
+
+    with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
+        module_views_page, "list_module_view_items", return_value=[]
+    ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
+        module_views_page, "render_module_view", return_value=[]
+    ), patch.object(
+        module_views_page, "list_agents", return_value=[{"id": 7, "name": "Karen Smith"}]
+    ), patch.object(
+        module_views_page, "list_groups", return_value=[]
+    ), patch.object(
+        module_views_page, "list_llm_configs", return_value=[{"id": 3, "user_alias": "gpt-4o", "provider_name": "openai"}]
+    ), patch.object(
+        module_views_page, "list_tool_definitions", return_value=[]
+    ), patch.object(
+        module_views_page, "create_group", return_value={"status": "created"}
+    ) as mock_create_group:
+        mock_streamlit.form_submit_button.side_effect = [False, False, True]
+        module_views_page.render()
+
+    mock_create_group.assert_called_once_with(name="testuser", description="Be concise")
+    mock_streamlit.success.assert_called_with("Group created.")
+    mock_streamlit.rerun.assert_called()
+
+
 def test_module_views_page_prompts_before_deleting_item(mock_streamlit):
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
@@ -388,3 +623,35 @@ def test_module_views_page_confirms_delete_item(mock_streamlit):
     assert "module_view_delete_target" not in mock_streamlit.session_state
     mock_streamlit.success.assert_called_with("Item deleted.")
     mock_streamlit.rerun.assert_called()
+
+
+def test_render_module_view_form_coerces_float_number_fields(mock_streamlit):
+    import apmatia.interfaces.streamlit.module_views.renderers as renderers
+
+    renderers = importlib.reload(renderers)
+
+    form = ModuleViewFormDescriptor(
+        key="example",
+        title="Example",
+        fields=(
+            ModuleViewFormFieldDescriptor(
+                key="temperature_override",
+                label="Temperature override",
+                field_type="number",
+                min_value=0.0,
+                max_value=2.0,
+                step=0.1,
+            ),
+        ),
+    )
+
+    renderers.render_module_view_form(form, form_key="example-form")
+
+    mock_streamlit.number_input.assert_called_once_with(
+        "Temperature override",
+        value=0.0,
+        min_value=0.0,
+        max_value=2.0,
+        step=0.1,
+        help=None,
+    )

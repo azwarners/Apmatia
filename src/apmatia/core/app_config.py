@@ -73,6 +73,8 @@ def _default_config() -> dict[str, Any]:
         "discussion": {
             "current_discussion_id": None,
             "system_prompt": "",
+            "architecture": "legacy",
+            "topic_transition_strategy": "layered",
         },
         "ai_model_manager": {
             "gguf_directory": "",

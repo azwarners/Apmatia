@@ -23,7 +23,12 @@ class TestResolveConfigDir:
     def test_uses_preferred_config_dir_when_no_env_override(self):
         with patch.dict(os.environ, {}, clear=True):
             result = app_config._resolve_config_dir()
-        assert result == app_config.PREFERRED_CONFIG_DIR
+        expected = (
+            app_config.PREFERRED_CONFIG_DIR
+            if app_config._dir_is_writable(app_config.PREFERRED_CONFIG_DIR)
+            else Path(tempfile.gettempdir()) / "apmatia"
+        )
+        assert result == expected
 
     def test_falls_back_to_temp_dir_on_oserror(self):
         with patch.dict(os.environ, {}, clear=True):
@@ -68,6 +73,8 @@ class TestDefaultConfig:
 
         assert config["discussion"]["current_discussion_id"] is None
         assert config["discussion"]["system_prompt"] == ""
+        assert config["discussion"]["architecture"] == "legacy"
+        assert config["discussion"]["topic_transition_strategy"] == "layered"
 
     def test_ui_config_structure(self):
         config = app_config._default_config()

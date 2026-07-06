@@ -10,6 +10,8 @@ from apmatia.core.registry import get_application_registry
 from .manifest import ModuleManifest, load_module_manifest
 from .workspace import resolve_module_bundle_root, resolve_module_workspace_root
 
+_LEGACY_BUNDLED_MODULE_DIRS = set()
+
 
 @dataclass(frozen=True, slots=True)
 class ModuleInspection:
@@ -107,6 +109,8 @@ def _list_module_inspections(
     views = registry.list_views() if registry is not None else []
 
     for module_dir in sorted(path for path in modules_dir.iterdir() if path.is_dir()):
+        if module_dir.name in _LEGACY_BUNDLED_MODULE_DIRS:
+            continue
         manifest_path = module_dir / "manifest.toml"
         if not manifest_path.exists():
             continue

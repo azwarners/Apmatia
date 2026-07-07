@@ -72,7 +72,7 @@ class SQLiteDiscussionRepository(DiscussionRepository):
     def list_by_topic(self, topic_id: str | int) -> list[Discussion]:
         return [
             _row_to_discussion(row)
-            for row in self._store.find(self._tables.discussions, topic_id=str(topic_id))
+            for row in self._store.find(self._tables.discussions, topic_id=topic_id)
         ]
 
     def update(self, discussion: Discussion) -> None:
@@ -102,7 +102,7 @@ class SQLiteDiscussionParticipantRepository(DiscussionParticipantRepository):
     def list_by_discussion(self, discussion_id: str | int) -> list[DiscussionParticipant]:
         return [
             _row_to_participant(row)
-            for row in self._store.find(self._tables.participants, discussion_id=str(discussion_id))
+            for row in self._store.find(self._tables.participants, discussion_id=discussion_id)
         ]
 
     def update(self, participant: DiscussionParticipant) -> None:
@@ -132,7 +132,7 @@ class SQLiteTopicSummaryRepository(TopicSummaryRepository):
     def list_by_topic(self, topic_id: str | int) -> list[TopicSummary]:
         return [
             _row_to_summary(row)
-            for row in self._store.find(self._tables.summaries, topic_id=str(topic_id))
+            for row in self._store.find(self._tables.summaries, topic_id=topic_id)
         ]
 
     def update(self, summary: TopicSummary) -> None:
@@ -162,7 +162,7 @@ class SQLiteDiscussionTurnRepository(DiscussionTurnRepository):
     def list_by_discussion(self, discussion_id: str | int) -> list[DiscussionTurn]:
         return [
             _row_to_turn(row)
-            for row in self._store.find(self._tables.turns, discussion_id=str(discussion_id))
+            for row in self._store.find(self._tables.turns, discussion_id=discussion_id)
         ]
 
     def update(self, turn: DiscussionTurn) -> None:

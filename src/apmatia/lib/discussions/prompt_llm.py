@@ -135,6 +135,7 @@ def _build_backend(llm_config: LLM | None = None):
                 or get_config_value("llm", "openai_compatible", "model_name", default=None)
                 or os.getenv("OPENAI_COMPAT_MODEL")
             ),
+            timeout_seconds=None,
         )
 
     return KoboldCppBackend(

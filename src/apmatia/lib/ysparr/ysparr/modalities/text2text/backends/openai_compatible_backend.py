@@ -28,7 +28,7 @@ class OpenAICompatibleBackend:
         base_url: str | None = None,
         api_key: str | None = None,
         model_name: str | None = None,
-        timeout_seconds: int = 120,
+        timeout_seconds: int | None = None,
     ) -> None:
         self.base_url = (
             base_url

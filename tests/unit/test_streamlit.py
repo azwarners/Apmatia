@@ -1488,6 +1488,36 @@ def test_discussion_delete_last_discussion_does_not_open_replacement(mock_stream
     mock_open.assert_not_called()
 
 
+def test_contacts_shell_reuses_existing_discussion_after_refresh(mock_streamlit):
+    """Refreshing the contacts shell should reopen the existing discussion instead of creating a duplicate."""
+    mock_streamlit.session_state.clear()
+
+    import apmatia.interfaces.streamlit.app as streamlit_app
+
+    streamlit_app = importlib.reload(streamlit_app)
+    contact = {"contact_id": "agent:7", "contact_type": "agent", "label": "Planner"}
+    tree = {
+        "discussions": [
+            {
+                "discussion_id": "IDabc123",
+                "title": "Planner",
+                "participant_agent_ids": [7],
+            }
+        ]
+    }
+
+    with patch.object(streamlit_app, "discussion_tree", return_value=tree), patch.object(
+        streamlit_app, "open_discussion"
+    ) as mock_open, patch.object(streamlit_app, "create_discussion") as mock_create:
+        streamlit_app._activate_contacts_contact(contact)
+
+    assert mock_streamlit.session_state["contacts_shell_active"] is True
+    assert mock_streamlit.session_state["contacts_active_discussion_id"] == "IDabc123"
+    assert mock_streamlit.session_state["contacts_contact_discussion_ids"]["agent:7"] == "IDabc123"
+    mock_open.assert_called_once_with("IDabc123")
+    mock_create.assert_not_called()
+
+
 def test_discussion_message_copy_action_renders_html_button(mock_streamlit):
     """The message copy action renders a browser-side copy button."""
 

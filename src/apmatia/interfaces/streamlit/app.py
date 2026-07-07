@@ -702,16 +702,67 @@ def _activate_contacts_contact(contact: dict[str, object]) -> None:
         st.session_state["contacts_contact_discussion_ids"] = contact_discussion_ids
 
     discussion_id = str(contact_discussion_ids.get(contact_id) or "").strip() or None
+    reused_discussion = discussion_id is not None
+    if discussion_id is None:
+        discussion_id = _find_existing_contact_discussion(
+            contact_type=contact_type,
+            contact_id=numeric_contact_id,
+        )
+        reused_discussion = discussion_id is not None
     if discussion_id is None:
         discussion_id = _open_or_create_contact_discussion(
             contact_type=contact_type,
             contact_id=numeric_contact_id,
             label=str(contact.get("label") or contact_id),
         )
-        if discussion_id:
-            contact_discussion_ids[contact_id] = discussion_id
+        reused_discussion = False
+    elif reused_discussion:
+        try:
+            open_discussion(discussion_id)
+        except ApiError:
+            pass
     if discussion_id:
+        contact_discussion_ids[contact_id] = discussion_id
+        st.session_state["contacts_contact_discussion_ids"] = contact_discussion_ids
         st.session_state["contacts_active_discussion_id"] = discussion_id
+
+
+def _find_existing_contact_discussion(*, contact_type: str, contact_id: int | None) -> str | None:
+    if contact_id is None:
+        return None
+
+    try:
+        tree = discussion_tree()
+    except ApiError:
+        return None
+
+    discussions = tree.get("discussions", [])
+    if not isinstance(discussions, list):
+        return None
+
+    for discussion in discussions:
+        if not isinstance(discussion, dict):
+            continue
+        if contact_type == "group":
+            if _safe_int(discussion.get("group_id"), default=None) == contact_id:
+                discussion_id = str(discussion.get("discussion_id") or "").strip()
+                return discussion_id or None
+            continue
+
+        participant_agent_ids = discussion.get("participant_agent_ids") or []
+        try:
+            participant_ids = {
+                int(candidate)
+                for candidate in participant_agent_ids
+                if candidate is not None
+            }
+        except (TypeError, ValueError):
+            continue
+        if contact_id in participant_ids:
+            discussion_id = str(discussion.get("discussion_id") or "").strip()
+            return discussion_id or None
+
+    return None
 
 
 def _contacts_agent_id(contact: dict[str, object]) -> int | None:

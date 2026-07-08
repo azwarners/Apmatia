@@ -1,0 +1,2 @@
+Unknown argument: --offline
+Usage: ./start.sh [core|streamlit]

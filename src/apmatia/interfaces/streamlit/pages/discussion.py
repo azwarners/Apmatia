@@ -158,6 +158,13 @@ def _uploaded_images_to_payload(uploaded_files: list[Any] | None) -> list[dict[s
     return payload
 
 
+def _discussion_delete_state() -> dict[str, object] | None:
+    target = st.session_state.get("discussion_delete_discussion_target")
+    if isinstance(target, dict):
+        return target
+    return None
+
+
 MODE_DESCRIPTIONS = {
     "single": "One selected agent replies, and the discussion stops for your next message.",
     "round_robin": "Each participant speaks once in order, then the discussion waits for you.",
@@ -978,36 +985,97 @@ def render() -> None:
             )
             selected_discussion_id = selected_discussion.get("discussion_id")
 
-        if selected_discussion_id is not None and str(selected_discussion_id) != str(backend_current_discussion_id):
-            try:
-                open_discussion(str(selected_discussion_id))
-            except ApiError as error:
-                st.error(f"Unable to open discussion: {error.detail}")
-            else:
-                st.rerun()
+    if selected_discussion_id is not None and str(selected_discussion_id) != str(backend_current_discussion_id):
+        try:
+            open_discussion(str(selected_discussion_id))
+        except ApiError as error:
+            st.error(f"Unable to open discussion: {error.detail}")
+        else:
+            st.rerun()
 
-        start_col, delete_col = st.columns(2)
-        with start_col:
-            if st.button("Start a new discussion", use_container_width=True):
+    delete_discussion_target = _discussion_delete_state()
+    if (
+        isinstance(delete_discussion_target, dict)
+        and selected_discussion_id is not None
+        and str(delete_discussion_target.get("discussion_id")) != str(selected_discussion_id)
+    ):
+        st.session_state.pop("discussion_delete_discussion_target", None)
+        delete_discussion_target = None
+    start_col, delete_col = st.columns(2)
+    with start_col:
+        if st.button("Start a new discussion", use_container_width=True):
+            try:
+                created = create_discussion(
+                    title="New Discussion",
+                    group_id=None,
+                    folder_id=None,
+                    agent_id=int(selected_agent_id),
+                )
+            except ApiError as error:
+                st.error(f"Unable to create discussion: {error.detail}")
+                return
+            discussion_id = created.get("discussion", {}).get("discussion_id")
+            if discussion_id is not None:
                 try:
-                    created = create_discussion(
-                        title="New Discussion",
-                        group_id=None,
-                        folder_id=None,
-                        agent_id=int(selected_agent_id),
-                    )
-                except ApiError as error:
-                    st.error(f"Unable to create discussion: {error.detail}")
-                    return
-                discussion_id = created.get("discussion", {}).get("discussion_id")
-                if discussion_id is not None:
+                    open_discussion(str(discussion_id))
+                except ApiError:
+                    pass
+            st.success(f"Created discussion {discussion_id}.")
+            st.rerun()
+    with delete_col:
+        if (
+            isinstance(delete_discussion_target, dict)
+            and delete_discussion_target.get("discussion_id") == selected_discussion_id
+        ):
+            st.warning("Delete this discussion?")
+            cancel_col, confirm_col = st.columns([1, 1])
+            with cancel_col:
+                if st.button(
+                    "Cancel",
+                    key=f"discussion-delete-cancel-{selected_discussion_id}",
+                    width="content",
+                ):
+                    st.session_state.pop("discussion_delete_discussion_target", None)
+                    st.rerun()
+            with confirm_col:
+                if st.button(
+                    "Delete",
+                    key=f"discussion-delete-confirm-{selected_discussion_id}",
+                    width="content",
+                    type="primary",
+                ):
+                    discussion_id = selected_discussion.get("discussion_id")
+                    if discussion_id is None:
+                        st.warning("Select a discussion to delete.")
+                        return
                     try:
-                        open_discussion(str(discussion_id))
-                    except ApiError:
-                        pass
-                st.success(f"Created discussion {discussion_id}.")
-                st.rerun()
-        with delete_col:
+                        deleted = delete_discussion(str(discussion_id))
+                    except ApiError as error:
+                        st.error(f"Unable to delete discussion: {error.detail}")
+                        return
+                    next_discussion_id = deleted.get("result", {}).get("next_discussion_id")
+                    if next_discussion_id is None:
+                        remaining_discussions = [
+                            discussion
+                            for discussion in filtered_discussions
+                            if str(discussion.get("discussion_id")) != str(discussion_id)
+                        ]
+                        next_discussion_id = (
+                            remaining_discussions[0].get("discussion_id")
+                            if remaining_discussions
+                            else None
+                        )
+                    if next_discussion_id is not None:
+                        try:
+                            open_discussion(str(next_discussion_id))
+                        except ApiError:
+                            pass
+                    st.session_state.pop("discussion_edit_target", None)
+                    st.session_state.pop("discussion_delete_target", None)
+                    st.session_state.pop("discussion_delete_discussion_target", None)
+                    st.success("Discussion moved to trash.")
+                    st.rerun()
+        else:
             if st.button(
                 "Delete selected discussion",
                 use_container_width=True,
@@ -1017,31 +1085,10 @@ def render() -> None:
                 if discussion_id is None:
                     st.warning("Select a discussion to delete.")
                     return
-                try:
-                    deleted = delete_discussion(str(discussion_id))
-                except ApiError as error:
-                    st.error(f"Unable to delete discussion: {error.detail}")
-                    return
-                next_discussion_id = deleted.get("result", {}).get("next_discussion_id")
-                if next_discussion_id is None:
-                    remaining_discussions = [
-                        discussion
-                        for discussion in filtered_discussions
-                        if str(discussion.get("discussion_id")) != str(discussion_id)
-                    ]
-                    next_discussion_id = (
-                        remaining_discussions[0].get("discussion_id")
-                        if remaining_discussions
-                        else None
-                    )
-                if next_discussion_id is not None:
-                    try:
-                        open_discussion(str(next_discussion_id))
-                    except ApiError:
-                        pass
-                st.session_state.pop("discussion_edit_target", None)
-                st.session_state.pop("discussion_delete_target", None)
-                st.success("Discussion moved to trash.")
+                st.session_state["discussion_delete_discussion_target"] = {
+                    "discussion_id": discussion_id,
+                    "title": selected_discussion.get("title"),
+                }
                 st.rerun()
 
     snapshot: dict[str, object] = {

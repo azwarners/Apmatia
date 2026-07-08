@@ -1,0 +1,17 @@
+[module]
+module_id = "apmatia_knowledge"
+name = "Apmatia Knowledge"
+version = "0.1.0"
+description = "Agent tools for browsing and reading files in ~/.apmatia/workspace/knowledge."
+author = "Nick"
+
+[metadata]
+category = "knowledge"
+tags = ["knowledge", "tree", "read", "workspace"]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []

@@ -1,6 +1,6 @@
-Apmatia is built around a collection of tiny, focused Python libraries. All business logic should live in libraries, while the application layer should stay thin and act only as orchestration and glue.
+Apmatia is built around a collection of tiny, focused Python libraries, but new feature work should prefer modules first. When a capability is being added or expanded, put the implementation in a bundled module under `src/modules/` or a draft module under `workspace/modules/` instead of creating a new top-level library package.
 
-Feature work should generally move into modules when it fits the problem. Bundled modules live in `src/modules/`, and draft or agent-assisted work belongs in `workspace/modules/` until it is ready to be promoted.
+The existing shared libraries stay in place, but module-specific helper code should live inside the module package itself unless it is clearly reusable across multiple modules. The application layer should stay thin and act only as orchestration and glue.
 
 User interfaces such as a CLI or web app must always use the API. Interfaces never call Apmatia core directly. Only the API gets to talk to the core. This is a strict boundary.
 

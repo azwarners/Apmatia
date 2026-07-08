@@ -1425,8 +1425,15 @@ def test_discussion_delete_selected_button_calls_api(mock_streamlit):
         "discussions": [{"discussion_id": "IDabc123", "title": "Current", "participant_agent_ids": [7]}],
     }
     snapshot = {"discussion_id": "IDabc123", "messages": [], "last_error": None}
+    render_phase = {"value": 0}
+
+    def button_side_effect(label, *args, **_kwargs):
+        if render_phase["value"] == 0:
+            return label == "Delete selected discussion"
+        return label == "Delete"
+
     mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
-    mock_streamlit.button.side_effect = lambda label, *args, **_kwargs: label == "Delete selected discussion"
+    mock_streamlit.button.side_effect = button_side_effect
     mock_streamlit.form_submit_button.return_value = False
 
     with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
@@ -1437,12 +1444,14 @@ def test_discussion_delete_selected_button_calls_api(mock_streamlit):
     ), patch(
         "apmatia.interfaces.streamlit.api_client.discussion_state",
         return_value=snapshot,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.delete_discussion"
-    ) as mock_delete:
+        ), patch(
+            "apmatia.interfaces.streamlit.api_client.delete_discussion"
+        ) as mock_delete:
         import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
         discussion_page = importlib.reload(discussion_page)
+        discussion_page.render()
+        render_phase["value"] = 1
         discussion_page.render()
 
     mock_delete.assert_called_once_with("IDabc123")
@@ -1461,8 +1470,15 @@ def test_discussion_delete_last_discussion_does_not_open_replacement(mock_stream
         "discussions": [{"discussion_id": "IDabc123", "title": "Current", "participant_agent_ids": [7]}],
     }
     snapshot = {"discussion_id": "IDabc123", "messages": [], "last_error": None, "is_streaming": False}
+    render_phase = {"value": 0}
+
+    def button_side_effect(label, *args, **_kwargs):
+        if render_phase["value"] == 0:
+            return label == "Delete selected discussion"
+        return label == "Delete"
+
     mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
-    mock_streamlit.button.side_effect = lambda label, *args, **_kwargs: label == "Delete selected discussion"
+    mock_streamlit.button.side_effect = button_side_effect
     mock_streamlit.form_submit_button.return_value = False
 
     with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
@@ -1478,10 +1494,12 @@ def test_discussion_delete_last_discussion_does_not_open_replacement(mock_stream
         return_value={"status": "deleted", "result": {"discussion_id": "IDabc123", "next_discussion_id": None}},
     ) as mock_delete, patch(
         "apmatia.interfaces.streamlit.api_client.open_discussion"
-    ) as mock_open:
+        ) as mock_open:
         import apmatia.interfaces.streamlit.pages.discussion as discussion_page
 
         discussion_page = importlib.reload(discussion_page)
+        discussion_page.render()
+        render_phase["value"] = 1
         discussion_page.render()
 
     mock_delete.assert_called_once_with("IDabc123")

@@ -18,6 +18,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "apmatia_ai_model_manager",
         "apmatia_contacts_and_discussions",
         "apmatia_ipe",
+        "apmatia_knowledge",
         "apmatia_source_inspection",
         "apmatia_worksim",
     ]
@@ -149,6 +150,7 @@ def test_get_application_registry_returns_cached_registry():
         "apmatia_ai_model_manager",
         "apmatia_contacts_and_discussions",
         "apmatia_ipe",
+        "apmatia_knowledge",
         "apmatia_source_inspection",
         "apmatia_worksim",
     ]

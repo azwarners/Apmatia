@@ -39,7 +39,10 @@ def mock_streamlit(monkeypatch):
     mock_st.file_uploader = MagicMock(return_value=[])
     mock_st.button = MagicMock(return_value=False)
     mock_st.form_submit_button = MagicMock(return_value=True)
-    mock_st.tabs = MagicMock(return_value=[MagicMock(), MagicMock()])
+    def _make_tabs(labels, **_kwargs):
+        return [MagicMock() for _ in labels]
+
+    mock_st.tabs = MagicMock(side_effect=_make_tabs)
     def _make_columns(spec, **_kwargs):
         count = spec if isinstance(spec, int) else len(spec)
         columns = [MagicMock() for _ in range(count)]

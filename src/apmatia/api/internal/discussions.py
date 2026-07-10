@@ -17,13 +17,14 @@ def start_prompt(
     agent_id: int | None = None,
     attachments: list[dict[str, Any]] | None = None,
 ) -> str:
-    return discussion_state.start_prompt(
+    kwargs = dict(
         user_id=user_id,
         prompt=prompt,
         member_group_ids=member_group_ids,
         agent_id=agent_id,
         attachments=attachments,
     )
+    return discussion_state.start_prompt(**kwargs)
 
 
 def stop_prompt(*, user_id: int, member_group_ids: set[int]) -> str:

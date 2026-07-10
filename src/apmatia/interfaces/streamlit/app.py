@@ -12,10 +12,13 @@ from apmatia.interfaces.streamlit.api_client import (
     get_settings,
     list_agents,
     list_groups,
+    list_module_view_items,
     list_modules as list_module_catalog,
     logout,
     open_discussion,
 )
+from apmatia.interfaces.streamlit.module_views.adapter import adapt_module_view
+from apmatia.interfaces.streamlit.module_views.renderers import render_navigation_pane
 from apmatia.interfaces.streamlit.pages.login import show_auth_form
 from apmatia.interfaces.streamlit.pages import (
     settings,
@@ -488,6 +491,8 @@ def render_sidebar():
         st.session_state["selected_page"] = "discussion"
     if _contacts_shell_active():
         return _render_contacts_sidebar()
+    if _agent_loops_shell_active():
+        return _render_agent_loops_sidebar()
 
     st.sidebar.title("Apmatia")
     tutor_active = st.session_state["selected_page"] in {
@@ -535,6 +540,10 @@ def render_sidebar():
 
 def _contacts_shell_active() -> bool:
     return bool(st.session_state.get("contacts_shell_active"))
+
+
+def _agent_loops_shell_active() -> bool:
+    return st.session_state.get("selected_page") == "module_view" and st.session_state.get("selected_module_id") == "apmatia_agent_loops"
 
 
 def _current_user_id() -> int | None:
@@ -605,6 +614,70 @@ def _render_contacts_sidebar():
         st.rerun()
 
     return "discussion"
+
+
+def _render_agent_loops_sidebar() -> str:
+    try:
+        modules = _visible_module_catalog()
+    except ApiError as error:
+        st.sidebar.title("Apmatia Agent Loops")
+        st.sidebar.error(f"Unable to load module views: {error.detail}")
+        return st.session_state["selected_page"]
+
+    module = next((item for item in modules if str(item.get("module_id") or "") == "apmatia_agent_loops"), None)
+    if module is None:
+        st.sidebar.title("Apmatia Agent Loops")
+        st.sidebar.info("Apmatia Agent Loops is not available yet.")
+        return st.session_state["selected_page"]
+
+    contacts_view = next(
+        (
+            view
+            for view in list(module.get("views") or [])
+            if str((view.get("metadata") or {}).get("object_type") or "").strip().lower() == "contact"
+            and not bool(view.get("effective_hidden", False))
+        ),
+        None,
+    )
+    if contacts_view is None:
+        st.sidebar.title("Apmatia Agent Loops")
+        st.sidebar.info("Apmatia Agent Loops does not currently expose a contact list.")
+        return st.session_state["selected_page"]
+
+    if st.sidebar.button("Back to Apmatia", key="agent_loops_exit_top", use_container_width=True):
+        _deactivate_agent_loops_shell()
+        st.rerun()
+
+    st.sidebar.divider()
+
+    contact_items = list_module_view_items(str(contacts_view.get("view_id") or ""))
+    nav_spec = adapt_module_view(contacts_view, items=contact_items)
+
+    st.session_state["agent_loops_shell_active"] = True
+    st.session_state["agent_loops_shell_sidebar_rendered"] = True
+
+    selected_contact_id = str(st.session_state.get("agent_loops_selected_contact_id") or "").strip()
+    valid_contact_ids = {str(item.get("id") or "").strip() for item in contact_items if str(item.get("id") or "").strip()}
+    if contact_items and (not selected_contact_id or selected_contact_id not in valid_contact_ids):
+        _activate_agent_loops_contact(contact_items[0])
+        st.rerun()
+
+    nav_choice = render_navigation_pane(nav_spec, items=contact_items, active_item_id=selected_contact_id or None)
+    if nav_choice == "__exit__":
+        _deactivate_agent_loops_shell()
+        st.rerun()
+    if nav_choice:
+        selected_contact = next((item for item in contact_items if str(item.get("id") or "") == nav_choice), None)
+        if selected_contact is not None:
+            _activate_agent_loops_contact(selected_contact)
+        st.rerun()
+
+    st.sidebar.divider()
+    if st.sidebar.button("Back to Apmatia", key="agent_loops_exit_bottom", use_container_width=True):
+        _deactivate_agent_loops_shell()
+        st.rerun()
+
+    return "module_view"
 
 
 def _visible_module_catalog() -> list[dict[str, object]]:
@@ -815,6 +888,27 @@ def _deactivate_contacts_shell() -> None:
         st.session_state.pop(key, None)
 
 
+def _deactivate_agent_loops_shell() -> None:
+    for key in (
+        "agent_loops_shell_active",
+        "agent_loops_shell_sidebar_rendered",
+        "agent_loops_selected_contact_id",
+        "selected_module_id",
+        "selected_module_view_id",
+    ):
+        st.session_state.pop(key, None)
+    st.session_state["selected_page"] = "discussion"
+
+
+def _activate_agent_loops_contact(contact: dict[str, object]) -> None:
+    contact_id = str(contact.get("id") or "").strip()
+    if not contact_id:
+        return
+    st.session_state["agent_loops_shell_active"] = True
+    st.session_state["agent_loops_selected_contact_id"] = contact_id
+    st.session_state["selected_module_id"] = "apmatia_agent_loops"
+
+
 def _render_module_sidebar_section(module: dict[str, object]) -> None:
     module_id = str(module.get("module_id") or "")
     module_name = str(module.get("name") or module_id or "Unnamed module")
@@ -858,6 +952,11 @@ def _select_module_for_navigation(module_id: str, module_views: list[dict[str, o
         st.session_state["selected_module_id"] = module_id
         st.session_state["selected_module_view_id"] = "apmatia_contacts_and_discussions.chat_targets.view"
         st.session_state["contacts_shell_active"] = True
+    elif module_id == "apmatia_agent_loops":
+        st.session_state["selected_page"] = "module_view"
+        st.session_state["selected_module_id"] = module_id
+        st.session_state["selected_module_view_id"] = None if not module_views else str(module_views[0].get("view_id") or "")
+        st.session_state["agent_loops_shell_active"] = True
     else:
         st.session_state["selected_page"] = "module_view"
         st.session_state["selected_module_id"] = module_id

@@ -13,6 +13,7 @@ def test_load_bundled_modules_loads_bundled_modules():
     registry = load_bundled_modules(Registry())
 
     assert [module.module_id for module in registry.list_modules()] == [
+        "apmatia_agent_loops",
         "apmatia_ai_host_management",
         "apmatia_ai_model_executor",
         "apmatia_ai_model_manager",
@@ -42,6 +43,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "apmatia_worksim.org_chart_node",
     ]
     assert [command.command_id for command in registry.list_commands()] == [
+        "apmatia_agent_loops.tasks.stop",
         "apmatia_ai_host_management.hosts.create",
         "apmatia_ai_host_management.hosts.delete",
         "apmatia_ai_host_management.hosts.disable",
@@ -114,6 +116,10 @@ def test_load_bundled_modules_loads_bundled_modules():
         "apmatia_worksim.org_chart_node.list",
     ]
     assert [view.view_id for view in registry.list_views()] == [
+        "apmatia_agent_loops.contacts.view",
+        "apmatia_agent_loops.knowledge.view",
+        "apmatia_agent_loops.tasks.view",
+        "apmatia_agent_loops.workspace.view",
         "apmatia_ai_host_management.hosts.view",
         "apmatia_ai_host_management.resources.view",
         "apmatia_ai_model_manager.models.view",
@@ -145,6 +151,7 @@ def test_get_application_registry_returns_cached_registry():
 
     assert first is second
     assert [module.module_id for module in first.list_modules()] == [
+        "apmatia_agent_loops",
         "apmatia_ai_host_management",
         "apmatia_ai_model_executor",
         "apmatia_ai_model_manager",

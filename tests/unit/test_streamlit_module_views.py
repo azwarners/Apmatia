@@ -655,3 +655,438 @@ def test_render_module_view_form_coerces_float_number_fields(mock_streamlit):
         step=0.1,
         help=None,
     )
+
+
+def test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs(mock_streamlit, tmp_path, monkeypatch):
+    import apmatia.interfaces.streamlit.module_views.renderers as renderers
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    renderers = importlib.reload(renderers)
+    module_views_page = importlib.reload(module_views_page)
+    mock_streamlit.session_state.clear()
+    mock_streamlit.session_state["auth_token"] = None
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["selected_module_id"] = "apmatia_agent_loops"
+    mock_streamlit.session_state["selected_module_view_id"] = "apmatia_agent_loops.contacts.view"
+    mock_streamlit.session_state["agent_loops_selected_contact_id"] = "agent:1"
+    mock_streamlit.session_state["selected_page"] = "module_views"
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace"))
+
+    modules = [
+        {
+            "module_id": "apmatia_agent_loops",
+            "name": "Apmatia Agent Loops",
+            "hidden": False,
+            "views": [
+                {
+                    "module_id": "apmatia_agent_loops",
+                    "action_id": "apmatia_agent_loops.contacts",
+                    "view_id": "apmatia_agent_loops.contacts.view",
+                    "name": "Contacts View",
+                    "description": "Browse the agents and groups available for long-running loops.",
+                    "metadata": {
+                        "object_type": "contact",
+                        "ui": {
+                            "render_mode": "collection",
+                            "nav_pane": {
+                                "title": "Agents & Groups",
+                                "top_exit_label": "Back to Apmatia",
+                                "bottom_exit_label": "Back to Apmatia",
+                                "empty_state": "No agents or groups are available yet.",
+                                "item_label_key": "title",
+                                "item_detail_key": "task_count",
+                                "item_value_key": "id",
+                            },
+                        },
+                    },
+                    "effective_hidden": False,
+                },
+                {
+                    "module_id": "apmatia_agent_loops",
+                    "action_id": "apmatia_agent_loops.tasks",
+                    "view_id": "apmatia_agent_loops.tasks.view",
+                    "name": "Task History View",
+                    "description": "Review previous long-running tasks for the selected contact.",
+                    "metadata": {"object_type": "run", "ui": {"render_mode": "collection"}},
+                    "effective_hidden": False,
+                },
+                {
+                    "module_id": "apmatia_agent_loops",
+                    "action_id": "apmatia_agent_loops.workspace",
+                    "view_id": "apmatia_agent_loops.workspace.view",
+                    "name": "Workspace View",
+                    "description": "Browse shared working files for the selected contact.",
+                    "metadata": {"object_type": "workspace", "ui": {"render_mode": "collection"}},
+                    "effective_hidden": False,
+                },
+                {
+                    "module_id": "apmatia_agent_loops",
+                    "action_id": "apmatia_agent_loops.knowledge",
+                    "view_id": "apmatia_agent_loops.knowledge.view",
+                    "name": "Knowledge View",
+                    "description": "Browse shared knowledge files for the selected contact.",
+                    "metadata": {"object_type": "knowledge", "ui": {"render_mode": "collection"}},
+                    "effective_hidden": False,
+                },
+            ],
+        }
+    ]
+
+    workspace_root = "/tmp/workspace-root"
+    knowledge_root = "/tmp/knowledge-root"
+    task_items = [
+        {
+            "id": "task-1",
+            "contact_kind": "agent",
+            "contact_id": 1,
+            "title": "Loop Task",
+            "contact": "Ada",
+            "status": "running",
+            "mode": "single",
+            "summary": "Working through the checklist.",
+            "executive_analysis": "Keep going.",
+            "updated_at": "2026-07-08T12:00:00",
+            "workspace_root": workspace_root,
+            "knowledge_root": knowledge_root,
+        }
+    ]
+
+    def _list_items(view_id: str, **_kwargs):
+        if view_id.endswith(".contacts.view"):
+            return [
+                {
+                    "id": "agent:1",
+                    "contact_kind": "agent",
+                    "contact_id": 1,
+                    "title": "Ada",
+                    "kind": "Agent",
+                    "detail": "Model model-a",
+                    "task_count": 1,
+                    "updated_at": "2026-07-08T11:00:00",
+                }
+            ]
+        if view_id.endswith(".tasks.view"):
+            return task_items
+        if view_id.endswith(".workspace.view"):
+            return [
+                {
+                    "path": f"{workspace_root}/notes.txt",
+                    "kind": "workspace",
+                    "size": 12,
+                    "updated_at": "2026-07-08T12:10:00",
+                }
+            ]
+        if view_id.endswith(".knowledge.view"):
+            return [
+                {
+                    "path": f"{knowledge_root}/facts.md",
+                    "kind": "knowledge",
+                    "size": 22,
+                    "updated_at": "2026-07-08T12:20:00",
+                }
+            ]
+        return []
+
+    with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
+        module_views_page, "list_module_view_items", side_effect=_list_items
+    ) as mock_list_items, patch.object(
+        module_views_page, "list_groups", return_value=[{"id": 9, "name": "Ops"}]
+    ):
+        module_views_page.render()
+
+    mock_list_items.assert_any_call("apmatia_agent_loops.contacts.view")
+    mock_streamlit.sidebar.title.assert_called_with("Agents & Groups")
+    mock_streamlit.tabs.assert_called_once_with(["Task History", "Workspace", "Knowledge"])
+    mock_streamlit.title.assert_called_with("Ada")
+    assert any(str(call.args[0]).startswith("Workspace: ") for call in mock_streamlit.caption.call_args_list if call.args)
+    assert any(str(call.args[0]).startswith("Knowledge: ") for call in mock_streamlit.caption.call_args_list if call.args)
+
+
+def test_module_views_page_starts_agent_loops_task_from_form(mock_streamlit, tmp_path, monkeypatch):
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    module_views_page = importlib.reload(module_views_page)
+    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace"))
+    mock_streamlit.session_state["selected_page"] = "module_view"
+    mock_streamlit.session_state["selected_module_id"] = "apmatia_agent_loops"
+    mock_streamlit.session_state["selected_module_view_id"] = "apmatia_agent_loops.tasks.view"
+    mock_streamlit.session_state["agent_loops_shell_sidebar_rendered"] = True
+    mock_streamlit.session_state["agent_loops_selected_contact_id"] = "agent:7"
+    mock_streamlit.button.side_effect = lambda label, **_kwargs: label == "New Task"
+    mock_streamlit.text_input.side_effect = lambda label, value="", **_kwargs: "Ship the nightly report" if label == "Task title" else value
+    mock_streamlit.text_area.side_effect = lambda label, value="", **_kwargs: "Write the summary\nUpdate the report" if label == "Task prompt" else "1. Draft\n2. Review"
+    mock_streamlit.checkbox.return_value = True
+    mock_streamlit.number_input.return_value = 4
+    mock_streamlit.form_submit_button.side_effect = [True, False]
+
+    modules = [
+        {
+            "module_id": "apmatia_agent_loops",
+            "name": "Apmatia Agent Loops",
+            "hidden": False,
+            "views": [
+                {
+                    "module_id": "apmatia_agent_loops",
+                    "view_id": "apmatia_agent_loops.contacts.view",
+                    "name": "Contacts View",
+                    "effective_hidden": False,
+                    "metadata": {
+                        "object_type": "contact",
+                        "ui": {
+                            "render_mode": "collection",
+                            "nav_pane": {
+                                "title": "Agents & Groups",
+                                "top_exit_label": "Back to Apmatia",
+                                "bottom_exit_label": "Back to Apmatia",
+                                "empty_state": "No agents or groups are available yet.",
+                                "item_label_key": "title",
+                                "item_detail_key": "task_count",
+                                "item_value_key": "id",
+                            },
+                        },
+                    },
+                },
+                {
+                    "module_id": "apmatia_agent_loops",
+                    "view_id": "apmatia_agent_loops.tasks.view",
+                    "name": "Task History View",
+                    "effective_hidden": False,
+                    "metadata": {"object_type": "run", "ui": {"render_mode": "collection"}},
+                },
+                {
+                    "module_id": "apmatia_agent_loops",
+                    "view_id": "apmatia_agent_loops.workspace.view",
+                    "name": "Workspace View",
+                    "effective_hidden": False,
+                    "metadata": {"object_type": "workspace", "ui": {"render_mode": "collection"}},
+                },
+                {
+                    "module_id": "apmatia_agent_loops",
+                    "view_id": "apmatia_agent_loops.knowledge.view",
+                    "name": "Knowledge View",
+                    "effective_hidden": False,
+                    "metadata": {"object_type": "knowledge", "ui": {"render_mode": "collection"}},
+                },
+            ],
+        }
+    ]
+
+    def _list_items(view_id: str, **_kwargs):
+        if view_id.endswith(".contacts.view"):
+            return [
+                {
+                    "id": "agent:7",
+                    "contact_kind": "agent",
+                    "contact_id": 7,
+                    "title": "Karen Smith",
+                    "detail": "Model gpt-4o",
+                    "task_count": 0,
+                }
+            ]
+        if view_id.endswith(".tasks.view"):
+            return []
+        return []
+
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
+        module_views_page, "list_module_view_items", side_effect=_list_items
+    ), patch.object(
+        module_views_page, "start_loop_task", return_value={"task_id": "loop-123", "title": "Ship the nightly report"}
+    ) as mock_start_task:
+        module_views_page.render()
+
+    mock_start_task.assert_called_once_with(
+        contact_kind="agent",
+        contact_id=7,
+        title="Ship the nightly report",
+        prompt="Write the summary\nUpdate the report",
+        checklist=[{"label": "1. Draft"}, {"label": "2. Review"}],
+        allow_tools=True,
+        max_iterations=5,
+        agent_id=7,
+        participant_agent_ids=[7],
+    )
+    mock_streamlit.success.assert_called_with("Task started: Ship the nightly report")
+    assert "agent_loops_task_form_open:agent:7" not in mock_streamlit.session_state
+
+
+def test_module_views_page_stops_agent_loops_task_from_history(mock_streamlit):
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    module_views_page = importlib.reload(module_views_page)
+    mock_streamlit.button.side_effect = lambda label, **_kwargs: label == "Stop task"
+    task_items = [
+        {
+            "id": "loop-123",
+            "task_id": "loop-123",
+            "title": "Nightly report",
+            "contact": "Karen Smith",
+            "status": "running",
+            "mode": "single",
+            "prompt": "Please run the nightly report.",
+            "summary": "",
+            "updated_at": "2026-07-10T06:00:00",
+            "discussion_id": "IDabc123",
+            "workspace_root": "/home/apmatia/.apmatia/workspace/apmatia_agent_loops/workspace/agent-7",
+            "knowledge_root": "/home/apmatia/.apmatia/workspace/knowledge/agent-7",
+            "events": [],
+            "checklist": [],
+        }
+    ]
+
+    with patch.object(module_views_page, "execute_module_command", return_value={"status": "stopped"}) as mock_stop, patch.object(
+        module_views_page, "_render_agent_loops_task_transcript"
+    ), patch.object(module_views_page, "_render_agent_loops_event_log"), patch.object(
+        module_views_page, "_render_agent_loops_task_progress"
+    ):
+        module_views_page._render_agent_loops_task_history(task_items, roots={})
+
+    mock_stop.assert_called_once_with("apmatia_agent_loops.tasks.stop", task_id="loop-123")
+    mock_streamlit.success.assert_called_with("Stop requested.")
+    mock_streamlit.rerun.assert_called()
+
+
+def test_module_views_page_renders_agent_loops_task_history_as_terminal_stack(mock_streamlit):
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    module_views_page = importlib.reload(module_views_page)
+    task_items = [
+        {
+            "id": "loop-456",
+            "task_id": "loop-456",
+            "title": "Terminal stack",
+            "contact": "Karen Smith",
+            "status": "running",
+            "mode": "single",
+            "prompt": "Build the agent loop UI.",
+            "summary": "Working through the request.",
+            "executive_analysis": "This task is still in progress.",
+            "updated_at": "2026-07-10T06:00:00",
+            "discussion_id": "disc-stack",
+            "workspace_root": "/home/apmatia/.apmatia/workspace/apmatia_agent_loops/workspace/agent-7",
+            "knowledge_root": "/home/apmatia/.apmatia/workspace/knowledge/agent-7",
+            "events": [
+                {"type": "task_started", "contact_kind": "agent", "contact_id": 7},
+                {"type": "loop_status", "status": {"done": False, "remaining_items": ["Ship"]}},
+            ],
+            "checklist": [{"label": "Ship"}],
+            "loop_status": {"done": False, "remaining_items": ["Ship"]},
+        },
+        {
+            "id": "loop-789",
+            "task_id": "loop-789",
+            "title": "Older task",
+            "contact": "Karen Smith",
+            "status": "completed",
+            "mode": "single",
+            "prompt": "Archive the notes.",
+            "summary": "Done.",
+            "executive_analysis": "Archived for reference.",
+            "updated_at": "2026-07-09T06:00:00",
+            "discussion_id": "disc-old",
+            "workspace_root": "/home/apmatia/.apmatia/workspace/apmatia_agent_loops/workspace/agent-7",
+            "knowledge_root": "/home/apmatia/.apmatia/workspace/knowledge/agent-7",
+            "events": [],
+            "checklist": [],
+        }
+    ]
+
+    with patch.object(
+        module_views_page,
+        "get_loop_task_transcript",
+        return_value={
+            "transcript": {
+                "content": "",
+                "messages": [
+                    {
+                        "role": "Assistant",
+                        "speaker_name": "Luna Tuxamiga",
+                        "text": (
+                            "I am working on it.\n"
+                            "<tool_call>{\"name\":\"list_agents\",\"arguments\":{}}</tool_call>\n"
+                            "Done."
+                        ),
+                        "metadata": {
+                            "prompt_cache_est_tokens": 96000,
+                            "tokens_per_second": 3.04,
+                        },
+                    }
+                ],
+            }
+        },
+    ), patch.object(module_views_page, "execute_module_command"), patch.object(
+        module_views_page, "_render_agent_loops_event_log"
+    ):
+        module_views_page._render_agent_loops_task_history(task_items, roots={})
+
+    code_bodies = [str(call.args[0]) for call in mock_streamlit.code.call_args_list if call.args]
+    assert code_bodies[0].startswith("PROMPT\nBuild the agent loop UI.")
+    assert any("I am working on it." in body for body in code_bodies)
+    assert any("Done." in body for body in code_bodies)
+    assert not any("prompt_cache_est_tokens" in body for body in code_bodies)
+    assert not any("tokens_per_second" in body for body in code_bodies)
+    assert any("\"done\": false" in body.lower() for body in code_bodies)
+    assert any("Working through the request." in body for body in code_bodies)
+    assert any("This task is still in progress." in body for body in code_bodies)
+    assert mock_streamlit.expander.call_count >= 2

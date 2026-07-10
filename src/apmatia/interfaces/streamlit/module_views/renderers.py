@@ -170,7 +170,6 @@ def render_navigation_pane(
                 type="primary" if active_item_id and item_id == active_item_id else "secondary",
                 use_container_width=True,
             ):
-                st.session_state["contacts_selected_item"] = item
                 return item_id or None
             if subtitle:
                 st.sidebar.caption(subtitle)

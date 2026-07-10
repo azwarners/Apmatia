@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import json
 from collections.abc import Iterable
 
 import streamlit as st
@@ -12,6 +13,7 @@ from apmatia.interfaces.streamlit.api_client import (
     create_group,
     discussion_tree,
     execute_module_command,
+    get_loop_task_transcript,
     list_agents,
     list_groups,
     list_llm_configs,
@@ -19,12 +21,17 @@ from apmatia.interfaces.streamlit.api_client import (
     list_modules,
     list_tool_definitions,
     open_discussion,
+    start_loop_task,
 )
 from apmatia.interfaces.streamlit.module_views.adapter import adapt_module_view
 from apmatia.interfaces.streamlit.module_views.renderers import (
+    render_collection_view,
     render_module_view,
     render_module_view_form,
+    render_navigation_pane,
 )
+from apmatia.modules.apmatia_agent_loops.prompt_helpers import parse_checklist_text
+from apmatia.lib.discussions.tool_calls import parse_tool_calls, strip_tool_calls
 
 
 def _selected_module_view() -> tuple[dict[str, object] | None, dict[str, object] | None]:
@@ -71,6 +78,10 @@ def render() -> None:
         st.title("Module Views")
         st.caption("Render registry-defined module views through the Streamlit adapter.")
         st.info("Select a visible module from the left navigation to open its views.")
+        return
+
+    if str(selected_module.get("module_id") or "") == "apmatia_agent_loops":
+        _render_agent_loops_shell(selected_module)
         return
 
     if selected_view is None:
@@ -1062,3 +1073,741 @@ def _item_id(item: object) -> int | str | None:
     if isinstance(item, dict):
         return item.get("id")
     return getattr(item, "id", None)
+
+
+def _render_agent_loops_shell(selected_module: dict[str, object]) -> None:
+    _render_agent_loops_terminal_styles()
+    views_by_type = _agent_loops_views_by_type(selected_module)
+    contacts_view = views_by_type.get("contact")
+    runs_view = views_by_type.get("run")
+    workspace_view = views_by_type.get("workspace")
+    knowledge_view = views_by_type.get("knowledge")
+    if contacts_view is None or runs_view is None or workspace_view is None or knowledge_view is None:
+        st.title(str(selected_module.get("name") or "Apmatia Agent Loops"))
+        st.info("Apmatia Agent Loops is missing one or more expected views.")
+        return
+
+    contact_items = list_module_view_items(str(contacts_view.get("view_id") or ""))
+
+    sidebar_rendered = bool(st.session_state.get("agent_loops_shell_sidebar_rendered"))
+    selected_contact_id = str(st.session_state.get("agent_loops_selected_contact_id") or "").strip()
+    valid_contact_ids = {str(item.get("id") or "").strip() for item in contact_items if str(item.get("id") or "").strip()}
+    if not sidebar_rendered and (not selected_contact_id or selected_contact_id not in valid_contact_ids):
+        selected_contact_id = next(iter(valid_contact_ids), "")
+        if selected_contact_id:
+            st.session_state["agent_loops_selected_contact_id"] = selected_contact_id
+
+    if not sidebar_rendered:
+        nav_spec = adapt_module_view(contacts_view, items=contact_items)
+        nav_choice = render_navigation_pane(nav_spec, items=contact_items, active_item_id=selected_contact_id or None)
+        if nav_choice == "__exit__":
+            _exit_agent_loops_shell()
+            st.rerun()
+            return
+        if nav_choice:
+            st.session_state["agent_loops_selected_contact_id"] = nav_choice
+            st.rerun()
+            return
+
+    selected_contact = next((item for item in contact_items if str(item.get("id") or "") == selected_contact_id), None)
+    if selected_contact is None:
+        st.title(str(selected_module.get("name") or "Apmatia Agent Loops"))
+        st.info("Pick an agent or group from the sidebar to view its task workspace.")
+        return
+
+    contact_kind = str(selected_contact.get("contact_kind") or "").strip().lower()
+    contact_id = selected_contact.get("contact_id")
+    contact_label = str(selected_contact.get("title") or selected_contact.get("id") or "Contact")
+    roots = _selected_contact_roots(contact_kind, contact_id)
+
+    st.title(contact_label)
+    st.caption("Long-running task loops, workspace files, and shared knowledge for the selected contact.")
+    st.caption(f"Workspace: {roots['workspace_root']}")
+    st.caption(f"Knowledge: {roots['knowledge_root']}")
+
+    launch_form_key = f"agent_loops_task_form_open:{selected_contact_id}"
+    launch_form_widget_key = f"agent_loops_task_form:{selected_contact_id}"
+    if st.button("New Task", key=f"agent_loops_new_task:{selected_contact_id}", type="primary"):
+        st.session_state[launch_form_key] = True
+
+    if st.session_state.get(launch_form_key):
+        _render_agent_loops_task_form(
+            selected_contact=selected_contact,
+            roots=roots,
+            form_key=launch_form_widget_key,
+            state_key=launch_form_key,
+        )
+
+    task_items = _filter_agent_loops_tasks(
+        list_module_view_items(str(runs_view.get("view_id") or "")),
+        contact_kind=contact_kind,
+        contact_id=contact_id,
+    )
+    workspace_items = _filter_agent_loops_files(
+        list_module_view_items(str(workspace_view.get("view_id") or "")),
+        root_path=str(roots["workspace_root"]),
+    )
+    knowledge_items = _filter_agent_loops_files(
+        list_module_view_items(str(knowledge_view.get("view_id") or "")),
+        root_path=str(roots["knowledge_root"]),
+    )
+
+    tab_task_history, tab_workspace, tab_knowledge = st.tabs(["Task History", "Workspace", "Knowledge"])
+    with tab_task_history:
+        if any(str(item.get("status") or "").strip().lower() == "running" for item in task_items):
+            fragment_factory = getattr(st, "fragment", None)
+            if getattr(fragment_factory, "__module__", "").startswith("streamlit"):
+                @fragment_factory(run_every=0.5)
+                def _task_history_fragment() -> dict[str, object]:
+                    current_items = _filter_agent_loops_tasks(
+                        list_module_view_items(str(runs_view.get("view_id") or "")),
+                        contact_kind=contact_kind,
+                        contact_id=contact_id,
+                    )
+                    _render_agent_loops_task_history(current_items, roots=roots)
+                    return {"running": True}
+
+                _task_history_fragment()
+            else:
+                _render_agent_loops_task_history(task_items, roots=roots)
+        else:
+            _render_agent_loops_task_history(task_items, roots=roots)
+    with tab_workspace:
+        _render_agent_loops_collection_tab(workspace_view, workspace_items)
+    with tab_knowledge:
+        _render_agent_loops_collection_tab(knowledge_view, knowledge_items)
+
+
+def _render_agent_loops_collection_tab(view: dict[str, object], items: list[dict[str, object]]) -> None:
+    spec = adapt_module_view(view, items=items)
+    render_collection_view(replace(spec, title="", caption="", description=""))
+
+
+def _render_agent_loops_task_history(items: list[dict[str, object]], *, roots: dict[str, object]) -> None:
+    if not items:
+        st.info("No previous tasks have been recorded for this contact yet.")
+        return
+
+    def _task_sort_key(item: dict[str, object]) -> tuple[int, str]:
+        status = str(item.get("status") or "").strip().lower()
+        priority = 0 if status in {"running", "stopping"} else 1
+        return priority, str(item.get("updated_at") or "")
+
+    items = sorted(items, key=_task_sort_key)
+    st.caption("Each task expands into its own progress record, summary, and executive analysis.")
+    for index, item in enumerate(items):
+        title = str(item.get("title") or f"Task {index + 1}").strip()
+        status = str(item.get("status") or "queued").strip()
+        prompt = str(item.get("prompt") or "").strip()
+        summary = str(item.get("summary") or "").strip()
+        contact = str(item.get("contact") or "").strip()
+        mode = str(item.get("mode") or "single").strip()
+        updated_at = str(item.get("updated_at") or "").strip()
+        task_id = str(item.get("task_id") or item.get("id") or "").strip()
+        task_header = f"{title} · {status}"
+        is_active = index == 0 and status in {"running", "stopping"}
+        if is_active:
+            with st.container(border=True):
+                _render_agent_loops_status_banner(status=status)
+                st.markdown(f"### {task_header}")
+                if contact:
+                    st.caption(contact)
+                if updated_at:
+                    st.caption(f"Updated {updated_at}")
+                st.caption(f"Mode: {mode}")
+                if task_id:
+                    st.caption(f"Task ID: {task_id}")
+                if status in {"running", "stopping"}:
+                    _render_agent_loops_live_output(
+                        item,
+                        task_id=task_id,
+                        roots=roots,
+                    )
+                if status in {"running", "stopping"}:
+                    if st.button("Stop task", key=f"agent_loops_stop_task:{item.get('task_id') or index}", type="secondary"):
+                        task_id = str(item.get("task_id") or "").strip()
+                        if task_id:
+                            try:
+                                execute_module_command("apmatia_agent_loops.tasks.stop", task_id=task_id)
+                            except ApiError as error:
+                                st.error(f"Unable to stop task: {error.detail}")
+                            else:
+                                st.success("Stop requested.")
+                                st.rerun()
+                if summary:
+                    _render_agent_loops_terminal_block(
+                        title="Summary",
+                        body=summary,
+                        subtitle="The current progress summary for this task.",
+                    )
+                executive_analysis = str(item.get("executive_analysis") or "").strip()
+                if executive_analysis:
+                    _render_agent_loops_terminal_block(
+                        title="Executive analysis",
+                        body=executive_analysis,
+                        subtitle="The user-facing handoff for this task.",
+                    )
+                last_error = str(item.get("last_error") or "").strip()
+                if last_error:
+                    st.error(last_error)
+                current_iteration = item.get("current_iteration")
+                max_iterations = item.get("max_iterations")
+                if current_iteration is not None and max_iterations is not None:
+                    st.caption(f"Iteration {current_iteration} of {max_iterations}")
+                if item.get("workspace_root"):
+                    st.caption(f"Workspace root: {item.get('workspace_root')}")
+                elif roots.get("workspace_root"):
+                    st.caption(f"Workspace root: {roots['workspace_root']}")
+                if item.get("knowledge_root"):
+                    st.caption(f"Knowledge root: {item.get('knowledge_root')}")
+                elif roots.get("knowledge_root"):
+                    st.caption(f"Knowledge root: {roots['knowledge_root']}")
+                _render_agent_loops_event_log(item)
+        else:
+            with st.expander(task_header, expanded=False):
+                if contact:
+                    st.caption(contact)
+                if updated_at:
+                    st.caption(f"Updated {updated_at}")
+                st.caption(f"Mode: {mode}")
+                if task_id:
+                    st.caption(f"Task ID: {task_id}")
+                if prompt:
+                    _render_agent_loops_terminal_block(
+                        title="Task prompt",
+                        body=prompt,
+                        subtitle="The prompt that launched this loop.",
+                    )
+                if summary:
+                    _render_agent_loops_terminal_block(
+                        title="Summary",
+                        body=summary,
+                        subtitle="The current progress summary for this task.",
+                    )
+                executive_analysis = str(item.get("executive_analysis") or "").strip()
+                if executive_analysis:
+                    _render_agent_loops_terminal_block(
+                        title="Executive analysis",
+                        body=executive_analysis,
+                        subtitle="The user-facing handoff for this task.",
+                    )
+                last_error = str(item.get("last_error") or "").strip()
+                if last_error:
+                    st.error(last_error)
+                current_iteration = item.get("current_iteration")
+                max_iterations = item.get("max_iterations")
+                if current_iteration is not None and max_iterations is not None:
+                    st.caption(f"Iteration {current_iteration} of {max_iterations}")
+                if item.get("workspace_root"):
+                    st.caption(f"Workspace root: {item.get('workspace_root')}")
+                elif roots.get("workspace_root"):
+                    st.caption(f"Workspace root: {roots['workspace_root']}")
+                if item.get("knowledge_root"):
+                    st.caption(f"Knowledge root: {item.get('knowledge_root')}")
+                elif roots.get("knowledge_root"):
+                    st.caption(f"Knowledge root: {roots['knowledge_root']}")
+                _render_agent_loops_event_log(item)
+
+
+def _render_agent_loops_task_transcript(task_id: str, discussion_id: str) -> None:
+    if not task_id or not discussion_id:
+        return
+    try:
+        payload = get_loop_task_transcript(task_id)
+    except ApiError as error:
+        st.warning(f"Unable to load live transcript: {error.detail}")
+        return
+    if not isinstance(payload, dict):
+        return
+    transcript = payload.get("transcript")
+    if not isinstance(transcript, dict):
+        return
+    messages = transcript.get("messages") if isinstance(transcript.get("messages"), list) else []
+    content = str(transcript.get("content") or "").strip()
+    if not content and not messages:
+        st.caption("No transcript yet.")
+        return
+    st.caption("Live transcript")
+    st.caption("Collapsed by default. Expand messages and tool calls only when you want the details.")
+    if messages:
+        for index, message in enumerate(messages, start=1):
+            if not isinstance(message, dict):
+                continue
+            _render_agent_loops_transcript_message(message, index=index)
+        return
+
+    cleaned_content = strip_tool_calls(content)
+    cleaned_content = _strip_transcript_metadata_comments(cleaned_content)
+    if cleaned_content:
+        _render_agent_loops_terminal_block(
+            title="Transcript",
+            body=cleaned_content,
+            subtitle="Fallback transcript view.",
+        )
+    else:
+        st.caption("No transcript content is available yet.")
+
+
+def _render_agent_loops_live_output(
+    item: dict[str, object],
+    *,
+    task_id: str,
+    roots: dict[str, object],
+) -> None:
+    current_iteration = item.get("current_iteration")
+    max_iterations = item.get("max_iterations")
+    status = str(item.get("status") or "running").strip()
+    prompt = str(item.get("prompt") or "").strip()
+    summary = str(item.get("summary") or "").strip()
+    loop_status = item.get("loop_status") if isinstance(item.get("loop_status"), dict) else {}
+
+    live_lines: list[str] = [
+        "PROMPT",
+        prompt or "(no prompt provided)",
+    ]
+    live_lines.append("")
+    live_lines.append(f"STATUS {status.upper()}")
+    if current_iteration is not None and max_iterations is not None:
+        live_lines.append(f"ITERATION {current_iteration} / {max_iterations}")
+    if task_id:
+        live_lines.append(f"TASK {task_id}")
+    if loop_status:
+        live_lines.append("")
+        live_lines.append("LOOP STATUS")
+        live_lines.append(json.dumps(loop_status, indent=2, ensure_ascii=False))
+    if summary:
+        live_lines.append("")
+        live_lines.append("SUMMARY")
+        live_lines.append(summary)
+
+    _render_agent_loops_terminal_block(
+        title="Live output",
+        body="\n".join(live_lines),
+        subtitle="Append-only stream for the active loop.",
+    )
+
+    _render_agent_loops_task_progress(item)
+
+    discussion_id = str(item.get("discussion_id") or "").strip()
+    if discussion_id:
+        _render_agent_loops_task_transcript(task_id, discussion_id)
+    else:
+        _render_agent_loops_terminal_block(
+            title="Live transcript",
+            body="Awaiting discussion setup and agent output...",
+            subtitle="The transcript will appear here as soon as the agent responds.",
+        )
+
+    if item.get("workspace_root"):
+        st.caption(f"Workspace root: {item.get('workspace_root')}")
+    elif roots.get("workspace_root"):
+        st.caption(f"Workspace root: {roots['workspace_root']}")
+    if item.get("knowledge_root"):
+        st.caption(f"Knowledge root: {item.get('knowledge_root')}")
+    elif roots.get("knowledge_root"):
+        st.caption(f"Knowledge root: {roots['knowledge_root']}")
+
+
+def _render_agent_loops_task_progress(item: dict[str, object]) -> None:
+    checklist = item.get("checklist") if isinstance(item.get("checklist"), list) else []
+    loop_status = item.get("loop_status") if isinstance(item.get("loop_status"), dict) else {}
+    completed_items = {
+        str(candidate).strip()
+        for candidate in (loop_status.get("completed_items") or [])
+        if str(candidate).strip()
+    }
+    remaining_items = {
+        str(candidate).strip()
+        for candidate in (loop_status.get("remaining_items") or [])
+        if str(candidate).strip()
+    }
+    if not checklist and not loop_status:
+        return
+
+    checklist_lines: list[str] = []
+    for raw_index, raw_item in enumerate(checklist, start=1):
+        if not isinstance(raw_item, dict):
+            continue
+        label = str(raw_item.get("label") or raw_item.get("title") or raw_item.get("text") or f"Item {raw_index}").strip()
+        if label in completed_items:
+            status_label = "done"
+            prefix = "✅"
+        elif label in remaining_items:
+            status_label = "open"
+            prefix = "⏳"
+        else:
+            status_label = "open"
+            prefix = "•"
+        checklist_lines.append(f"{prefix} {label} ({status_label})")
+
+    if checklist_lines:
+        _render_agent_loops_terminal_block(
+            title="Checklist progress",
+            body="\n".join(checklist_lines),
+            subtitle="Append-only checklist state for the active loop.",
+        )
+
+    if loop_status:
+        _render_agent_loops_terminal_block(
+            title="Latest loop status",
+            body=json.dumps(loop_status, indent=2, ensure_ascii=False),
+            subtitle="The structured loop status payload returned by the agent.",
+            language="json",
+        )
+
+
+def _render_agent_loops_event_log(item: dict[str, object]) -> None:
+    events = item.get("events") if isinstance(item.get("events"), list) else []
+    if not events:
+        return
+
+    st.markdown("**Execution log**")
+    for index, event in enumerate(events, start=1):
+        if not isinstance(event, dict):
+            continue
+        event_type = str(event.get("type") or "event").strip()
+        event_lines: list[str] = [f"{index}. {event_type}"]
+        if event_type == "task_started":
+            event_lines.append(f"Task prepared for {event.get('contact_kind')} {event.get('contact_id')}.")
+        elif event_type == "iteration_started":
+            event_lines.append(f"Iteration {event.get('iteration')} of {event.get('max_iterations')} started.")
+        elif event_type == "loop_status":
+            status = event.get("status") if isinstance(event.get("status"), dict) else {}
+            event_lines.append(json.dumps(status, indent=2, ensure_ascii=False))
+        else:
+            event_lines.append(json.dumps(event, indent=2, ensure_ascii=False))
+        _render_agent_loops_terminal_block(
+            title="Execution log entry",
+            body="\n".join(event_lines),
+            subtitle="Append-only loop event history.",
+        )
+
+
+def _render_agent_loops_transcript_message(message: dict[str, object], *, index: int) -> None:
+    role = str(message.get("role") or "Assistant").strip() or "Assistant"
+    speaker_name = str(message.get("speaker_name") or "").strip()
+    metadata = message.get("metadata") if isinstance(message.get("metadata"), dict) else {}
+    text = str(message.get("text") or "").strip()
+    clean_text = strip_tool_calls(text)
+    tool_calls = parse_tool_calls(text)
+    header = f"{index}. {role}"
+    if speaker_name:
+        header = f"{header} ({speaker_name})"
+    with st.expander(header, expanded=False):
+        if clean_text:
+            _render_agent_loops_terminal_block(
+                title=f"{role} message",
+                body=clean_text,
+                subtitle="Message content.",
+            )
+        if tool_calls:
+            st.caption("Tool calls")
+            for tool_index, tool_call in enumerate(tool_calls, start=1):
+                _render_agent_loops_tool_call(tool_call, index=tool_index)
+        if not clean_text and not tool_calls:
+            st.caption("No visible text in this message.")
+
+
+def _render_agent_loops_tool_call(tool_call: object, *, index: int) -> None:
+    name = str(getattr(tool_call, "name", "") or "").strip() or "tool"
+    arguments = getattr(tool_call, "arguments", {})
+    with st.expander(f"Tool call {index}: {name}", expanded=False):
+        st.caption("Tool call arguments")
+        st.json({"name": name, "arguments": arguments})
+
+
+def _strip_transcript_metadata_comments(text: str) -> str:
+    lines: list[str] = []
+    for line in str(text or "").splitlines():
+        if line.strip().startswith("<!-- apmatia-metadata:"):
+            continue
+        lines.append(line)
+    return "\n".join(lines).strip()
+
+
+def _render_agent_loops_task_form(
+    *,
+    selected_contact: dict[str, object],
+    roots: dict[str, object],
+    form_key: str,
+    state_key: str,
+) -> None:
+    contact_kind = str(selected_contact.get("contact_kind") or "").strip().lower()
+    contact_id = selected_contact.get("contact_id")
+    contact_label = str(selected_contact.get("title") or selected_contact.get("id") or "Contact")
+    contact_id_int = _safe_int(contact_id)
+    title_default = f"{contact_label} Task"
+
+    agent_options: list[dict[str, object]] = []
+    if contact_kind == "group":
+        try:
+            agent_options = list_agents()
+        except ApiError as error:
+            st.error(f"Unable to load agents for task launch: {error.detail}")
+            return
+
+    st.subheader("New Task")
+    st.caption("Launch a long-running task loop for the selected contact.")
+    with st.form(form_key):
+        task_title = st.text_input("Task title", value=title_default)
+        task_prompt = st.text_area(
+            "Task prompt",
+            value="",
+            placeholder=f"What should {contact_label} work on?",
+            height=160,
+        )
+        checklist_text = st.text_area(
+            "Checklist (optional)",
+            value="",
+            placeholder="One item per line.",
+            height=120,
+        )
+        allow_tools = st.checkbox("Allow tools", value=True)
+        max_iterations = st.number_input("Max iterations", min_value=1, max_value=100, value=5, step=1)
+        participant_agent_ids: list[int] = []
+        if contact_kind == "group":
+            participant_ids = st.multiselect(
+                "Participants",
+                options=[_safe_int(agent.get("id")) for agent in agent_options if _safe_int(agent.get("id")) is not None],
+                default=[_safe_int(agent.get("id")) for agent in agent_options if _safe_int(agent.get("id")) is not None],
+                format_func=lambda agent_id: _agent_option_label(agent_id, agent_options),
+            )
+            participant_agent_ids = [int(candidate) for candidate in participant_ids if candidate is not None]
+            if not participant_agent_ids:
+                st.caption("Pick at least one agent for the group task.")
+        submitted = st.form_submit_button("Start task", type="primary", use_container_width=True)
+        cancelled = st.form_submit_button("Cancel", use_container_width=True)
+
+    if cancelled:
+        st.session_state.pop(state_key, None)
+        st.rerun()
+        return
+    if not submitted:
+        return
+    if not str(task_prompt).strip():
+        st.error("Task prompt is required.")
+        return
+    if contact_kind == "group" and not participant_agent_ids:
+        st.error("Select at least one participant for the group task.")
+        return
+
+    checklist = parse_checklist_text(str(checklist_text))
+    payload: dict[str, object] = {
+        "contact_kind": contact_kind,
+        "contact_id": contact_id_int,
+        "title": str(task_title).strip() or title_default,
+        "prompt": str(task_prompt).strip(),
+        "checklist": checklist,
+        "allow_tools": bool(allow_tools),
+        "max_iterations": int(max_iterations),
+    }
+    if contact_kind == "agent":
+        payload["agent_id"] = contact_id_int
+        payload["participant_agent_ids"] = [contact_id_int] if contact_id_int is not None else []
+    else:
+        payload["participant_agent_ids"] = participant_agent_ids
+
+    try:
+        result = start_loop_task(**payload)
+    except ApiError as error:
+        st.error(f"Unable to start task: {error.detail}")
+        return
+
+    st.session_state.pop(state_key, None)
+    st.session_state["agent_loops_selected_contact_id"] = str(selected_contact.get("id") or "")
+    st.success(f"Task started: {str(result.get('title') or payload['title'])}")
+    st.rerun()
+
+
+def _agent_loops_views_by_type(selected_module: dict[str, object]) -> dict[str, dict[str, object]]:
+    views: dict[str, dict[str, object]] = {}
+    for view in list(selected_module.get("views") or []):
+        if not isinstance(view, dict):
+            continue
+        object_type = str((view.get("metadata") or {}).get("object_type") or "").strip().lower()
+        if object_type:
+            views[object_type] = view
+    return views
+
+
+def _filter_agent_loops_tasks(
+    items: list[dict[str, object]],
+    *,
+    contact_kind: str,
+    contact_id: object,
+) -> list[dict[str, object]]:
+    contact_key = f"{contact_kind}:{_safe_text(contact_id)}"
+    filtered: list[dict[str, object]] = []
+    for item in items:
+        item_key = f"{str(item.get('contact_kind') or '').strip().lower()}:{_safe_text(item.get('contact_id'))}"
+        if item_key == contact_key:
+            filtered.append(item)
+    return filtered
+
+
+def _filter_agent_loops_files(items: list[dict[str, object]], *, root_path: str) -> list[dict[str, object]]:
+    root_path = str(root_path or "").strip()
+    if not root_path:
+        return []
+    return [item for item in items if str(item.get("path") or "").startswith(root_path)]
+
+
+def _selected_contact_roots(contact_kind: str, contact_id: object) -> dict[str, str]:
+    from apmatia.modules.apmatia_agent_loops.state import resolve_contact_roots
+
+    roots = resolve_contact_roots(contact_kind, _safe_text(contact_id))
+    return {
+        "workspace_root": str(roots.workspace_root),
+        "knowledge_root": str(roots.knowledge_root),
+        "task_root": str(roots.task_root),
+    }
+
+
+def _exit_agent_loops_shell() -> None:
+    for key in (
+        "agent_loops_selected_contact_id",
+        "agent_loops_shell_sidebar_rendered",
+        "selected_module_id",
+        "selected_module_view_id",
+    ):
+        st.session_state.pop(key, None)
+    st.session_state["selected_page"] = "discussion"
+
+
+def _current_user_id() -> int | None:
+    authenticated_user = st.session_state.get("authenticated_user")
+    if not isinstance(authenticated_user, dict):
+        return None
+    try:
+        user_id = authenticated_user.get("user_id")
+        return None if user_id is None else int(user_id)
+    except (TypeError, ValueError):
+        return None
+
+
+def _current_group_ids() -> set[int]:
+    try:
+        groups = list_groups()
+    except ApiError:
+        return set()
+    group_ids: set[int] = set()
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        try:
+            group_id = int(group.get("id"))
+        except (TypeError, ValueError):
+            continue
+        group_ids.add(group_id)
+    return group_ids
+
+
+def _safe_text(value: object) -> str:
+    return str(value or "").strip()
+
+
+def _render_agent_loops_terminal_block(
+    *,
+    title: str,
+    body: str,
+    subtitle: str | None,
+    language: str | None = None,
+) -> None:
+    with st.container(border=True):
+        st.caption(title)
+        if subtitle:
+            st.caption(subtitle)
+        st.code(
+            body or "",
+            language=language,
+            height="content",
+            wrap_lines=True,
+        )
+
+
+def _render_agent_loops_terminal_styles() -> None:
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stAppViewContainer"] {
+            background: #000000 !important;
+        }
+        section[data-testid="stSidebar"] {
+            background: #000000 !important;
+        }
+        div[data-testid="stVerticalBlockBorderWrapper"],
+        div[data-testid="stExpander"] {
+            background: #000000 !important;
+        }
+        div[data-testid="stCodeBlock"] {
+            background: #000000 !important;
+            border: 1px solid rgba(110, 255, 170, 0.35);
+            border-radius: 0.55rem;
+        }
+        div[data-testid="stCodeBlock"] pre {
+            color: #9dffad !important;
+            background: #000000 !important;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace !important;
+            font-size: 0.92rem !important;
+            line-height: 1.45 !important;
+        }
+        div[data-testid="stExpander"] {
+            border-color: rgba(110, 255, 170, 0.14);
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_agent_loops_status_banner(*, status: str) -> None:
+    normalized = str(status or "unknown").strip().lower()
+    label_map = {
+        "running": ("RUNNING", "#9dffad", "rgba(110, 255, 170, 0.18)"),
+        "stopping": ("STOPPING", "#ffd86b", "rgba(255, 216, 107, 0.18)"),
+        "stopped": ("STOPPED", "#ff9b9b", "rgba(255, 155, 155, 0.18)"),
+        "failed": ("FAILED", "#ff7f7f", "rgba(255, 127, 127, 0.24)"),
+        "completed": ("COMPLETED", "#9dffad", "rgba(110, 255, 170, 0.12)"),
+        "queued": ("QUEUED", "#b5bcc7", "rgba(181, 188, 199, 0.12)"),
+        "needs_review": ("NEEDS REVIEW", "#ffd86b", "rgba(255, 216, 107, 0.12)"),
+    }
+    label, color, background = label_map.get(
+        normalized,
+        (normalized.upper() or "UNKNOWN", "#b5bcc7", "rgba(181, 188, 199, 0.12)"),
+    )
+    st.markdown(
+        f"""
+        <div style="
+            display: inline-block;
+            padding: 0.35rem 0.7rem;
+            border-radius: 999px;
+            color: {color};
+            background: {background};
+            border: 1px solid {color};
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+        ">{label}</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _safe_int(value: object, default: int | None = None) -> int | None:
+    try:
+        return default if value is None else int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _agent_option_label(agent: object, agents: list[dict[str, object]] | None = None) -> str:
+    if isinstance(agent, dict):
+        return str(agent.get("name") or agent.get("username") or f"Agent {agent.get('id')}")
+    if agents is None:
+        return f"Agent {agent}"
+    for agent in agents:
+        if _safe_int(agent.get("id")) == _safe_int(agent):
+            return str(agent.get("name") or agent.get("username") or f"Agent {agent}")
+    return f"Agent {agent}"

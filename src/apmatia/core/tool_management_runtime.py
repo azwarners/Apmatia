@@ -12,6 +12,7 @@ from apmatia.lib.apmatia_administration.tooling import (
     build_apmatia_administration_tool_providers,
 )
 from apmatia.modules.apmatia_ipe.tools import build_ipe_tool_providers, ipe_tool_definitions
+from apmatia.modules.apmatia_agent_loops.tools import build_agent_loop_tool_providers, agent_loop_tool_definitions
 from apmatia.modules.apmatia_knowledge.tooling import build_knowledge_tool_providers, knowledge_tool_definitions
 from apmatia.lib.system_audit.tooling import build_system_audit_tool_providers, system_audit_tool_definitions
 from apmatia.lib.memory_management.tooling import build_memory_tool_providers, memory_tool_definitions
@@ -66,10 +67,12 @@ def _ensure_runtime() -> None:
                 *build_source_inspection_tool_providers(),
                 *build_wiki_tool_providers(get_wiki_manager(), agent_manager),
                 *build_workspace_module_tool_providers(),
+                *build_agent_loop_tool_providers(agent_manager),
             ],
             builtin_definitions=[
                 *apmatia_administration_tool_definitions(),
                 *ipe_tool_definitions(),
+                *agent_loop_tool_definitions(),
                 *system_audit_tool_definitions(),
                 *memory_tool_definitions(),
                 *knowledge_tool_definitions(),

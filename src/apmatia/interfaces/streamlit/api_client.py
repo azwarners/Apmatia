@@ -371,6 +371,38 @@ def execute_module_command(command_id: str, **payload: Any) -> dict[str, Any]:
     return _request("POST", f"/module-commands/{command_id}", json={"payload": payload})
 
 
+def start_loop_task(**payload: Any) -> dict[str, Any]:
+    return _request("POST", "/agent-loops/tasks", json=payload)
+
+
+def list_loop_tasks(**params: Any) -> list[dict[str, Any]]:
+    query = urlencode(
+        {key: value for key, value in params.items() if value is not None and value != ""},
+        doseq=True,
+    )
+    path = "/agent-loops/tasks" if not query else f"/agent-loops/tasks?{query}"
+    payload = _request("GET", path)
+    if isinstance(payload, list):
+        return payload
+    if isinstance(payload, dict):
+        tasks = payload.get("tasks")
+        if isinstance(tasks, list):
+            return tasks
+    raise ApiError("API returned an unexpected payload for loop tasks.", 500)
+
+
+def get_loop_task(task_id: str) -> dict[str, Any] | None:
+    return _request("GET", f"/agent-loops/tasks/{task_id}")
+
+
+def get_loop_task_transcript(task_id: str) -> dict[str, Any] | None:
+    return _request("GET", f"/agent-loops/tasks/{task_id}/transcript")
+
+
+def stop_loop_task(task_id: str) -> dict[str, Any] | None:
+    return _request("POST", f"/agent-loops/tasks/{task_id}/stop")
+
+
 def list_agents() -> list[dict[str, Any]]:
     return _request("GET", "/agents")
 

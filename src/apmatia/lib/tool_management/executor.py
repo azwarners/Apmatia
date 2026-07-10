@@ -52,6 +52,14 @@ class ToolExecutor:
         if tool is None or not tool.enabled:
             return None
 
+        if tool.provider_id == "builtin.agent_loops_list_agents":
+            return EffectiveToolAccess(
+                tool=tool,
+                assignment=None,
+                confirmation_required=tool.confirmation_required,
+                read_only=True,
+            )
+
         assignment = self._assignment_repo.get_by_agent_tool(agent_id, tool_id)
         legacy_tool_ids = set(agent.tool_ids)
 

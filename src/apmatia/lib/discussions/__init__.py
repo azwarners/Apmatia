@@ -785,15 +785,21 @@ class DiscussionState:
         tool_messages: list[dict[str, str]] = []
         for tool_call in tool_calls:
             tool = available_tools.get(tool_call.name)
+            requested_tool_summary = {
+                "name": tool_call.name,
+                "arguments": dict(tool_call.arguments),
+            }
+            self._append_message(
+                discussion_id,
+                "Assistant",
+                "Tool call requested:\n"
+                f"{json.dumps(requested_tool_summary, ensure_ascii=True, sort_keys=True)}",
+            )
             if tool is None:
                 self._set_activity(
                     discussion_id,
                     stage="tool",
-                    tool={
-                        "name": tool_call.name,
-                        "arguments": dict(tool_call.arguments),
-                        "status": "denied",
-                    },
+                    tool={**requested_tool_summary, "status": "denied"},
                 )
                 tool_messages.append(
                     {

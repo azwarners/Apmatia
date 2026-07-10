@@ -2307,6 +2307,90 @@ def test_render_sidebar_clicking_module_selects_first_visible_view(mock_streamli
     mock_streamlit.rerun.assert_called_once()
 
 
+def test_render_sidebar_shows_agent_loops_contact_roster(mock_streamlit):
+    mock_streamlit.session_state["selected_page"] = "module_view"
+    mock_streamlit.session_state["selected_module_id"] = "apmatia_agent_loops"
+    mock_streamlit.session_state["selected_module_view_id"] = "apmatia_agent_loops.tasks.view"
+    mock_streamlit.sidebar.button.return_value = False
+
+    modules = [
+        {
+            "module_id": "apmatia_agent_loops",
+            "name": "Apmatia Agent Loops",
+            "hidden": False,
+            "views": [
+                {
+                    "module_id": "apmatia_agent_loops",
+                    "view_id": "apmatia_agent_loops.contacts.view",
+                    "name": "Contacts View",
+                    "effective_hidden": False,
+                    "metadata": {
+                        "object_type": "contact",
+                        "ui": {
+                            "render_mode": "collection",
+                            "nav_pane": {
+                                "title": "Agents & Groups",
+                                "top_exit_label": "Back to Apmatia",
+                                "bottom_exit_label": "Back to Apmatia",
+                                "empty_state": "No agents or groups are available yet.",
+                                "item_label_key": "title",
+                                "item_detail_key": "task_count",
+                                "item_value_key": "id",
+                            },
+                        },
+                    },
+                },
+                {
+                    "module_id": "apmatia_agent_loops",
+                    "view_id": "apmatia_agent_loops.tasks.view",
+                    "name": "Task History View",
+                    "effective_hidden": False,
+                    "metadata": {"object_type": "run", "ui": {"render_mode": "collection"}},
+                },
+            ],
+        }
+    ]
+    contact_items = [
+        {
+            "id": "agent:7",
+            "contact_kind": "agent",
+            "contact_id": 7,
+            "title": "Iris Irving",
+            "kind": "Agent",
+            "task_count": 2,
+            "detail": "Model gpt-4o",
+        },
+        {
+            "id": "group:9",
+            "contact_kind": "group",
+            "contact_id": 9,
+            "title": "Ops",
+            "kind": "Group",
+            "task_count": 1,
+            "detail": "Shared workspace",
+        },
+    ]
+
+    import apmatia.interfaces.streamlit.app as app
+
+    app = importlib.reload(app)
+
+    with patch.object(app, "list_module_catalog", return_value=modules), patch.object(
+        app, "list_module_view_items", return_value=contact_items
+    ):
+        selected_page = app.render_sidebar()
+
+    assert selected_page == "module_view"
+    mock_streamlit.sidebar.button.assert_any_call(
+        "Back to Apmatia",
+        key="agent_loops_exit_top",
+        use_container_width=True,
+    )
+    assert mock_streamlit.session_state["agent_loops_selected_contact_id"] == "agent:7"
+    assert "Modules" not in [call.args[0] for call in mock_streamlit.sidebar.subheader.call_args_list if call.args]
+    mock_streamlit.rerun.assert_called()
+
+
 def test_main_function_authenticated_routes_to_agent_management(mock_streamlit):
     """Authenticated users can navigate to the agent page through the sidebar."""
     mock_streamlit.sidebar.button.side_effect = lambda label, *args, **kwargs: label == "🤖 Agents"

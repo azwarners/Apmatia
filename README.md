@@ -32,8 +32,8 @@ That gives the project a few important properties:
 
 ## Current Interfaces
 
-- FastAPI core service on `0.0.0.0:8000`
-- Streamlit UI on `0.0.0.0:8501`
+- FastAPI core service on a configurable host and port
+- Streamlit UI on a configurable host and port
 - CLI entrypoint in `src/interfaces/cli/main.py`
 
 ## Current Capabilities
@@ -98,6 +98,7 @@ Settings saved through the API and Streamlit UI include:
 - max response size
 - default system prompt
 - UI theme and typography preferences
+- server transport security policy, bind host, port, and TLS material
 
 ## Running Apmatia
 
@@ -107,7 +108,7 @@ Settings saved through the API and Streamlit UI include:
 ./start.sh core
 ```
 
-This starts the FastAPI service on `http://127.0.0.1:8000` and publishes it on the LAN.
+This starts the FastAPI service using the configured transport-security policy.
 
 ### Start the Streamlit interface
 
@@ -115,9 +116,11 @@ This starts the FastAPI service on `http://127.0.0.1:8000` and publishes it on t
 ./start.sh streamlit
 ```
 
-This starts the Streamlit interface on `http://127.0.0.1:8501` and publishes it on the LAN.
+This starts the Streamlit interface using the configured transport-security policy.
 
 During development, run both the core service and the Streamlit app locally.
+
+See [docs/TRANSPORT_SECURITY.md](docs/TRANSPORT_SECURITY.md) for the deployment profiles that control when HTTP is allowed and how HTTPS is configured.
 
 ## CLI Usage
 
@@ -160,6 +163,7 @@ Module authors now have a clearer path for UI:
 ## Additional Documentation
 
 - architecture: `docs/ARCHITECTURE.md`
+- transport security: `docs/TRANSPORT_SECURITY.md`
 - module creation guide: `docs/CREATING_MODULES.md`
 - changelog: `docs/CHANGELOG.md`
 - third-party notices: `docs/THIRD_PARTY_NOTICES.md`

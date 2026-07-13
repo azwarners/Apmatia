@@ -33,6 +33,7 @@ COPY --from=deps /usr/local /usr/local
 # Copy only the app sources and runtime files.
 COPY .pytest.ini ./
 COPY Dockerfile ./
+COPY docker-compose.yml ./
 COPY .streamlit/ .streamlit/
 COPY assets/ assets/
 COPY docs/VERSION ./VERSION

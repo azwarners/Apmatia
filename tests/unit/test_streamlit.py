@@ -2493,12 +2493,38 @@ def test_streamlit_entrypoint_disables_default_sidebar_navigation():
     assert "--client.showSidebarNavigation false" in entrypoint
 
 
-def test_start_script_publishes_ports_for_lan_access():
-    """The standard launcher must publish ports on all interfaces for LAN access."""
+def test_start_script_publishes_ports_on_host_loopback_only():
+    """The standard launcher must publish ports only on host loopback."""
     launcher = (REPO_ROOT / "start.sh").read_text()
 
-    assert '-p 0.0.0.0:8000:8000' in launcher
-    assert '-p 0.0.0.0:8501:8501' in launcher
+    assert '-p 127.0.0.1:8000:8000' in launcher
+    assert '-p 127.0.0.1:8501:8501' in launcher
+    assert '-p 0.0.0.0:8000:8000' not in launcher
+    assert '-p 0.0.0.0:8501:8501' not in launcher
+
+
+def test_docker_compose_publishes_ports_on_host_loopback_only():
+    """Docker Compose must keep the published ports on localhost."""
+    compose = (REPO_ROOT / "docker-compose.yml").read_text()
+
+    assert '127.0.0.1:8000:8000' in compose
+    assert '127.0.0.1:8501:8501' in compose
+    assert '8001:8000' not in compose
+    assert '0.0.0.0:8000:8000' not in compose
+    assert '0.0.0.0:8501:8501' not in compose
+
+
+def test_docker_launchers_bind_processes_to_container_all_interfaces():
+    """Docker launch paths must allow the process to bind inside the container while host publication stays local."""
+    launcher = (REPO_ROOT / "start.sh").read_text()
+    compose = (REPO_ROOT / "docker-compose.yml").read_text()
+
+    assert 'APMATIA_SERVER_HOST=0.0.0.0' in launcher
+    assert 'APMATIA_STREAMLIT_HOST=0.0.0.0' in launcher
+    assert 'APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true' in launcher
+    assert 'APMATIA_SERVER_HOST=0.0.0.0' in compose
+    assert 'APMATIA_STREAMLIT_HOST=0.0.0.0' in compose
+    assert 'APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true' in compose
 
 
 def test_start_script_mounts_persistent_user_state():

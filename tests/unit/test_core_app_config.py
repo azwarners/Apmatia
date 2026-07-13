@@ -52,12 +52,28 @@ class TestDefaultConfig:
     def test_returns_expected_structure(self):
         config = app_config._default_config()
 
+        assert "server" in config
         assert "llm" in config
         assert "discussion" in config
         assert "ai_model_manager" in config
         assert "ai_model_executor" in config
         assert "llama_server" in config
         assert "ui" in config
+
+    def test_server_config_structure(self):
+        config = app_config._default_config()
+
+        assert config["server"]["host"] == "127.0.0.1"
+        assert config["server"]["port"] == 8000
+        assert config["server"]["transport_security"]["policy"] == "development"
+        assert config["server"]["transport_security"]["tls"] == {
+            "enabled": False,
+            "cert_file": None,
+            "key_file": None,
+            "ca_file": None,
+        }
+        assert config["server"]["transport_security"]["allow_insecure_non_loopback"] is False
+        assert config["server"]["transport_security"]["container_host_loopback_only"] is False
 
     def test_llm_config_structure(self):
         config = app_config._default_config()
@@ -192,6 +208,15 @@ class TestSeedFromEnv:
     def test_seeds_all_llm_configurations(self):
         config = {"llm": {}}
         env_vars = {
+            "APMATIA_SERVER_HOST": "0.0.0.0",
+            "APMATIA_SERVER_PORT": "9000",
+            "APMATIA_SERVER_TRANSPORT_SECURITY_POLICY": "lan",
+            "APMATIA_SERVER_TRANSPORT_SECURITY_TLS_ENABLED": "true",
+            "APMATIA_SERVER_TRANSPORT_SECURITY_TLS_CERT_FILE": "/tmp/server.crt",
+            "APMATIA_SERVER_TRANSPORT_SECURITY_TLS_KEY_FILE": "/tmp/server.key",
+            "APMATIA_SERVER_TRANSPORT_SECURITY_TLS_CA_FILE": "/tmp/server.ca",
+            "APMATIA_SERVER_TRANSPORT_SECURITY_ALLOW_INSECURE_NON_LOOPBACK": "true",
+            "APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY": "true",
             "LLM_MODEL": "gpt-4",
             "LLM_MAX_TOKENS": "16384",
             "YSPARR_TEXT2TEXT_BACKEND": "koboldcpp",
@@ -208,6 +233,15 @@ class TestSeedFromEnv:
             result = app_config._seed_from_env(config)
 
         assert result["llm"]["model_name"] == "gpt-4"
+        assert result["server"]["host"] == "0.0.0.0"
+        assert result["server"]["port"] == 9000
+        assert result["server"]["transport_security"]["policy"] == "lan"
+        assert result["server"]["transport_security"]["tls"]["enabled"] is True
+        assert result["server"]["transport_security"]["tls"]["cert_file"] == "/tmp/server.crt"
+        assert result["server"]["transport_security"]["tls"]["key_file"] == "/tmp/server.key"
+        assert result["server"]["transport_security"]["tls"]["ca_file"] == "/tmp/server.ca"
+        assert result["server"]["transport_security"]["allow_insecure_non_loopback"] is True
+        assert result["server"]["transport_security"]["container_host_loopback_only"] is True
         assert result["llm"]["max_tokens"] == 16384
         assert result["llm"]["backend"] == "koboldcpp"
         assert result["llm"]["openai_compatible"]["base_url"] == "http://localhost:8000"

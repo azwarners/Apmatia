@@ -192,7 +192,7 @@ EOF
     fi
     docker run \
         --name "$CONTAINER_NAME" \
-        -p 0.0.0.0:8501:8501 \
+        -p 127.0.0.1:8501:8501 \
         -v "$REPO_ROOT":/app \
         -v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR" \
         -v "$APMATIA_HOME_HOST":"$APMATIA_CONTAINER_HOME_DIR" \
@@ -202,6 +202,8 @@ EOF
         -e APMATIA_HOME="$APMATIA_CONTAINER_HOME_DIR" \
         -e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR" \
         -e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules" \
+        -e APMATIA_STREAMLIT_HOST=0.0.0.0 \
+        -e APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true \
         --user "$(id -u):$(id -g)" \
         "${LOG_DIR_ARGS[@]}" \
         "${GGUF_DIR_ARGS[@]}" \
@@ -246,7 +248,7 @@ EOF
     fi
     docker run \
         --name "$CONTAINER_NAME" \
-        -p 0.0.0.0:8000:8000 \
+        -p 127.0.0.1:8000:8000 \
         -v "$REPO_ROOT":/app \
         -v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR" \
         -v "$APMATIA_HOME_HOST":"$APMATIA_CONTAINER_HOME_DIR" \
@@ -256,6 +258,8 @@ EOF
         -e APMATIA_HOME="$APMATIA_CONTAINER_HOME_DIR" \
         -e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR" \
         -e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules" \
+        -e APMATIA_SERVER_HOST=0.0.0.0 \
+        -e APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true \
         --user "$(id -u):$(id -g)" \
         "${LOG_DIR_ARGS[@]}" \
         "${GGUF_DIR_ARGS[@]}" \

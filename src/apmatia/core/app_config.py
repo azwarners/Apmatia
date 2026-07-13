@@ -7,6 +7,7 @@ from typing import Any
 
 from apmatia.core.config_persistence import load_config_file, save_config_file
 from apmatia.core.runtime_paths import get_app_dir
+from apmatia.core.security.policy import TransportSecurityPolicy
 
 
 LEGACY_APP_DIR = get_app_dir()
@@ -57,6 +58,21 @@ def _config_file() -> Path:
 
 def _default_config() -> dict[str, Any]:
     return {
+        "server": {
+            "host": "127.0.0.1",
+            "port": 8000,
+            "transport_security": {
+                "policy": TransportSecurityPolicy.DEVELOPMENT.value,
+                "tls": {
+                    "enabled": False,
+                    "cert_file": None,
+                    "key_file": None,
+                    "ca_file": None,
+                },
+                "allow_insecure_non_loopback": False,
+                "container_host_loopback_only": False,
+            },
+        },
         "llm": {
             "model_name": "default",
             "max_tokens": 8192,
@@ -143,8 +159,31 @@ def _is_empty_value(value: Any) -> bool:
     return False
 
 
+def _parse_bool_env(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _seed_from_env(config: dict[str, Any]) -> dict[str, Any]:
     env_map: dict[str, tuple[str, ...]] = {
+        "APMATIA_HOST": ("server", "host"),
+        "APMATIA_PORT": ("server", "port"),
+        "APMATIA_SERVER_HOST": ("server", "host"),
+        "APMATIA_SERVER_PORT": ("server", "port"),
+        "APMATIA_SERVER_TRANSPORT_SECURITY_POLICY": ("server", "transport_security", "policy"),
+        "APMATIA_SERVER_TRANSPORT_SECURITY_TLS_ENABLED": ("server", "transport_security", "tls", "enabled"),
+        "APMATIA_SERVER_TRANSPORT_SECURITY_TLS_CERT_FILE": ("server", "transport_security", "tls", "cert_file"),
+        "APMATIA_SERVER_TRANSPORT_SECURITY_TLS_KEY_FILE": ("server", "transport_security", "tls", "key_file"),
+        "APMATIA_SERVER_TRANSPORT_SECURITY_TLS_CA_FILE": ("server", "transport_security", "tls", "ca_file"),
+        "APMATIA_SERVER_TRANSPORT_SECURITY_ALLOW_INSECURE_NON_LOOPBACK": (
+            "server",
+            "transport_security",
+            "allow_insecure_non_loopback",
+        ),
+        "APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY": (
+            "server",
+            "transport_security",
+            "container_host_loopback_only",
+        ),
         "LLM_MODEL": ("llm", "model_name"),
         "LLM_MAX_TOKENS": ("llm", "max_tokens"),
         "YSPARR_TEXT2TEXT_BACKEND": ("llm", "backend"),
@@ -168,11 +207,17 @@ def _seed_from_env(config: dict[str, Any]) -> dict[str, Any]:
         if env_key in {"APMATIA_GGUF_DIRECTORY", "APMATIA_GGUF_DIRECTORIES"} and not _is_empty_value(_get_nested(seeded, cfg_keys)):
             continue
 
-        if env_key == "LLM_MAX_TOKENS":
+        if env_key in {"LLM_MAX_TOKENS", "APMATIA_PORT", "APMATIA_SERVER_PORT"}:
             try:
                 _set_nested(seeded, cfg_keys, int(env_value))
             except ValueError:
                 continue
+        elif env_key in {
+            "APMATIA_SERVER_TRANSPORT_SECURITY_TLS_ENABLED",
+            "APMATIA_SERVER_TRANSPORT_SECURITY_ALLOW_INSECURE_NON_LOOPBACK",
+            "APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY",
+        }:
+            _set_nested(seeded, cfg_keys, _parse_bool_env(env_value))
         elif env_key == "APMATIA_LLAMA_SERVER_DEFAULT_ARGS":
             _set_nested(seeded, cfg_keys, [part.strip() for part in env_value.split() if part.strip()])
         elif env_key == "APMATIA_GGUF_DIRECTORIES":

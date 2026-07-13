@@ -9,7 +9,7 @@ MODE="${MODE:-core}"
 if [ -n "$*" ]; then
     exec "$@"
 elif [ "$MODE" = "streamlit" ]; then
-    exec python -m streamlit run src/apmatia/interfaces/streamlit/app.py --server.port 8501 --server.address "0.0.0.0" --client.showSidebarNavigation false
+    exec python3 scripts/run_streamlit.py --client.showSidebarNavigation false
 else
-    exec python scripts/run.py
+    exec python3 scripts/run.py
 fi

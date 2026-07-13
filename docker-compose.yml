@@ -7,7 +7,7 @@ services:
         OFFLINE_DEPS: ${APMATIA_OFFLINE:-0}
     user: "${UID:-1000}:${GID:-1000}"
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - .:/app
       - ${HOME}/.apmatia/workspace:/home/apmatia/.apmatia/workspace
@@ -19,6 +19,8 @@ services:
       - APMATIA_HOME=/home/apmatia/.apmatia
       - APMATIA_DATA_DIR=/home/apmatia/.local/share/apmatia
       - APMATIA_WORKSPACE_ROOT=/home/apmatia/.apmatia/workspace/modules
+      - APMATIA_SERVER_HOST=0.0.0.0
+      - APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true
 
   streamlit:
     container_name: apmatia-streamlit
@@ -38,6 +40,8 @@ services:
       - APMATIA_HOME=/home/apmatia/.apmatia
       - APMATIA_DATA_DIR=/home/apmatia/.local/share/apmatia
       - APMATIA_WORKSPACE_ROOT=/home/apmatia/.apmatia/workspace/modules
-    command: streamlit run src/apmatia/interfaces/streamlit/app.py --server.port 8501 --server.headless true --server.address 0.0.0.0
+      - MODE=streamlit
+      - APMATIA_STREAMLIT_HOST=0.0.0.0
+      - APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true
     ports:
-      - "0.0.0.0:8501:8501"
+      - "127.0.0.1:8501:8501"

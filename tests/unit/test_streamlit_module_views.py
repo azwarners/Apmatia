@@ -730,6 +730,9 @@ def test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs(mock_
     mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
     mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
     mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
+    mock_streamlit.radio = MagicMock(return_value="Current Task")
+    mock_streamlit.fragment.__module__ = "streamlit.testing"
+    mock_streamlit.fragment.side_effect = lambda run_every=0.5: (lambda func: func)
     monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace"))
 
     modules = [
@@ -808,6 +811,53 @@ def test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs(mock_
             "updated_at": "2026-07-08T12:00:00",
             "workspace_root": workspace_root,
             "knowledge_root": knowledge_root,
+            "checklist": [{"label": "Draft"}, {"label": "Review"}],
+            "loop_status": {"done": False, "remaining_items": ["Review"]},
+            "metadata": {
+                "live_activity": {
+                    "provider": "ysparr",
+                    "endpoint": "/v1/chat/completions",
+                    "text": "I am checking the workspace before I act.",
+                    "stats": {"prompt_tokens": 12, "completion_tokens": 8},
+                }
+            },
+            "events": [
+                {"type": "task_started", "payload": {"contact_kind": "agent", "contact_id": 1, "title": "Loop Task"}},
+                {
+                    "type": "model_activity",
+                    "payload": {
+                        "provider": "ysparr",
+                        "endpoint": "/v1/chat/completions",
+                        "text": "I am checking the workspace before I act.",
+                        "stats": {"prompt_tokens": 12, "completion_tokens": 8},
+                    },
+                },
+                {
+                    "type": "tool_requested",
+                    "payload": {
+                        "tool_name": "workspace.search",
+                        "call_id": "call_1",
+                        "arguments": {"query": "nightly report"},
+                    },
+                },
+                {
+                    "type": "tool_completed",
+                    "payload": {
+                        "tool_name": "workspace.search",
+                        "call_id": "call_1",
+                        "status": "success",
+                        "output": "Found notes in report.md.",
+                    },
+                },
+                {
+                    "type": "model_turn_completed",
+                    "payload": {
+                        "turn_index": 1,
+                        "final_text": "I found the report notes and will draft the summary next.",
+                        "usage": {"prompt_tokens": 12, "completion_tokens": 28, "total_tokens": 40},
+                    },
+                },
+            ],
         }
     ]
 
@@ -856,10 +906,18 @@ def test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs(mock_
 
     mock_list_items.assert_any_call("apmatia_agent_loops.contacts.view")
     mock_streamlit.sidebar.title.assert_called_with("Agents & Groups")
-    mock_streamlit.tabs.assert_called_once_with(["Task History", "Workspace", "Knowledge"])
-    mock_streamlit.title.assert_called_with("Ada")
-    assert any(str(call.args[0]).startswith("Workspace: ") for call in mock_streamlit.caption.call_args_list if call.args)
-    assert any(str(call.args[0]).startswith("Knowledge: ") for call in mock_streamlit.caption.call_args_list if call.args)
+    mock_streamlit.radio.assert_called_once()
+    mock_streamlit.fragment.assert_called()
+    shell_button_labels = [str(call.args[0]) for call in mock_streamlit.button.call_args_list if call.args]
+    assert "New Task" in shell_button_labels
+    rendered_markdown = "\n".join(str(call.args[0]) for call in mock_streamlit.markdown.call_args_list if call.args)
+    assert "ASSISTANT STREAM" not in rendered_markdown
+    assert "I am checking the workspace before I act." not in rendered_markdown
+    assert "Found notes in report.md." in rendered_markdown
+    assert "I found the report notes and will draft the summary next." in rendered_markdown
+    assert "MODEL_ACTIVITY" not in rendered_markdown
+    assert "LOOP STATUS" not in rendered_markdown
+    assert mock_streamlit.session_state["agent_loops_selected_task_id:agent:1"] == "task-1"
 
 
 def test_module_views_page_starts_agent_loops_task_from_form(mock_streamlit, tmp_path, monkeypatch):
@@ -872,6 +930,7 @@ def test_module_views_page_starts_agent_loops_task_from_form(mock_streamlit, tmp
     mock_streamlit.session_state["selected_module_view_id"] = "apmatia_agent_loops.tasks.view"
     mock_streamlit.session_state["agent_loops_shell_sidebar_rendered"] = True
     mock_streamlit.session_state["agent_loops_selected_contact_id"] = "agent:7"
+    mock_streamlit.radio = MagicMock(return_value="Current Task")
     mock_streamlit.button.side_effect = lambda label, **_kwargs: label == "New Task"
     mock_streamlit.text_input.side_effect = lambda label, value="", **_kwargs: "Ship the nightly report" if label == "Task title" else value
     mock_streamlit.text_area.side_effect = lambda label, value="", **_kwargs: "Write the summary\nUpdate the report" if label == "Task prompt" else "1. Draft\n2. Review"
@@ -1007,6 +1066,54 @@ def test_module_views_page_stops_agent_loops_task_from_history(mock_streamlit):
     mock_streamlit.rerun.assert_called()
 
 
+def test_agent_loop_live_output_is_append_only_and_ignores_streaming_fragments(mock_streamlit):
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    module_views_page = importlib.reload(module_views_page)
+    item = {
+        "prompt": "Who are you?",
+        "status": "running",
+        "current_iteration": 2,
+        "max_iterations": 100,
+        "task_id": "loop_123",
+        "checklist": [{"label": "State your name and title."}],
+        "metadata": {
+            "live_activity": {
+                "provider": "openai_compatible",
+                "endpoint": "/v1/chat/completions",
+                "text": "partial streaming text that should not be rendered directly",
+            }
+        },
+        "events": [
+            {"type": "task_started", "payload": {"title": "Karen Smith Task", "contact_kind": "agent", "contact_id": 7}},
+            {"type": "model_turn_started", "payload": {"turn_index": 1}},
+            {"type": "model_activity", "payload": {"text": "fragment"}},
+            {
+                "type": "model_turn_completed",
+                "payload": {
+                    "final_text": "I am Karen Smith, Agent (ID 7).",
+                    "loop_status": {"done": False, "summary": "Intro complete."},
+                },
+            },
+        ],
+    }
+
+    lines = module_views_page._agent_loop_event_stream_lines(item, task_id="loop_123")
+
+    assert "ASSISTANT STREAM" not in lines
+    assert "fragment" not in lines
+    assert any(line == "01 TASK STARTED" for line in lines)
+    assert any(line == "02 TURN STARTED" for line in lines)
+    assert any("TURN COMPLETED" in line for line in lines)
+    assert any(line == "Final response:" for line in lines)
+    assert any(line == "I am Karen Smith, Agent (ID 7)." for line in lines)
+    assert any(line == "CHECKLIST" for line in lines)
+    assert any(line == "Summary:" for line in lines)
+    assert any(line == "Intro complete." for line in lines)
+    assert not any(line == "LOOP STATUS" for line in lines)
+    assert not any(line.startswith("<loop_status>") for line in lines)
+
+
 def test_module_views_page_renders_agent_loops_task_history_as_terminal_stack(mock_streamlit):
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
@@ -1052,41 +1159,124 @@ def test_module_views_page_renders_agent_loops_task_history_as_terminal_stack(mo
         }
     ]
 
-    with patch.object(
-        module_views_page,
-        "get_loop_task_transcript",
-        return_value={
-            "transcript": {
-                "content": "",
-                "messages": [
-                    {
-                        "role": "Assistant",
-                        "speaker_name": "Luna Tuxamiga",
-                        "text": (
-                            "I am working on it.\n"
-                            "<tool_call>{\"name\":\"list_agents\",\"arguments\":{}}</tool_call>\n"
-                            "Done."
-                        ),
-                        "metadata": {
-                            "prompt_cache_est_tokens": 96000,
-                            "tokens_per_second": 3.04,
-                        },
-                    }
-                ],
-            }
-        },
-    ), patch.object(module_views_page, "execute_module_command"), patch.object(
+    with patch.object(module_views_page, "execute_module_command"), patch.object(
         module_views_page, "_render_agent_loops_event_log"
     ):
         module_views_page._render_agent_loops_task_history(task_items, roots={})
 
-    code_bodies = [str(call.args[0]) for call in mock_streamlit.code.call_args_list if call.args]
-    assert code_bodies[0].startswith("PROMPT\nBuild the agent loop UI.")
-    assert any("I am working on it." in body for body in code_bodies)
-    assert any("Done." in body for body in code_bodies)
-    assert not any("prompt_cache_est_tokens" in body for body in code_bodies)
-    assert not any("tokens_per_second" in body for body in code_bodies)
-    assert any("\"done\": false" in body.lower() for body in code_bodies)
-    assert any("Working through the request." in body for body in code_bodies)
-    assert any("This task is still in progress." in body for body in code_bodies)
-    assert mock_streamlit.expander.call_count >= 2
+    rendered_markdown = "\n".join(str(call.args[0]) for call in mock_streamlit.markdown.call_args_list if call.args)
+    assert "Build the agent loop UI." in rendered_markdown
+    assert "Working through the request." in rendered_markdown
+    assert "This task is still in progress." in rendered_markdown
+    assert "Ship" in rendered_markdown
+    assert "MODEL_ACTIVITY" not in rendered_markdown
+    assert "LOOP STATUS" not in rendered_markdown
+    assert mock_streamlit.expander.call_count >= 1
+
+
+def test_module_views_page_keeps_selected_current_task_stable(mock_streamlit):
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    module_views_page = importlib.reload(module_views_page)
+    items = [
+        {"task_id": "task-1", "status": "completed", "updated_at": "2026-07-10T06:00:00"},
+        {"task_id": "task-2", "status": "running", "updated_at": "2026-07-10T07:00:00"},
+    ]
+
+    selected = module_views_page._selected_agent_loops_task(items, selected_task_id="task-1")
+    assert selected is not None
+    assert str(selected.get("task_id") or "") == "task-1"
+
+
+def test_agent_loop_event_stream_lines_omits_streaming_fragment_noise(mock_streamlit):
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    module_views_page = importlib.reload(module_views_page)
+    item = {
+        "metadata": {
+            "live_activity": {
+                "provider": "openai_compatible",
+                "endpoint": "/v1/completions",
+                "text": "Hello world!",
+                "stats": {"completion_tokens": 3},
+            }
+        },
+        "events": [
+            {
+                "type": "model_activity",
+                "payload": {
+                    "provider": "openai_compatible",
+                    "endpoint": "/v1/completions",
+                    "text": "Hel",
+                },
+            },
+            {
+                "type": "model_activity",
+                "payload": {
+                    "provider": "openai_compatible",
+                    "endpoint": "/v1/completions",
+                    "text": "lo wor",
+                },
+            },
+            {
+                "type": "model_activity",
+                "payload": {
+                    "provider": "openai_compatible",
+                    "endpoint": "/v1/completions",
+                    "text": "ld!",
+                },
+            },
+            {
+                "type": "model_turn_completed",
+                "payload": {
+                    "turn_index": 1,
+                    "final_text": "Hello world!",
+                },
+            },
+        ],
+    }
+
+    lines = module_views_page._agent_loop_event_stream_lines(item, task_id="task-1")
+
+    assert "ASSISTANT STREAM" not in lines
+    assert any(line == "Hello world!" for line in lines)
+    assert not any(line == "Hel" for line in lines)
+    assert not any(line == "lo wor" for line in lines)
+    assert not any(line == "ld!" for line in lines)
+    assert any(line == "Final response:" for line in lines)
+    assert not any(line.startswith("<loop_status>") for line in lines)
+
+
+def test_agent_loop_task_progress_redraws_checklist_and_status(mock_streamlit):
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    module_views_page = importlib.reload(module_views_page)
+
+    item = {
+        "checklist": [],
+        "loop_status": {
+            "done": False,
+            "summary": "I have introduced myself and confirmed the first step.",
+            "completed_items": ["State your name and title."],
+            "remaining_items": [
+                "Test all your tools.",
+                "Retest any failures one time.",
+                "Summarize your results.",
+            ],
+            "next_action": "Test all available tools to ensure they are functioning correctly.",
+            "executive_analysis": "The introduction is done, and tool verification is next.",
+        },
+    }
+
+    module_views_page._render_agent_loops_task_progress(item)
+
+    rendered_markdown = "\n".join(str(call.args[0]) for call in mock_streamlit.markdown.call_args_list if call.args)
+    assert "Checklist progress" in rendered_markdown
+    assert "✅ State your name and title." in rendered_markdown
+    assert "• Test all your tools." in rendered_markdown
+    assert "• Retest any failures one time." in rendered_markdown
+    assert "• Summarize your results." in rendered_markdown
+    assert "I have introduced myself and confirmed the first step." not in rendered_markdown
+    assert "Test all available tools to ensure they are functioning correctly." not in rendered_markdown
+    assert "The introduction is done, and tool verification is next." not in rendered_markdown
+    assert "LOOP STATUS" not in rendered_markdown

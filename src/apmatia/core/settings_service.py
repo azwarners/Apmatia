@@ -9,6 +9,10 @@ from apmatia.core.app_config import get_config_value, set_config_value
 
 
 DEFAULT_ACCENT_COLOR = "#ff6b6b"
+DEFAULT_TERMINAL_BACKGROUND_COLOR = "#000000"
+DEFAULT_TERMINAL_TEXT_COLOR = "#9dffad"
+DEFAULT_TERMINAL_BORDER_COLOR = "rgba(110, 255, 170, 0.35)"
+DEFAULT_TERMINAL_MUTED_COLOR = "rgba(157, 255, 173, 0.72)"
 _HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 
 
@@ -43,6 +47,20 @@ def get_settings_payload() -> dict:
     font_size = get_config_value("ui", "font_size", default=16)
     title_bar_height = get_config_value("ui", "title_bar_height", default=56)
     title_bar_font_size = get_config_value("ui", "title_bar_font_size", default=20)
+    terminal_background_color = _normalize_hex_color(
+        get_config_value("ui", "terminal_background_color", default=DEFAULT_TERMINAL_BACKGROUND_COLOR),
+        default=DEFAULT_TERMINAL_BACKGROUND_COLOR,
+    )
+    terminal_text_color = _normalize_hex_color(
+        get_config_value("ui", "terminal_text_color", default=DEFAULT_TERMINAL_TEXT_COLOR),
+        default=DEFAULT_TERMINAL_TEXT_COLOR,
+    )
+    terminal_border_color = str(
+        get_config_value("ui", "terminal_border_color", default=DEFAULT_TERMINAL_BORDER_COLOR) or DEFAULT_TERMINAL_BORDER_COLOR
+    )
+    terminal_muted_color = str(
+        get_config_value("ui", "terminal_muted_color", default=DEFAULT_TERMINAL_MUTED_COLOR) or DEFAULT_TERMINAL_MUTED_COLOR
+    )
     return {
         "llama_server_log_dir": str(llama_server_log_dir or ""),
         "gguf_directories": _join_directories(gguf_directories),
@@ -56,6 +74,10 @@ def get_settings_payload() -> dict:
         "font_size": int(font_size),
         "title_bar_height": int(title_bar_height),
         "title_bar_font_size": int(title_bar_font_size),
+        "terminal_background_color": terminal_background_color,
+        "terminal_text_color": terminal_text_color,
+        "terminal_border_color": terminal_border_color,
+        "terminal_muted_color": terminal_muted_color,
     }
 
 
@@ -72,6 +94,10 @@ def save_settings_payload(
     font_size: int,
     title_bar_height: int,
     title_bar_font_size: int,
+    terminal_background_color: str = DEFAULT_TERMINAL_BACKGROUND_COLOR,
+    terminal_text_color: str = DEFAULT_TERMINAL_TEXT_COLOR,
+    terminal_border_color: str = DEFAULT_TERMINAL_BORDER_COLOR,
+    terminal_muted_color: str = DEFAULT_TERMINAL_MUTED_COLOR,
 ) -> None:
     clean_llama_server_log_dir = llama_server_log_dir.strip()
     clean_gguf_directories = _split_directories(gguf_directories)
@@ -79,10 +105,24 @@ def save_settings_payload(
     clean_llama_server_executable_path = llama_server_executable_path.strip() or "llama-server"
     clean_llama_server_default_args = [part.strip() for part in llama_server_default_args.splitlines() if part.strip()]
     clean_accent_color = _normalize_hex_color(accent_color)
+    clean_terminal_background_color = _normalize_hex_color(
+        terminal_background_color,
+        default=DEFAULT_TERMINAL_BACKGROUND_COLOR,
+    )
+    clean_terminal_text_color = _normalize_hex_color(
+        terminal_text_color,
+        default=DEFAULT_TERMINAL_TEXT_COLOR,
+    )
+    clean_terminal_border_color = str(terminal_border_color).strip() or DEFAULT_TERMINAL_BORDER_COLOR
+    clean_terminal_muted_color = str(terminal_muted_color).strip() or DEFAULT_TERMINAL_MUTED_COLOR
     if theme not in {"system", "dark", "light"}:
         raise ValueError("Theme must be 'system', 'dark', or 'light'.")
     if clean_accent_color != accent_color.strip().lower():
         raise ValueError("Accent color must be a valid hex color like #ff6b6b.")
+    if clean_terminal_background_color != terminal_background_color.strip().lower():
+        raise ValueError("Terminal background color must be a valid hex color like #000000.")
+    if clean_terminal_text_color != terminal_text_color.strip().lower():
+        raise ValueError("Terminal text color must be a valid hex color like #9dffad.")
     if font_size < 12 or font_size > 24:
         raise ValueError("Font size must be between 12 and 24.")
     if title_bar_height < 40 or title_bar_height > 96:
@@ -102,6 +142,10 @@ def save_settings_payload(
     set_config_value("ui", "font_size", value=font_size)
     set_config_value("ui", "title_bar_height", value=title_bar_height)
     set_config_value("ui", "title_bar_font_size", value=title_bar_font_size)
+    set_config_value("ui", "terminal_background_color", value=clean_terminal_background_color)
+    set_config_value("ui", "terminal_text_color", value=clean_terminal_text_color)
+    set_config_value("ui", "terminal_border_color", value=clean_terminal_border_color)
+    set_config_value("ui", "terminal_muted_color", value=clean_terminal_muted_color)
 
     if clean_gguf_directories:
         from apmatia.modules.apmatia_ai_model_manager import AIModelManager

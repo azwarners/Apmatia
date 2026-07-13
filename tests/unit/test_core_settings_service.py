@@ -35,6 +35,10 @@ def test_get_settings_payload_returns_ui_preferences():
         ("ui", "font_size"): 17,
         ("ui", "title_bar_height"): 58,
         ("ui", "title_bar_font_size"): 21,
+        ("ui", "terminal_background_color"): "#000000",
+        ("ui", "terminal_text_color"): "#9dffad",
+        ("ui", "terminal_border_color"): "rgba(110, 255, 170, 0.35)",
+        ("ui", "terminal_muted_color"): "rgba(157, 255, 173, 0.72)",
     }
 
     def fake_get_config_value(*keys, default=None):
@@ -56,6 +60,10 @@ def test_get_settings_payload_returns_ui_preferences():
         "font_size": 17,
         "title_bar_height": 58,
         "title_bar_font_size": 21,
+        "terminal_background_color": "#000000",
+        "terminal_text_color": "#9dffad",
+        "terminal_border_color": "rgba(110, 255, 170, 0.35)",
+        "terminal_muted_color": "rgba(157, 255, 173, 0.72)",
     }
 
 
@@ -75,6 +83,10 @@ def test_save_settings_payload_persists_ui_settings(mock_set_config_value):
     mock_set_config_value.assert_any_call("ui", "font_size", value=18)
     mock_set_config_value.assert_any_call("ui", "title_bar_height", value=56)
     mock_set_config_value.assert_any_call("ui", "title_bar_font_size", value=20)
+    mock_set_config_value.assert_any_call("ui", "terminal_background_color", value="#000000")
+    mock_set_config_value.assert_any_call("ui", "terminal_text_color", value="#9dffad")
+    mock_set_config_value.assert_any_call("ui", "terminal_border_color", value="rgba(110, 255, 170, 0.35)")
+    mock_set_config_value.assert_any_call("ui", "terminal_muted_color", value="rgba(157, 255, 173, 0.72)")
 
 
 @pytest.mark.parametrize(

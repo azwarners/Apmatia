@@ -20,6 +20,10 @@ class SettingsPayload(BaseModel):
     font_size: int = 16
     title_bar_height: int = 56
     title_bar_font_size: int = 20
+    terminal_background_color: str = "#000000"
+    terminal_text_color: str = "#9dffad"
+    terminal_border_color: str = "rgba(110, 255, 170, 0.35)"
+    terminal_muted_color: str = "rgba(157, 255, 173, 0.72)"
 
 
 @router.get("/settings")
@@ -44,6 +48,10 @@ def save_settings(request: Request, payload: SettingsPayload):
             font_size=payload.font_size,
             title_bar_height=payload.title_bar_height,
             title_bar_font_size=payload.title_bar_font_size,
+            terminal_background_color=payload.terminal_background_color,
+            terminal_text_color=payload.terminal_text_color,
+            terminal_border_color=payload.terminal_border_color,
+            terminal_muted_color=payload.terminal_muted_color,
         )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error

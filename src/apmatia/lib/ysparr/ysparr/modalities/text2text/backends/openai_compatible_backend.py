@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from threading import Lock
 from ipaddress import ip_address
 from typing import Any, Dict, Iterable, List
 from urllib.parse import urlparse, urlunparse
@@ -52,6 +53,8 @@ class OpenAICompatibleBackend:
             or "gpt-4o-mini"
         )
         self.timeout_seconds = timeout_seconds
+        self._active_responses: dict[str, Any] = {}
+        self._active_responses_lock = Lock()
 
     def stream(self, request: PromptRequest) -> Iterable[str]:
         metadata = request.metadata if isinstance(request.metadata, dict) else {}
@@ -98,6 +101,8 @@ class OpenAICompatibleBackend:
                 stream=True,
                 timeout=self.timeout_seconds,
             ) as response:
+                with self._active_responses_lock:
+                    self._active_responses[request.prompt_id] = response
                 response.raise_for_status()
                 response.encoding = "utf-8"
                 for line in response.iter_lines(decode_unicode=False):
@@ -126,9 +131,18 @@ class OpenAICompatibleBackend:
             raise ExecutionError(
                 f"OpenAI-compatible request failed: {error}"
             ) from error
+        finally:
+            with self._active_responses_lock:
+                self._active_responses.pop(request.prompt_id, None)
 
     def stop(self, prompt_id: str) -> None:
-        return None
+        with self._active_responses_lock:
+            response = self._active_responses.get(prompt_id)
+        if response is not None:
+            try:
+                response.close()
+            except Exception:
+                pass
 
     def _build_headers(self) -> Dict[str, str]:
         headers: Dict[str, str] = {"Content-Type": "application/json"}

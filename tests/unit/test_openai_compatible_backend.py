@@ -204,3 +204,42 @@ def test_backend_sends_multimodal_chat_messages(monkeypatch):
     assert captured["url"] == "http://127.0.0.1:8080/v1/chat/completions"
     assert captured["json"]["messages"][1]["content"][1]["image_url"]["url"].startswith("data:image/png;base64,")
     assert result == ["vision ok"]
+
+
+def test_backend_stop_closes_active_response(monkeypatch):
+    closed = {"value": False}
+
+    class FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        encoding = None
+
+        def iter_lines(self, decode_unicode=True):
+            assert decode_unicode is False
+            yield b"data: [DONE]"
+
+        def close(self):
+            closed["value"] = True
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+    def fake_post(url, json=None, headers=None, stream=None, timeout=None):
+        return FakeResponse()
+
+    monkeypatch.setattr("requests.post", fake_post)
+
+    with patch(
+        "ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
+        return_value=False,
+    ):
+        backend = OpenAICompatibleBackend(base_url="http://127.0.0.1:8080")
+
+    backend._active_responses["test-stop"] = FakeResponse()
+    backend.stop("test-stop")
+
+    assert closed["value"] is True

@@ -101,6 +101,29 @@ def render() -> None:
                 value=int(current.get("title_bar_font_size", 20)),
             )
 
+        st.subheader("Terminal")
+        terminal_left, terminal_right = st.columns(2)
+        with terminal_left:
+            terminal_background_color = st.color_picker(
+                "Terminal background",
+                value=str(current.get("terminal_background_color", "#000000") or "#000000"),
+            )
+            terminal_text_color = st.color_picker(
+                "Terminal text",
+                value=str(current.get("terminal_text_color", "#9dffad") or "#9dffad"),
+            )
+        with terminal_right:
+            terminal_border_color = st.text_input(
+                "Terminal border",
+                value=str(current.get("terminal_border_color", "rgba(110, 255, 170, 0.35)") or "rgba(110, 255, 170, 0.35)"),
+                help="Any valid CSS color is accepted.",
+            )
+            terminal_muted_color = st.text_input(
+                "Terminal muted text",
+                value=str(current.get("terminal_muted_color", "rgba(157, 255, 173, 0.72)") or "rgba(157, 255, 173, 0.72)"),
+                help="Used for subtitles and helper text inside terminal panes.",
+            )
+
         submitted = st.form_submit_button("Save settings")
 
     if not submitted:
@@ -118,6 +141,10 @@ def render() -> None:
         font_size=int(font_size),
         title_bar_height=int(title_bar_height),
         title_bar_font_size=int(title_bar_font_size),
+        terminal_background_color=terminal_background_color,
+        terminal_text_color=terminal_text_color,
+        terminal_border_color=terminal_border_color,
+        terminal_muted_color=terminal_muted_color,
     )
 
     try:
@@ -130,5 +157,9 @@ def render() -> None:
     st.session_state["ui_theme_preference"] = theme
     st.session_state["ui_font_family"] = font_family
     st.session_state["ui_accent_color"] = accent_color
+    st.session_state["ui_terminal_background_color"] = terminal_background_color
+    st.session_state["ui_terminal_text_color"] = terminal_text_color
+    st.session_state["ui_terminal_border_color"] = terminal_border_color
+    st.session_state["ui_terminal_muted_color"] = terminal_muted_color
     st.session_state["settings_save_message"] = "Settings saved."
     st.rerun()

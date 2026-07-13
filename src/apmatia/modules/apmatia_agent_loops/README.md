@@ -1,6 +1,7 @@
 # Apmatia Agent Loops
 
-Long-running task loops for agents and groups.
+Long-running task loops with explicit model and tool execution ports.
 
-The runtime workspace for this module lives under `~/.apmatia/workspace/modules/apmatia_agent_loops`.
+The module keeps its workspace under the Apmatia workspace root in:
 
+`apmatia_agent_loops/`

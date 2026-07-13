@@ -1,22 +1,100 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import patch
 
 from apmatia.core.module_view_runtime import ModuleViewContext
 from apmatia.core.registry import Registry
-from apmatia.modules.apmatia_agent_loops.module import APMATIA_AGENT_LOOPS_MODULE, register
 from apmatia.modules.apmatia_agent_loops.commands import COMMAND_DESCRIPTORS
+from apmatia.modules.apmatia_agent_loops.executor import AgentLoopExecutor
+from apmatia.modules.apmatia_agent_loops.models import (
+    AgentLoopExecutionRequest,
+    AgentLoopTask,
+    CancellationToken,
+    ExecutionStatus,
+    LoopEventType,
+    ModelRequest,
+    ModelResponse,
+    TaskStatus,
+    ToolRequest,
+    ToolResult,
+    new_task_id,
+)
+from apmatia.modules.apmatia_agent_loops.module import APMATIA_AGENT_LOOPS_MODULE, register
 from apmatia.modules.apmatia_agent_loops.module_views import ApmatiaAgentLoopsModuleViewProvider
-from apmatia.modules.apmatia_agent_loops import prompt_helpers
-from apmatia.modules.apmatia_agent_loops.records import LoopTaskRecord, save_task_record
-from apmatia.modules.apmatia_agent_loops.runner import ApmatiaAgentLoopRunner, LoopTaskRequest
-from apmatia.modules.apmatia_agent_loops.tools import agent_loop_tool_definitions
+from apmatia.modules.apmatia_agent_loops.repository import InMemoryAgentLoopTaskRepository
+from apmatia.modules.apmatia_agent_loops.runner import AgentLoopRuntime, LoopTaskRequest
+from apmatia.modules.apmatia_agent_loops.service import EventCancellationToken, YsparrModelExecutor
+from apmatia.modules.apmatia_agent_loops.state import resolve_contact_roots
 from apmatia.modules.apmatia_agent_loops.views import VIEW_DESCRIPTORS
+from apmatia.lib.tool_management.models import ToolDefinition as RuntimeToolDefinition
 
 
-def test_agent_loops_module_registers_module_metadata_and_views():
+class _Token(CancellationToken):
+    def __init__(self) -> None:
+        self.cancelled = False
+
+    def is_cancelled(self) -> bool:
+        return self.cancelled
+
+    def cancel(self) -> None:
+        self.cancelled = True
+
+
+class _SingleTurnModel:
+    def generate(self, request: ModelRequest, cancellation: CancellationToken) -> ModelResponse:
+        return ModelResponse(final_text=f"Done: {request.task.prompt}", raw_response={"turn": request.turn_index})
+
+
+class _ToolRoundTripModel:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.last_request: ModelRequest | None = None
+
+    def generate(self, request: ModelRequest, cancellation: CancellationToken) -> ModelResponse:
+        self.calls += 1
+        self.last_request = request
+        if self.calls == 1:
+            return ModelResponse(
+                tool_requests=(ToolRequest(tool_name="lookup", arguments={"query": "alpha"}),),
+                raw_response={"phase": "tool"},
+            )
+        return ModelResponse(final_text="All done", raw_response={"phase": "final"})
+
+
+class _ToolRoundTripExecutor:
+    def __init__(self) -> None:
+        self.requests: list[ToolRequest] = []
+
+    def list_tools(self, context):
+        from apmatia.modules.apmatia_agent_loops.models import ToolDefinition
+
+        return (ToolDefinition(name="lookup"),)
+
+    def execute(self, request: ToolRequest, context, cancellation: CancellationToken) -> ToolResult:
+        self.requests.append(request)
+        return ToolResult(tool_name=request.tool_name, call_id=request.call_id, status="success", output={"value": 42})
+
+
+def _task_for_executor(tmp_path: Path) -> AgentLoopTask:
+    roots = resolve_contact_roots("agent", 1)
+    return AgentLoopTask(
+        id=new_task_id(),
+        owner_user_id=7,
+        contact_kind="agent",
+        contact_id=1,
+        title="Build slice",
+        prompt="Complete the work",
+        status=TaskStatus.QUEUED,
+        execution_status=ExecutionStatus.PENDING,
+        max_model_turns=3,
+        max_tool_calls=3,
+        workspace_root=str(roots.workspace_root),
+        knowledge_root=str(roots.knowledge_root),
+    )
+
+
+def test_module_registers_registry_metadata_and_views():
     registry = Registry()
 
     register(registry)
@@ -28,396 +106,522 @@ def test_agent_loops_module_registers_module_metadata_and_views():
     assert [view.view_id for view in registry.list_views()] == sorted(view.view_id for view in VIEW_DESCRIPTORS)
 
 
-def test_agent_loops_module_view_provider_stops_a_run_via_module_command(tmp_path: Path, monkeypatch):
-    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace"))
-    provider = ApmatiaAgentLoopsModuleViewProvider()
-    command = COMMAND_DESCRIPTORS[0]
-    context = ModuleViewContext(user_id=7, group_ids=frozenset({9}))
+def test_agent_loop_executor_completes_a_single_turn(tmp_path: Path):
+    repository = InMemoryAgentLoopTaskRepository()
+    task = _task_for_executor(tmp_path)
+    repository.save(task)
+    executor = AgentLoopExecutor(repository, _SingleTurnModel(), _ToolRoundTripExecutor())
 
-    with patch("apmatia.modules.apmatia_agent_loops.module_views.get_agent_loop_runner") as mock_runner:
-        mock_runner.return_value.stop_task.return_value = {"status": "stopped", "task_id": "loop-123"}
-        result = provider.execute_command(command=command, payload={"task_id": "loop-123"}, context=context)
+    result = executor.execute(AgentLoopExecutionRequest(task_id=str(task.id or "")), _Token())
 
-    mock_runner.return_value.stop_task.assert_called_once_with("loop-123")
-    assert result == {"status": "stopped", "task_id": "loop-123"}
+    assert result.status == ExecutionStatus.COMPLETED
+    assert result.final_text == "Done: Complete the work"
+    assert result.task.status == TaskStatus.COMPLETED
+    assert [event.event_type for event in result.events][:4] == [
+        LoopEventType.TASK_STARTED,
+        LoopEventType.MODEL_TURN_STARTED,
+        LoopEventType.MODEL_TURN_COMPLETED,
+        LoopEventType.TASK_COMPLETED,
+    ]
 
 
-def test_agent_loops_module_view_provider_lists_contacts_runs_workspace_and_knowledge(
-    tmp_path: Path,
-    monkeypatch,
-):
-    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace"))
-    provider = ApmatiaAgentLoopsModuleViewProvider()
-    context = ModuleViewContext(user_id=7, group_ids=frozenset({9}))
+def test_agent_loop_executor_executes_tools_and_feeds_results_back(tmp_path: Path):
+    repository = InMemoryAgentLoopTaskRepository()
+    task = _task_for_executor(tmp_path)
+    repository.save(task)
+    model = _ToolRoundTripModel()
+    tool_executor = _ToolRoundTripExecutor()
+    executor = AgentLoopExecutor(repository, model, tool_executor)
 
-    agent_manager = SimpleNamespace(
-        list_agents=lambda: [
-            SimpleNamespace(id=1, name="Ada", active_model_id="model-a", updated_at="2026-07-08T10:00:00"),
-            SimpleNamespace(id=2, name="Bea", default_model_id="model-b", updated_at="2026-07-08T11:00:00"),
-        ]
+    result = executor.execute(AgentLoopExecutionRequest(task_id=str(task.id or "")), _Token())
+
+    assert result.status == ExecutionStatus.COMPLETED
+    assert result.final_text == "All done"
+    assert tool_executor.requests[0].tool_name == "lookup"
+    assert model.last_request is not None
+    assert model.last_request.tool_results[0].status == "success"
+    assert any(event.event_type == LoopEventType.TOOL_REQUESTED for event in result.events)
+    assert any(event.event_type == LoopEventType.TOOL_COMPLETED for event in result.events)
+
+
+def test_agent_loop_executor_records_model_activity_updates(tmp_path: Path):
+    class _ActivityModel:
+        def generate(self, request: ModelRequest, cancellation: CancellationToken) -> ModelResponse:
+            assert callable(request.activity_sink)
+            request.activity_sink(
+                {
+                    "provider": "test-backend",
+                    "endpoint": "/v1/chat/completions",
+                    "text": "streaming chunk",
+                    "stats": {"tokens": 1},
+                }
+            )
+            return ModelResponse(final_text="All done")
+
+    repository = InMemoryAgentLoopTaskRepository()
+    task = _task_for_executor(tmp_path)
+    repository.save(task)
+    executor = AgentLoopExecutor(repository, _ActivityModel(), _ToolRoundTripExecutor())
+
+    result = executor.execute(AgentLoopExecutionRequest(task_id=str(task.id or "")), _Token())
+
+    assert result.status == ExecutionStatus.COMPLETED
+    assert result.task.status == TaskStatus.COMPLETED
+    assert result.task.metadata["live_activity"]["text"] == "streaming chunk"
+    assert any(event.event_type == LoopEventType.MODEL_ACTIVITY for event in result.events)
+
+
+def test_agent_loop_executor_continues_until_loop_status_done(tmp_path: Path):
+    class _LoopingModel:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def generate(self, request: ModelRequest, cancellation: CancellationToken) -> ModelResponse:
+            self.calls += 1
+            if self.calls == 1:
+                return ModelResponse(
+                    final_text=(
+                        "I am Karen Smith, Agent (ID 7).\n"
+                        "<loop_status>{"
+                        '"done": false, '
+                        '"summary": "Introduced myself.", '
+                        '"completed_items": [], '
+                        '"remaining_items": ["State your name and title."], '
+                        '"next_action": "Introduce myself and continue.", '
+                        '"executive_analysis": "I should keep going."'
+                        "}</loop_status>"
+                    )
+                )
+            return ModelResponse(
+                final_text=(
+                    "I have now completed the checklist.\n"
+                    "<loop_status>{"
+                    '"done": true, '
+                    '"summary": "Checklist complete.", '
+                    '"completed_items": ["State your name and title."], '
+                    '"remaining_items": [], '
+                    '"next_action": "", '
+                    '"executive_analysis": "Ready to close out."'
+                    "}</loop_status>"
+                )
+            )
+
+    repository = InMemoryAgentLoopTaskRepository()
+    task = replace(_task_for_executor(tmp_path), max_model_turns=3)
+    repository.save(task)
+    executor = AgentLoopExecutor(repository, _LoopingModel(), _ToolRoundTripExecutor())
+
+    result = executor.execute(AgentLoopExecutionRequest(task_id=str(task.id or "")), _Token())
+
+    assert result.status == ExecutionStatus.COMPLETED
+    assert result.model_turns == 2
+    assert result.task.metadata["loop_status"]["done"] is True
+    assert result.task.metadata["summary"] == "Checklist complete."
+    assert any(
+        event.event_type == LoopEventType.MODEL_TURN_STARTED and event.payload.get("turn_index") == 2
+        for event in result.events
     )
-    group_manager = SimpleNamespace(
-        list_groups=lambda: [
-            SimpleNamespace(id=9, name="Ops", description="Shared loop group", updated_at="2026-07-08T12:00:00"),
-        ]
-    )
-    agent_workspace = tmp_path / "workspace" / "apmatia_agent_loops" / "workspace" / "agent-1"
-    agent_workspace.mkdir(parents=True, exist_ok=True)
-    (agent_workspace / "brief.txt").write_text("agent workspace", encoding="utf-8")
-    agent_knowledge = tmp_path / "workspace" / "knowledge" / "agent-1"
-    agent_knowledge.mkdir(parents=True, exist_ok=True)
-    (agent_knowledge / "notes.md").write_text("agent knowledge", encoding="utf-8")
-    group_workspace = tmp_path / "workspace" / "apmatia_agent_loops" / "workspace" / "group-9"
-    group_workspace.mkdir(parents=True, exist_ok=True)
-    (group_workspace / "plan.txt").write_text("group workspace", encoding="utf-8")
 
-    save_task_record(
-        LoopTaskRecord(
-            task_id="loop-1",
+
+def test_agent_loop_executor_honors_stop_request_saved_during_model_turn(tmp_path: Path):
+    repository = InMemoryAgentLoopTaskRepository()
+    task = _task_for_executor(tmp_path)
+    repository.save(task)
+
+    class _StopRequestModel:
+        def generate(self, request: ModelRequest, cancellation: CancellationToken) -> ModelResponse:
+            repository.save(
+                replace(
+                    request.task,
+                    status=TaskStatus.STOPPING,
+                    stop_requested=True,
+                )
+            )
+            return ModelResponse(final_text="should not complete")
+
+    executor = AgentLoopExecutor(repository, _StopRequestModel(), _ToolRoundTripExecutor())
+
+    result = executor.execute(AgentLoopExecutionRequest(task_id=str(task.id or "")), _Token())
+
+    assert result.status == ExecutionStatus.CANCELLED
+    assert result.task.status == TaskStatus.CANCELLED
+    assert result.stop_reason == "cancelled"
+
+
+def test_agent_loop_executor_honors_cancellation_after_model_call(tmp_path: Path):
+    class _CancellingModel:
+        def generate(self, request: ModelRequest, cancellation: CancellationToken) -> ModelResponse:
+            cancellation.cancel()
+            return ModelResponse(final_text="should not finish")
+
+    repository = InMemoryAgentLoopTaskRepository()
+    task = _task_for_executor(tmp_path)
+    repository.save(task)
+    executor = AgentLoopExecutor(repository, _CancellingModel(), _ToolRoundTripExecutor())
+
+    result = executor.execute(AgentLoopExecutionRequest(task_id=str(task.id or "")), _Token())
+
+    assert result.status == ExecutionStatus.CANCELLED
+    assert result.task.status == TaskStatus.CANCELLED
+    assert any(event.event_type == LoopEventType.CANCELLATION_REQUESTED for event in result.events)
+
+
+def test_agent_loop_executor_stops_when_model_turn_limit_is_reached(tmp_path: Path):
+    class _ToolingModel:
+        def generate(self, request: ModelRequest, cancellation: CancellationToken) -> ModelResponse:
+            return ModelResponse(tool_requests=(ToolRequest(tool_name="lookup", arguments={}),))
+
+    repository = InMemoryAgentLoopTaskRepository()
+    task = replace(_task_for_executor(tmp_path), max_model_turns=1)
+    repository.save(task)
+    executor = AgentLoopExecutor(repository, _ToolingModel(), _ToolRoundTripExecutor())
+
+    result = executor.execute(AgentLoopExecutionRequest(task_id=str(task.id or "")), _Token())
+
+    assert result.status == ExecutionStatus.LIMIT_REACHED
+    assert result.task.status == TaskStatus.LIMIT_REACHED
+    assert result.stop_reason == "max_model_turns"
+
+
+def test_agent_loop_runtime_persists_tasks_and_transcripts(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace"))
+
+    class _RuntimeModel:
+        def generate(self, request: ModelRequest, cancellation: CancellationToken) -> ModelResponse:
+            if request.tool_results:
+                return ModelResponse(final_text="finished")
+            return ModelResponse(
+                tool_requests=(ToolRequest(tool_name="lookup", arguments={"query": "alpha"}),),
+            )
+
+    class _RuntimeTools:
+        def list_tools(self, context):
+            from apmatia.modules.apmatia_agent_loops.models import ToolDefinition
+
+            return (ToolDefinition(name="lookup"),)
+
+        def execute(self, request: ToolRequest, context, cancellation: CancellationToken) -> ToolResult:
+            return ToolResult(tool_name=request.tool_name, call_id=request.call_id, status="success", output="ok")
+
+    runtime = AgentLoopRuntime(repository=InMemoryAgentLoopTaskRepository(), model_executor=_RuntimeModel(), tool_executor=_RuntimeTools())
+    started = runtime.start_task(
+        LoopTaskRequest(
             owner_user_id=7,
             contact_kind="agent",
             contact_id=1,
-            title="Agent loop",
-            prompt="Do the thing",
-            status="running",
-            discussion_id="disc-1",
-            agent_id=1,
+            title="Runtime task",
+            prompt="Do the work",
+            checklist=[{"label": "Inspect"}],
             participant_agent_ids=[1],
-            chat_mode="single",
-            summary="Make progress",
-            workspace_root=str(agent_workspace),
-            knowledge_root=str(agent_knowledge),
-            updated_at="2026-07-08T12:00:00",
-        )
-    )
-    save_task_record(
-        LoopTaskRecord(
-            task_id="loop-2",
-            owner_user_id=7,
-            contact_kind="group",
-            contact_id=9,
-            title="Group loop",
-            prompt="Coordinate the group",
-            status="completed",
-            discussion_id="disc-2",
-            participant_agent_ids=[1, 2],
-            chat_mode="round_robin",
-            summary="Finished the checklist",
-            executive_analysis="Ready to hand back to the user.",
-            workspace_root=str(group_workspace),
-            knowledge_root=str(tmp_path / "workspace" / "knowledge" / "group-9"),
-            updated_at="2026-07-08T13:00:00",
+            agent_id=1,
+            allow_tools=True,
+            max_iterations=3,
         )
     )
 
-    with (
-        patch("apmatia.modules.apmatia_agent_loops.module_views.get_agent_manager", return_value=agent_manager),
-        patch("apmatia.modules.apmatia_agent_loops.module_views.get_group_manager", return_value=group_manager),
-    ):
-        contacts_view = VIEW_DESCRIPTORS[0]
-        runs_view = VIEW_DESCRIPTORS[1]
-        workspace_view = VIEW_DESCRIPTORS[2]
-        knowledge_view = VIEW_DESCRIPTORS[3]
+    assert started["status"] in {"queued", "running", "completed"}
+    assert runtime.wait_for_task(str(started["id"]), timeout=2.0) is True
 
-        contacts = provider.list_items(view=contacts_view, context=context)
-        runs = provider.list_items(view=runs_view, context=context)
-        workspace_items = provider.list_items(view=workspace_view, context=context)
-        knowledge_items = provider.list_items(view=knowledge_view, context=context)
-
-    assert [item["title"] for item in contacts] == ["Ada", "Bea", "Ops"]
-    assert contacts[0]["task_count"] == 1
-    assert contacts[1]["task_count"] == 0
-    assert contacts[2]["task_count"] == 1
-
-    assert [item["id"] for item in runs] == ["loop-2", "loop-1"]
-    assert runs[0]["status"] == "completed"
-    assert runs[0]["summary"] == "Finished the checklist"
-    assert runs[0]["workspace"] == str(group_workspace)
-    assert runs[1]["status"] == "running"
-    assert runs[1]["task_id"] == "loop-1"
-    assert runs[1]["prompt"] == "Do the thing"
-    assert runs[1]["discussion_id"] == "disc-1"
-    assert runs[1]["workspace_root"] == str(agent_workspace)
-    assert runs[1]["knowledge_root"] == str(agent_knowledge)
-
-    assert [item["path"] for item in workspace_items] == [
-        str(agent_workspace / "brief.txt"),
-        str(group_workspace / "plan.txt"),
-    ]
-    assert {item["kind"] for item in workspace_items} == {"workspace"}
-
-    assert [item["path"] for item in knowledge_items] == [
-        str(agent_knowledge / "notes.md"),
-    ]
-    assert {item["kind"] for item in knowledge_items} == {"knowledge"}
-
-
-def test_agent_loops_runner_completes_a_task_and_persists_history(tmp_path: Path, monkeypatch):
-    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace"))
-    runner = ApmatiaAgentLoopRunner()
-
-    transcript = {
-        "messages": [
-            {
-                "role": "assistant",
-                "text": (
-                    "Working through the checklist.\n\n"
-                    '<loop_status>{"done": true, "summary": "Finished the requested work.", '
-                    '"completed_items": ["Inspect", "Implement"], "remaining_items": [], '
-                    '"next_action": "None", "executive_analysis": "The task is complete and ready to hand back."}</loop_status>'
-                ),
-            }
-        ]
-    }
-
-    with (
-        patch(
-            "apmatia.modules.apmatia_agent_loops.runner.discussion_state.create_discussion",
-            return_value={"discussion_id": "disc-1"},
-        ),
-        patch("apmatia.modules.apmatia_agent_loops.runner.start_prompt_for_discussion") as start_prompt,
-        patch("apmatia.modules.apmatia_agent_loops.runner.wait_for_prompt_completion", return_value=True),
-        patch("apmatia.modules.apmatia_agent_loops.runner.get_discussion_transcript", return_value=transcript),
-    ):
-        started = runner.start_task(
-            LoopTaskRequest(
-                owner_user_id=7,
-                contact_kind="agent",
-                contact_id=1,
-                title="Complete work",
-                prompt="Finish the checklist",
-                checklist=[{"label": "Inspect"}, {"label": "Implement"}],
-                agent_id=1,
-                allow_tools=True,
-                max_iterations=3,
-            )
-        )
-        assert started["status"] == "running"
-        assert runner.wait_for_task(started["task_id"], timeout=2.0) is True
-
-    task = runner.get_task(started["task_id"])
+    task = runtime.get_task(str(started["id"]))
     assert task is not None
     assert task["status"] == "completed"
-    assert task["summary"] == "Finished the requested work."
-    assert task["executive_analysis"] == "The task is complete and ready to hand back."
-    assert task["discussion_id"] == "disc-1"
-    assert task["events"][0]["type"] == "task_started"
-    assert task["events"][1]["type"] == "iteration_started"
-    assert task["events"][2]["type"] == "loop_status"
-    assert [item["label"] for item in task["checklist"]] == ["Inspect", "Implement"]
-    start_prompt.assert_called_once()
+    transcript = runtime.get_task_transcript(str(started["id"]))
+    assert transcript is not None
+    assert "finished" in transcript["content"]
 
 
-def test_agent_loops_runner_adds_agent_verification_checklist_item(tmp_path: Path, monkeypatch):
+def test_agent_loop_runtime_stop_task_cancels_when_no_worker_thread_exists(tmp_path: Path):
+    repository = InMemoryAgentLoopTaskRepository()
+    runtime = AgentLoopRuntime(repository=repository)
+    task = _task_for_executor(tmp_path)
+    task = replace(task, status=TaskStatus.RUNNING, execution_status=ExecutionStatus.RUNNING)
+    repository.save(task)
+
+    stopped = runtime.stop_task(str(task.id or ""))
+
+    assert stopped is not None
+    assert stopped["status"] == "cancelled"
+    assert stopped["execution_status"] == "cancelled"
+    assert stopped["stop_requested"] is True
+
+
+def test_tool_manager_tool_executor_lists_and_executes_agent_tools(monkeypatch, tmp_path: Path):
+    class _Agent:
+        active_model_id = None
+        default_model_id = None
+        tool_ids = [17]
+
+    class _ToolManager:
+        def __init__(self) -> None:
+            self.calls: list[object] = []
+
+        def list_tools_available_to_agent(self, agent_id: int):
+            return [
+                RuntimeToolDefinition(
+                    id=17,
+                    name="lookup",
+                    description="Search the workspace.",
+                    input_schema={"type": "object"},
+                    provider_id="builtin.lookup",
+                    enabled=True,
+                    confirmation_required=False,
+                    read_only=True,
+                    metadata={"scope": "workspace"},
+                )
+            ]
+
+        def execute_tool_call(self, tool_call):
+            self.calls.append(tool_call)
+            return type(
+                "Result",
+                (),
+                {
+                    "status": "success",
+                    "result": {"value": 42},
+                    "error": None,
+                    "metadata": {"tool_id": tool_call.tool_id},
+                },
+            )()
+
+    tool_manager = _ToolManager()
+
+    from apmatia.modules.apmatia_agent_loops import service as service_module
+    import apmatia.core.tool_management_runtime as tool_runtime_module
+
+    monkeypatch.setattr(service_module, "get_agent_manager", lambda: type("AgentManager", (), {"get_agent": lambda self, agent_id: _Agent()})())
+    monkeypatch.setattr(tool_runtime_module, "get_tool_manager", lambda: tool_manager)
+
+    task = AgentLoopTask(
+        id="loop_test",
+        owner_user_id=7,
+        contact_kind="agent",
+        contact_id=1,
+        title="Investigation",
+        prompt="Do the work",
+        agent_id=7,
+    )
+    context = type("Context", (), {"task": task})()
+    executor = service_module.ToolManagerToolExecutor()
+
+    available_tools = executor.list_tools(context)
+    assert [tool.name for tool in available_tools] == ["lookup"]
+    assert available_tools[0].metadata["tool_id"] == 17
+
+    result = executor.execute(
+        type("Request", (), {"tool_name": "lookup", "arguments": {"query": "alpha"}, "call_id": "call_1"})(),
+        context,
+        EventCancellationToken(),
+    )
+
+    assert result.status == "success"
+    assert result.output == {"value": 42}
+    assert tool_manager.calls[0].requester_agent_id == 7
+    assert tool_manager.calls[0].tool_id == 17
+
+
+def test_module_view_provider_lists_contacts_and_stop_command(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace"))
-    runner = ApmatiaAgentLoopRunner()
+    provider = ApmatiaAgentLoopsModuleViewProvider()
+    context = ModuleViewContext(user_id=7, group_ids=frozenset({9}))
 
-    with (
-        patch(
-            "apmatia.modules.apmatia_agent_loops.runner.discussion_state.create_discussion",
-            return_value={"discussion_id": "disc-2"},
-        ),
-        patch("apmatia.modules.apmatia_agent_loops.runner.start_prompt_for_discussion"),
-        patch("apmatia.modules.apmatia_agent_loops.runner.wait_for_prompt_completion", return_value=True),
-        patch(
-            "apmatia.modules.apmatia_agent_loops.runner.get_discussion_transcript",
-            return_value={"messages": []},
-        ),
-    ):
-        started = runner.start_task(
-            LoopTaskRequest(
-                owner_user_id=7,
-                contact_kind="agent",
-                contact_id=1,
-                title="Create agents",
-                prompt="Create three agents for the team",
-                checklist=[{"label": "Create the org chart"}],
-                agent_id=1,
-                allow_tools=True,
-                max_iterations=1,
+    contacts_view = next(view for view in VIEW_DESCRIPTORS if view.metadata.get("object_type") == "contact")
+    class _AgentManager:
+        def list_agents(self):
+            return [type("Agent", (), {"id": 1, "name": "Ada", "updated_at": None, "tool_ids": []})()]
+
+    class _GroupManager:
+        def list_groups(self):
+            return [type("Group", (), {"id": 9, "name": "Ops", "updated_at": None})()]
+
+    runtime = AgentLoopRuntime(repository=InMemoryAgentLoopTaskRepository())
+    saved_task = _task_for_executor(tmp_path)
+    runtime._repository.save(saved_task)  # type: ignore[attr-defined]
+
+    from apmatia.modules.apmatia_agent_loops import module_views as module_views_module
+
+    monkeypatch.setattr(module_views_module, "get_agent_manager", lambda: _AgentManager())
+    monkeypatch.setattr(module_views_module, "get_group_manager", lambda: _GroupManager())
+    monkeypatch.setattr(module_views_module, "get_agent_loop_runner", lambda: runtime)
+
+    items = provider.list_items(view=contacts_view, context=context)
+    assert {item["contact_kind"] for item in items} == {"agent", "group"}
+    stop_result = provider.execute_command(
+        command=COMMAND_DESCRIPTORS[0],
+        payload={"task_id": str(saved_task.id)},
+        context=context,
+    )
+    assert stop_result is not None
+    assert stop_result["status"] == "cancelled"
+
+
+def test_file_agent_loop_task_repository_ignores_empty_task_files(tmp_path: Path):
+    from apmatia.modules.apmatia_agent_loops.repository import FileAgentLoopTaskRepository
+
+    repository = FileAgentLoopTaskRepository(tmp_path)
+    task_path = tmp_path / "tasks" / "loop_empty.json"
+    task_path.parent.mkdir(parents=True, exist_ok=True)
+    task_path.write_text("", encoding="utf-8")
+
+    assert repository.get("loop_empty") is None
+    assert repository.list_all() == []
+
+
+def test_ysparr_model_executor_uses_agent_model_config_and_tool_calls(monkeypatch):
+    class _Agent:
+        active_model_id = 11
+        default_model_id = None
+        prompt_id = 21
+        name = "Karen Smith"
+
+    class _LLMConfig:
+        id = 11
+        backend = "openai_compatible"
+        provider_name = "test-provider"
+        model_url = "http://localhost:1234"
+
+    class _AgentManager:
+        def get_agent(self, agent_id: int):
+            return _Agent()
+
+        def get_agent_system_prompt(self, agent_id: int):
+            return (
+                "You are Karen Smith.\n\n"
+                "Purpose: Support the user with reliable and focused help.\n\n"
+                "Tool policy: Use tools only when they clearly help accomplish the task."
             )
+
+    class _LLMConfigManager:
+        def get_config(self, config_id: int):
+            return _LLMConfig() if config_id == 11 else None
+
+        def list_configs(self):
+            return [_LLMConfig()]
+
+    captured = {}
+
+    def _prompt_llm(*, prompt, context=None, llm_config=None, request_metadata=None, **kwargs):
+        captured["prompt"] = prompt
+        captured["context"] = context
+        captured["llm_config"] = llm_config
+        captured["request_metadata"] = request_metadata
+        captured["stop_event"] = kwargs.get("stop_event")
+        captured["on_event"] = kwargs.get("on_event")
+        if callable(captured["on_event"]):
+            captured["on_event"](
+                {
+                    "provider": "test",
+                    "endpoint": "/v1/chat/completions",
+                    "text": "chunk",
+                    "stats": {"tokens": 1},
+                }
+            )
+        return 'Working <tool_call>{"name": "lookup", "arguments": {"query": "alpha"}}</tool_call>'
+
+    from apmatia.modules.apmatia_agent_loops import service as service_module
+
+    monkeypatch.setattr(service_module, "get_agent_manager", lambda: _AgentManager())
+    monkeypatch.setattr(service_module, "get_llm_config_manager", lambda: _LLMConfigManager())
+    monkeypatch.setattr(service_module, "prompt_llm", _prompt_llm)
+
+    task = AgentLoopTask(
+        id="loop_test",
+        owner_user_id=7,
+        contact_kind="agent",
+        contact_id=1,
+        title="Investigation",
+        prompt="Do the work",
+        agent_id=7,
+    )
+    from apmatia.modules.apmatia_agent_loops.models import ToolDefinition
+
+    request = ModelRequest(
+        task_id="loop_test",
+        task=task,
+        turn_index=1,
+        available_tools=(ToolDefinition(name="lookup", description="Search the workspace."),),
+    )
+
+    response = YsparrModelExecutor().generate(request, EventCancellationToken())
+
+    assert captured["llm_config"].id == 11
+    assert "Investigation" in captured["context"]
+    assert "You are Karen Smith." in captured["context"]
+    assert "lookup" in captured["context"]
+    assert "Search the workspace." in captured["context"]
+    assert captured["stop_event"] is not None
+    assert callable(captured["on_event"])
+    assert isinstance(captured["request_metadata"].get("chat_messages"), list)
+    assert [message["role"] for message in captured["request_metadata"]["chat_messages"]] == ["system", "user"]
+    assert response.final_text == "Working"
+    assert [tool.tool_name for tool in response.tool_requests] == ["lookup"]
+
+
+def test_ysparr_model_executor_streams_visible_chunks_into_activity_sink(monkeypatch):
+    class _Agent:
+        active_model_id = 11
+        default_model_id = None
+
+    class _LLMConfig:
+        id = 11
+        backend = "openai_compatible"
+        provider_name = "test-provider"
+        model_url = "http://localhost:1234"
+
+    class _AgentManager:
+        def get_agent(self, agent_id: int):
+            return _Agent()
+
+    class _LLMConfigManager:
+        def get_config(self, config_id: int):
+            return _LLMConfig() if config_id == 11 else None
+
+        def list_configs(self):
+            return [_LLMConfig()]
+
+    captured: dict[str, list[dict[str, object]]] = {"activity": []}
+
+    def _prompt_llm(*, prompt, context=None, llm_config=None, request_metadata=None, **kwargs):
+        assert callable(kwargs.get("on_chunk"))
+        assert callable(kwargs.get("on_event"))
+        kwargs["on_chunk"]("Hel")
+        kwargs["on_chunk"]("lo ")
+        kwargs["on_chunk"]("<tool_call>{\"name\": \"lookup\"}</tool_call>")
+        kwargs["on_chunk"]("world")
+        kwargs["on_event"](
+            {
+                "provider": "test",
+                "endpoint": "/v1/chat/completions",
+                "text": "ignored",
+                "stats": {"tokens": 1},
+            }
         )
-        assert runner.wait_for_task(started["task_id"], timeout=2.0) is True
+        return 'Hello <tool_call>{"name": "lookup", "arguments": {"query": "alpha"}}</tool_call> world'
 
-    task = runner.get_task(started["task_id"])
-    assert task is not None
-    assert task["checklist"][-1]["label"] == "Verify requested agents exist with list_agents"
+    from apmatia.modules.apmatia_agent_loops import service as service_module
 
+    monkeypatch.setattr(service_module, "get_agent_manager", lambda: _AgentManager())
+    monkeypatch.setattr(service_module, "get_llm_config_manager", lambda: _LLMConfigManager())
+    monkeypatch.setattr(service_module, "prompt_llm", _prompt_llm)
 
-def test_agent_loops_runner_stops_a_task(tmp_path: Path, monkeypatch):
-    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace"))
-    runner = ApmatiaAgentLoopRunner()
-
-    record = LoopTaskRecord(
-        task_id="loop-stop",
+    task = AgentLoopTask(
+        id="loop_test",
         owner_user_id=7,
         contact_kind="agent",
         contact_id=1,
-        title="Stop me",
-        prompt="Hold on",
-        status="running",
-        discussion_id="disc-stop",
-        agent_id=1,
-    )
-    save_task_record(record)
-
-    with patch(
-        "apmatia.modules.apmatia_agent_loops.runner.stop_prompt_for_discussion",
-        return_value=True,
-    ) as stop_prompt, patch.object(runner, "_raise_system_exit_in_thread", return_value=True) as hard_stop:
-        stopped = runner.stop_task("loop-stop")
-
-    assert stopped is not None
-    assert stopped["status"] == "stopped"
-    assert stopped["stop_requested"] is True
-    stop_prompt.assert_called_once_with("disc-stop")
-    hard_stop.assert_not_called()
-
-
-def test_agent_loops_runner_stops_a_task_even_if_record_write_fails(tmp_path: Path, monkeypatch):
-    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace"))
-    runner = ApmatiaAgentLoopRunner()
-
-    record = LoopTaskRecord(
-        task_id="loop-stop-readonly",
-        owner_user_id=7,
-        contact_kind="agent",
-        contact_id=1,
-        title="Stop me",
-        prompt="Hold on",
-        status="running",
-        discussion_id="disc-stop-readonly",
-        agent_id=1,
-    )
-    save_task_record(record)
-
-    with patch(
-        "apmatia.modules.apmatia_agent_loops.runner.update_task_record",
-        side_effect=OSError("read-only filesystem"),
-    ), patch(
-        "apmatia.modules.apmatia_agent_loops.runner.stop_prompt_for_discussion",
-        return_value=True,
-    ), patch.object(runner, "_raise_system_exit_in_thread", return_value=True):
-        stopped = runner.stop_task("loop-stop-readonly")
-
-    assert stopped is not None
-    assert stopped["status"] == "stopped"
-    assert stopped["stop_requested"] is True
-    listed = runner.get_task("loop-stop-readonly")
-    assert listed is not None
-    assert listed["status"] == "stopped"
-    assert listed["stop_requested"] is True
-
-
-def test_agent_loops_runner_honors_persistent_stop_requests_before_prompting(tmp_path: Path, monkeypatch):
-    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace"))
-    runner = ApmatiaAgentLoopRunner()
-
-    save_task_record(
-        LoopTaskRecord(
-            task_id="loop-stop-2",
-            owner_user_id=7,
-            contact_kind="agent",
-            contact_id=1,
-            title="Stop before prompt",
-            prompt="Do not start",
-            status="running",
-            stop_requested=True,
-            agent_id=1,
-        )
+        title="Investigation",
+        prompt="Do the work",
+        agent_id=7,
     )
 
-    with (
-        patch("apmatia.modules.apmatia_agent_loops.runner.discussion_state.create_discussion") as create_discussion,
-        patch("apmatia.modules.apmatia_agent_loops.runner.start_prompt_for_discussion") as start_prompt,
-        patch("apmatia.modules.apmatia_agent_loops.runner.wait_for_prompt_completion") as wait_for_prompt,
-        patch("apmatia.modules.apmatia_agent_loops.runner.get_discussion_transcript") as get_transcript,
-    ):
-        runner._run_task("loop-stop-2")
+    def _activity_sink(payload: dict[str, object]) -> None:
+        captured["activity"].append(dict(payload))
 
-    task = runner.get_task("loop-stop-2")
-    assert task is not None
-    assert task["status"] == "stopped"
-    assert task["stop_requested"] is True
-    create_discussion.assert_not_called()
-    start_prompt.assert_not_called()
-    wait_for_prompt.assert_not_called()
-    get_transcript.assert_not_called()
+    request = ModelRequest(task_id="loop_test", task=task, turn_index=1, activity_sink=_activity_sink)
 
+    response = YsparrModelExecutor().generate(request, EventCancellationToken())
 
-def test_agent_loops_runner_raises_system_exit_in_live_task_thread():
-    runner = ApmatiaAgentLoopRunner()
-    thread = SimpleNamespace(ident=12345, is_alive=lambda: True)
-
-    with patch("ctypes.pythonapi.PyThreadState_SetAsyncExc", return_value=1) as inject:
-        assert runner._raise_system_exit_in_thread(thread) is True
-
-    inject.assert_called_once()
-
-
-def test_agent_loops_runner_polls_for_stop_requests_while_waiting(tmp_path: Path, monkeypatch):
-    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace"))
-    runner = ApmatiaAgentLoopRunner()
-
-    running_record = LoopTaskRecord(
-        task_id="loop-wait-1",
-        owner_user_id=7,
-        contact_kind="agent",
-        contact_id=1,
-        title="Wait for stop",
-        prompt="Keep going",
-        status="running",
-        agent_id=1,
-    )
-    stopped_record = LoopTaskRecord(
-        task_id="loop-wait-1",
-        owner_user_id=7,
-        contact_kind="agent",
-        contact_id=1,
-        title="Wait for stop",
-        prompt="Keep going",
-        status="stopping",
-        stop_requested=True,
-        agent_id=1,
-    )
-
-    with (
-        patch.object(runner, "_load_task", side_effect=[running_record, running_record, stopped_record]),
-        patch("apmatia.modules.apmatia_agent_loops.runner.wait_for_prompt_completion", side_effect=[False, False, False]),
-    ):
-        result = runner._wait_for_prompt_completion_or_stop("loop-wait-1", "disc-wait", poll_seconds=0.01)
-
-    assert result is False
-
-
-def test_agent_loop_tool_definitions_expose_list_agents():
-    definitions = agent_loop_tool_definitions()
-    assert [definition["name"] for definition in definitions] == ["list_agents"]
-
-
-def test_agent_loops_prompt_helpers_run_without_touching_current_discussion(tmp_path: Path, monkeypatch):
-    monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
-    monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
-
-    import importlib
-
-    discussions_module = importlib.reload(importlib.import_module("apmatia.lib.discussions"))
-    monkeypatch.setattr(prompt_helpers, "discussion_state", discussions_module.discussion_state)
-    created = discussions_module.discussion_state.create_discussion(owner_user_id=101, title="Explicit Thread")
-
-    def fake_prompt_llm(**kwargs):
-        if kwargs.get("on_chunk") is not None:
-            kwargs["on_chunk"]("Assistant reply.")
-        return "Assistant reply."
-
-    monkeypatch.setattr(discussions_module, "prompt_llm", fake_prompt_llm)
-
-    discussion_id = prompt_helpers.start_prompt_for_discussion(
-        discussion_id=str(created["discussion_id"]),
-        prompt="Hello explicit discussion",
-    )
-
-    assert discussion_id == str(created["discussion_id"])
-    assert prompt_helpers.wait_for_prompt_completion(discussion_id, timeout=2.0) is True
-    transcript = prompt_helpers.get_discussion_transcript(discussion_id)
-    assert "Assistant reply." in transcript["content"]
+    assert response.final_text == "Hello  world"
+    assert captured["activity"]
+    assert captured["activity"][-1]["text"] == "Hello world"
+    assert captured["activity"][-1]["provider"] == "test"
+    assert captured["activity"][-1]["endpoint"] == "/v1/chat/completions"

@@ -54,17 +54,4 @@ def wait_for_loop_task(task_id: str, timeout: float | None = None) -> bool:
 
 
 def get_loop_task_transcript(task_id: str) -> dict[str, Any] | None:
-    runner = get_agent_loop_runner()
-    task = runner.get_task(task_id)
-    if task is None:
-        return None
-    discussion_id = str(task.get("discussion_id") or "").strip()
-    if not discussion_id:
-        return {"task_id": task_id, "transcript": None}
-    from apmatia.modules.apmatia_agent_loops.prompt_helpers import get_discussion_transcript
-
-    return {
-        "task_id": task_id,
-        "discussion_id": discussion_id,
-        "transcript": get_discussion_transcript(discussion_id),
-    }
+    return get_agent_loop_runner().get_task_transcript(task_id)

@@ -108,7 +108,14 @@ def require_auth():
 
 def initialize_ui_preferences():
     """Load persisted UI preferences once per session."""
-    if "ui_theme_preference" in st.session_state and "ui_font_family" in st.session_state:
+    if (
+        "ui_theme_preference" in st.session_state
+        and "ui_font_family" in st.session_state
+        and "ui_terminal_background_color" in st.session_state
+        and "ui_terminal_text_color" in st.session_state
+        and "ui_terminal_border_color" in st.session_state
+        and "ui_terminal_muted_color" in st.session_state
+    ):
         return
 
     try:
@@ -116,6 +123,10 @@ def initialize_ui_preferences():
     except ApiError:
         st.session_state["ui_theme_preference"] = "dark"
         st.session_state.setdefault("ui_font_family", "system-ui")
+        st.session_state.setdefault("ui_terminal_background_color", "#000000")
+        st.session_state.setdefault("ui_terminal_text_color", "#9dffad")
+        st.session_state.setdefault("ui_terminal_border_color", "rgba(110, 255, 170, 0.35)")
+        st.session_state.setdefault("ui_terminal_muted_color", "rgba(157, 255, 173, 0.72)")
         return
 
     preference = str(current_settings.get("theme", "dark") or "dark").lower()
@@ -123,12 +134,28 @@ def initialize_ui_preferences():
         preference = "dark"
     st.session_state["ui_theme_preference"] = preference
     st.session_state["ui_font_family"] = str(current_settings.get("font_family", "system-ui") or "system-ui")
+    st.session_state["ui_terminal_background_color"] = str(
+        current_settings.get("terminal_background_color", "#000000") or "#000000"
+    )
+    st.session_state["ui_terminal_text_color"] = str(current_settings.get("terminal_text_color", "#9dffad") or "#9dffad")
+    st.session_state["ui_terminal_border_color"] = str(
+        current_settings.get("terminal_border_color", "rgba(110, 255, 170, 0.35)")
+        or "rgba(110, 255, 170, 0.35)"
+    )
+    st.session_state["ui_terminal_muted_color"] = str(
+        current_settings.get("terminal_muted_color", "rgba(157, 255, 173, 0.72)")
+        or "rgba(157, 255, 173, 0.72)"
+    )
 
 
 def apply_theme_styles():
     """Apply the active appearance theme."""
     theme = st.session_state.get("ui_theme_preference", "dark")
     font_family = st.session_state.get("ui_font_family", "system-ui")
+    terminal_background_color = st.session_state.get("ui_terminal_background_color", "#000000")
+    terminal_text_color = st.session_state.get("ui_terminal_text_color", "#9dffad")
+    terminal_border_color = st.session_state.get("ui_terminal_border_color", "rgba(110, 255, 170, 0.35)")
+    terminal_muted_color = st.session_state.get("ui_terminal_muted_color", "rgba(157, 255, 173, 0.72)")
     css = """
 <style>
 :root {
@@ -140,6 +167,10 @@ def apply_theme_styles():
   --apm-muted: #b8c0d4;
   --apm-accent: #ff6b6b;
   --apm-font-family: %s;
+  --apm-terminal-bg: %s;
+  --apm-terminal-text: %s;
+  --apm-terminal-border: %s;
+  --apm-terminal-muted: %s;
 }
 
 @media (prefers-color-scheme: light) {
@@ -151,14 +182,20 @@ def apply_theme_styles():
     --apm-text: #18212f;
     --apm-muted: #516074;
     --apm-accent: #dd4b39;
-  }
+    }
 }
 """
     font_family_css = ", ".join(
         f'"{part.strip()}"' if " " in part.strip() and not part.strip().startswith("var(") else part.strip()
         for part in [font_family]
     )
-    css = css % font_family_css
+    css = css % (
+        font_family_css,
+        terminal_background_color,
+        terminal_text_color,
+        terminal_border_color,
+        terminal_muted_color,
+    )
     if theme == "dark":
         css += """
 :root {
@@ -617,16 +654,21 @@ def _render_contacts_sidebar():
 
 
 def _render_agent_loops_sidebar() -> str:
+    if st.sidebar.button("Back to Apmatia", key="agent_loops_exit_top", use_container_width=True):
+        _deactivate_agent_loops_shell()
+        st.rerun()
+
+    st.sidebar.divider()
+    st.sidebar.title("Apmatia Agent Loops")
+
     try:
         modules = _visible_module_catalog()
     except ApiError as error:
-        st.sidebar.title("Apmatia Agent Loops")
         st.sidebar.error(f"Unable to load module views: {error.detail}")
         return st.session_state["selected_page"]
 
     module = next((item for item in modules if str(item.get("module_id") or "") == "apmatia_agent_loops"), None)
     if module is None:
-        st.sidebar.title("Apmatia Agent Loops")
         st.sidebar.info("Apmatia Agent Loops is not available yet.")
         return st.session_state["selected_page"]
 
@@ -640,37 +682,33 @@ def _render_agent_loops_sidebar() -> str:
         None,
     )
     if contacts_view is None:
-        st.sidebar.title("Apmatia Agent Loops")
         st.sidebar.info("Apmatia Agent Loops does not currently expose a contact list.")
         return st.session_state["selected_page"]
 
-    if st.sidebar.button("Back to Apmatia", key="agent_loops_exit_top", use_container_width=True):
-        _deactivate_agent_loops_shell()
-        st.rerun()
-
-    st.sidebar.divider()
-
     contact_items = list_module_view_items(str(contacts_view.get("view_id") or ""))
-    nav_spec = adapt_module_view(contacts_view, items=contact_items)
+
+    active_contact_id = str(st.session_state.get("agent_loops_selected_contact_id") or "")
+    valid_contact_ids = {str(item.get("id") or "").strip() for item in contact_items if str(item.get("id") or "").strip()}
+    if contact_items and (not active_contact_id or active_contact_id not in valid_contact_ids):
+        _activate_agent_loops_contact(contact_items[0])
+        st.rerun()
 
     st.session_state["agent_loops_shell_active"] = True
     st.session_state["agent_loops_shell_sidebar_rendered"] = True
 
-    selected_contact_id = str(st.session_state.get("agent_loops_selected_contact_id") or "").strip()
-    valid_contact_ids = {str(item.get("id") or "").strip() for item in contact_items if str(item.get("id") or "").strip()}
-    if contact_items and (not selected_contact_id or selected_contact_id not in valid_contact_ids):
-        _activate_agent_loops_contact(contact_items[0])
-        st.rerun()
-
-    nav_choice = render_navigation_pane(nav_spec, items=contact_items, active_item_id=selected_contact_id or None)
-    if nav_choice == "__exit__":
-        _deactivate_agent_loops_shell()
-        st.rerun()
-    if nav_choice:
-        selected_contact = next((item for item in contact_items if str(item.get("id") or "") == nav_choice), None)
-        if selected_contact is not None:
-            _activate_agent_loops_contact(selected_contact)
-        st.rerun()
+    if contact_items:
+        for contact in contact_items:
+            contact_id = str(contact.get("id") or "")
+            contact_label = str(contact.get("title") or contact.get("label") or contact_id or "Contact")
+            button_type = "primary" if active_contact_id and contact_id == active_contact_id else "secondary"
+            if st.sidebar.button(
+                contact_label,
+                key=f"agent_loops_nav_{contact_id or contact_label}",
+                type=button_type,
+                use_container_width=True,
+            ):
+                _activate_agent_loops_contact(contact)
+                st.rerun()
 
     st.sidebar.divider()
     if st.sidebar.button("Back to Apmatia", key="agent_loops_exit_bottom", use_container_width=True):

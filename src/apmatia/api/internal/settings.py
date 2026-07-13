@@ -23,6 +23,10 @@ def save_settings_payload(
     font_size: int,
     title_bar_height: int,
     title_bar_font_size: int,
+    terminal_background_color: str = "#000000",
+    terminal_text_color: str = "#9dffad",
+    terminal_border_color: str = "rgba(110, 255, 170, 0.35)",
+    terminal_muted_color: str = "rgba(157, 255, 173, 0.72)",
 ) -> None:
     _save_settings_payload(
         llama_server_log_dir=llama_server_log_dir,
@@ -36,4 +40,8 @@ def save_settings_payload(
         font_size=font_size,
         title_bar_height=title_bar_height,
         title_bar_font_size=title_bar_font_size,
+        terminal_background_color=terminal_background_color,
+        terminal_text_color=terminal_text_color,
+        terminal_border_color=terminal_border_color,
+        terminal_muted_color=terminal_muted_color,
     )

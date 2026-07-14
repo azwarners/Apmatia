@@ -5,6 +5,7 @@ from dataclasses import replace
 import json
 import re
 from collections.abc import Iterable
+from datetime import date, datetime, time
 
 import streamlit as st
 
@@ -107,6 +108,7 @@ def render() -> None:
 
     spec = adapt_module_view(selected_view, items=items)
     spec = _enrich_participant_view(spec, selected_view)
+    spec = _enrich_agent_alarm_view(spec, selected_view)
     is_participant_view = _is_participant_view(selected_view)
     render_spec = replace(spec, create_form=None, view_actions=()) if is_participant_view else spec
     intents = render_module_view(render_spec)
@@ -192,6 +194,20 @@ def render() -> None:
                 st.success("Local resources inspected.")
                 st.rerun()
             return
+        if intent.intent == "save":
+            command_id = str(intent.payload.get("command_id") or "").strip()
+            if not command_id:
+                st.warning("Save is not configured for this module view.")
+                continue
+            payload = {key: value for key, value in intent.payload.items() if key != "command_id"}
+            try:
+                result = execute_module_command(command_id, **_json_safe_payload(payload))
+            except ApiError as error:
+                st.error(f"Unable to save configuration: {error.detail}")
+            else:
+                _display_module_command_result(result, default_success="Configuration saved.")
+                st.rerun()
+            return
         if intent.intent != "delete":
             continue
         command_id = str(intent.payload.get("command_id") or "").strip()
@@ -273,7 +289,7 @@ def render() -> None:
                 return
             if submitted:
                 try:
-                    result = execute_module_command(command_id, item_id=item_id, **payload)
+                    result = execute_module_command(command_id, item_id=item_id, **_json_safe_payload(payload))
                 except ApiError as error:
                     st.error(f"Unable to edit item: {error.detail}")
                 else:
@@ -316,7 +332,7 @@ def render() -> None:
                 return
             if submitted:
                 try:
-                    result = execute_module_command(command_id, item_id=item_id, **payload)
+                    result = execute_module_command(command_id, item_id=item_id, **_json_safe_payload(payload))
                 except ApiError as error:
                     st.error(f"Unable to edit item: {error.detail}")
                 else:
@@ -472,7 +488,7 @@ def render() -> None:
                 st.error("This form action is not configured.")
                 return
             try:
-                result = execute_module_command(command_id, **payload)
+                result = execute_module_command(command_id, **_json_safe_payload(payload))
             except ApiError as error:
                 st.error(f"Unable to prepare SSH key: {error.detail}")
             else:
@@ -495,7 +511,7 @@ def render() -> None:
                 st.error("Create is not configured for this module view.")
                 return
             try:
-                execute_module_command(command_id, **payload)
+                execute_module_command(command_id, **_json_safe_payload(payload))
             except ApiError as error:
                 st.error(f"Unable to create item: {error.detail}")
             else:
@@ -519,6 +535,27 @@ def _edit_confirmation_target() -> dict[str, object] | None:
 def _disable_confirmation_target() -> dict[str, object] | None:
     target = st.session_state.get("module_view_disable_target")
     return target if isinstance(target, dict) else None
+
+
+def _display_module_command_result(result: object, *, default_success: str) -> None:
+    if not isinstance(result, dict):
+        st.success(default_success)
+        return
+
+    warning = str(result.get("warning") or "").strip()
+    warnings = result.get("warnings")
+    message = str(result.get("message") or "").strip()
+    if warning:
+        st.warning(warning)
+    if isinstance(warnings, list):
+        for entry in warnings:
+            text = str(entry or "").strip()
+            if text:
+                st.warning(text)
+    if message:
+        st.success(message)
+    else:
+        st.success(default_success)
 
 
 def _delete_target_missing(target: dict[str, object], items: Iterable[object]) -> bool:
@@ -579,6 +616,80 @@ def _enrich_participant_view(
         return spec
 
     return replace(spec, create_form=replace(create_form, fields=tuple(updated_fields)))
+
+
+def _enrich_agent_alarm_view(
+    spec: object,
+    selected_view: dict[str, object],
+):
+    if str(selected_view.get("view_id") or "").strip() != "agent_alarms.alarms.view":
+        return spec
+
+    create_form = getattr(spec, "create_form", None)
+    edit_form = getattr(spec, "edit_form", None)
+    if create_form is None and edit_form is None:
+        return spec
+
+    try:
+        agents = list_agents()
+    except ApiError:
+        agents = []
+    try:
+        model_configs = list_llm_configs()
+    except ApiError:
+        model_configs = []
+
+    agent_options = tuple(
+        {
+            "label": _alarm_agent_option_label(agent),
+            "value": agent.get("id"),
+        }
+        for agent in agents
+        if isinstance(agent, dict) and agent.get("id") is not None
+    )
+    model_options = tuple(
+        {
+            "label": _alarm_model_option_label(config),
+            "value": config.get("id"),
+        }
+        for config in model_configs
+        if isinstance(config, dict) and config.get("id") is not None
+    )
+
+    if create_form is not None:
+        create_form = _replace_alarm_form_options(create_form, agent_options, model_options)
+    if edit_form is not None:
+        edit_form = _replace_alarm_form_options(edit_form, agent_options, model_options)
+    return replace(spec, create_form=create_form, edit_form=edit_form)
+
+
+def _replace_alarm_form_options(form, agent_options: tuple[dict[str, object], ...], model_options: tuple[dict[str, object], ...]):
+    updated_fields = []
+    for field in form.fields:
+        if field.key == "agent_id":
+            updated_fields.append(replace(field, options=agent_options))
+            continue
+        if field.key == "model_id":
+            updated_fields.append(replace(field, options=model_options))
+            continue
+        updated_fields.append(field)
+    return replace(form, fields=tuple(updated_fields))
+
+
+def _alarm_agent_option_label(agent: dict[str, object]) -> str:
+    name = str(agent.get("name") or "").strip()
+    return name or "Unnamed agent"
+
+
+def _alarm_model_option_label(config: dict[str, object]) -> str:
+    alias = str(config.get("user_alias") or "").strip()
+    if alias:
+        return alias
+    name = str(config.get("name") or "").strip()
+    if name:
+        return name
+    provider_name = str(config.get("provider_name") or "").strip()
+    return provider_name or "Unnamed model"
 
 
 def _is_participant_view(selected_view: dict[str, object]) -> bool:
@@ -651,7 +762,7 @@ def _render_participant_view_controls(
                     st.error("Create is not configured for this module view.")
                     return
                 try:
-                    execute_module_command(command_id, **payload)
+                    execute_module_command(command_id, **_json_safe_payload(payload))
                 except ApiError as error:
                     st.error(f"Unable to create chat target: {error.detail}")
                 else:
@@ -2034,6 +2145,22 @@ def _safe_int(value: object, default: int | None = None) -> int | None:
         return default if value is None else int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _json_safe_payload(payload: object) -> object:
+    if isinstance(payload, dict):
+        return {str(key): _json_safe_payload(value) for key, value in payload.items()}
+    if isinstance(payload, list):
+        return [_json_safe_payload(value) for value in payload]
+    if isinstance(payload, tuple):
+        return [_json_safe_payload(value) for value in payload]
+    if isinstance(payload, date) and not isinstance(payload, datetime):
+        return payload.isoformat()
+    if isinstance(payload, time):
+        return payload.isoformat()
+    if isinstance(payload, datetime):
+        return payload.isoformat()
+    return payload
 
 
 def _agent_option_label(agent: object, agents: list[dict[str, object]] | None = None) -> str:

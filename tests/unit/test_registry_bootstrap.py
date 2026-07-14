@@ -13,6 +13,7 @@ def test_load_bundled_modules_loads_bundled_modules():
     registry = load_bundled_modules(Registry())
 
     assert [module.module_id for module in registry.list_modules()] == [
+        "agent_alarms",
         "apmatia_agent_loops",
         "apmatia_ai_host_management",
         "apmatia_ai_model_executor",
@@ -24,6 +25,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "apmatia_worksim",
     ]
     assert [action.action_id for action in registry.list_actions()] == [
+        "agent_alarms.alarms",
         "apmatia_ai_host_management.hosts",
         "apmatia_ai_host_management.resources",
         "apmatia_ai_model_executor.executions",
@@ -40,9 +42,14 @@ def test_load_bundled_modules_loads_bundled_modules():
         "apmatia_ipe.idea",
         "apmatia_ipe.project",
         "apmatia_ipe.task",
+        "apmatia_knowledge.agent_config",
         "apmatia_worksim.org_chart_node",
     ]
     assert [command.command_id for command in registry.list_commands()] == [
+        "agent_alarms.alarms.create",
+        "agent_alarms.alarms.delete",
+        "agent_alarms.alarms.edit",
+        "agent_alarms.alarms.list",
         "apmatia_agent_loops.tasks.stop",
         "apmatia_ai_host_management.hosts.create",
         "apmatia_ai_host_management.hosts.delete",
@@ -110,12 +117,14 @@ def test_load_bundled_modules_loads_bundled_modules():
         "apmatia_ipe.task.delete",
         "apmatia_ipe.task.edit",
         "apmatia_ipe.task.list",
+        "apmatia_knowledge.agent_config.save",
         "apmatia_worksim.org_chart_node.create",
         "apmatia_worksim.org_chart_node.delete",
         "apmatia_worksim.org_chart_node.edit",
         "apmatia_worksim.org_chart_node.list",
     ]
     assert [view.view_id for view in registry.list_views()] == [
+        "agent_alarms.alarms.view",
         "apmatia_agent_loops.contacts.view",
         "apmatia_agent_loops.knowledge.view",
         "apmatia_agent_loops.tasks.view",
@@ -130,6 +139,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "apmatia_ipe.idea.view",
         "apmatia_ipe.project.view",
         "apmatia_ipe.task.view",
+        "apmatia_knowledge.agent_config.view",
         "apmatia_worksim.org_chart_node.view",
     ]
 
@@ -151,6 +161,7 @@ def test_get_application_registry_returns_cached_registry():
 
     assert first is second
     assert [module.module_id for module in first.list_modules()] == [
+        "agent_alarms",
         "apmatia_agent_loops",
         "apmatia_ai_host_management",
         "apmatia_ai_model_executor",

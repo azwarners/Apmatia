@@ -554,6 +554,7 @@ def test_ysparr_model_executor_uses_agent_model_config_and_tool_calls(monkeypatc
     assert [message["role"] for message in captured["request_metadata"]["chat_messages"]] == ["system", "user"]
     assert response.final_text == "Working"
     assert [tool.tool_name for tool in response.tool_requests] == ["lookup"]
+    assert response.raw_response["selected_model_id"] == 11
 
 
 def test_ysparr_model_executor_streams_visible_chunks_into_activity_sink(monkeypatch):

@@ -18,6 +18,8 @@ class MockAgent:
         self.tool_ids = kwargs.get("tool_ids", [])
         self.default_model_id = kwargs.get("default_model_id")
         self.active_model_id = kwargs.get("active_model_id")
+        self.workspace_root = kwargs.get("workspace_root", "")
+        self.knowledge_root = kwargs.get("knowledge_root", "")
         self.metadata = kwargs.get("metadata", {})
 
 
@@ -45,6 +47,7 @@ class TestCreateAgent:
             tool_ids=[300],
             default_model_id=400,
             active_model_id=500,
+            knowledge_root="/tmp/knowledge",
         )
         mock_manager = MagicMock()
         mock_manager.create_agent.return_value = mock_agent
@@ -67,6 +70,7 @@ class TestCreateAgent:
         assert result["tool_ids"] == [300]
         assert result["default_model_id"] == 400
         assert result["active_model_id"] == 500
+        assert result["knowledge_root"] == "/tmp/knowledge"
 
 
 class TestGetAgent:
@@ -185,6 +189,7 @@ class TestAgentToDict:
             tool_ids=[300, 400],
             default_model_id=500,
             active_model_id=600,
+            knowledge_root="/tmp/knowledge",
             metadata={"key": "value"},
         )
 
@@ -201,4 +206,6 @@ class TestAgentToDict:
         assert result["tool_ids"] == [300, 400]
         assert result["default_model_id"] == 500
         assert result["active_model_id"] == 600
+        assert result["workspace_root"] == ""
+        assert result["knowledge_root"] == "/tmp/knowledge"
         assert result["metadata"] == {"key": "value"}

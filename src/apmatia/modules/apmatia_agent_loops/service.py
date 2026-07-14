@@ -73,6 +73,8 @@ class LoopTaskRequest:
     member_group_ids: set[int] | None = None
     max_tool_calls: int = 10
     timeout_seconds: float | None = None
+    selected_model_id: int | None = None
+    workspace_root: str | None = None
 
 
 class EventCancellationToken(CancellationToken):
@@ -309,11 +311,23 @@ class YsparrModelExecutor:
         final_text = strip_tool_calls(reply_text).strip() or None
         if not tool_requests and not final_text:
             return self._fallback_executor.generate(request, cancellation)
-        return self._build_response(reply_text=reply_text, tool_requests=tool_requests, final_text=final_text, llm_config=llm_config)
+        return self._build_response(
+            request=request,
+            reply_text=reply_text,
+            tool_requests=tool_requests,
+            final_text=final_text,
+            llm_config=llm_config,
+        )
 
     def _resolve_llm_config(self, task: AgentLoopTask):
         agent_manager = get_agent_manager()
         llm_manager = get_llm_config_manager()
+
+        if task.selected_model_id is not None:
+            llm_config = llm_manager.get_config(int(task.selected_model_id))
+            if llm_config is None:
+                raise ValueError(f"Selected model not found: {task.selected_model_id}")
+            return llm_config
 
         candidate_agent_ids: list[int] = []
         if task.agent_id is not None:
@@ -388,7 +402,7 @@ class YsparrModelExecutor:
         lines.append("Respond with the next step for the task and include the required <loop_status> block.")
         return "\n".join(lines)
 
-    def _build_response(self, *, reply_text: str, tool_requests: tuple, final_text: str | None, llm_config) -> "ModelResponse":  # type: ignore[no-untyped-def]
+    def _build_response(self, *, request, reply_text: str, tool_requests: tuple, final_text: str | None, llm_config) -> "ModelResponse":  # type: ignore[no-untyped-def]
         from .models import ModelResponse
 
         return ModelResponse(
@@ -403,6 +417,7 @@ class YsparrModelExecutor:
                 "model_id": getattr(llm_config, "id", None),
                 "provider_name": getattr(llm_config, "provider_name", ""),
                 "backend": getattr(llm_config, "backend", ""),
+                "selected_model_id": getattr(request.task, "selected_model_id", None),
             },
         )
 
@@ -703,6 +718,52 @@ class AgentLoopRuntime:
             thread.start()
         return self.get_task(str(task.id or "")) or task.to_dict()
 
+    def start_loop(self, *, agent_id: int, prompt: str, model_id: int | None = None) -> dict[str, Any]:
+        agent = get_agent_manager().get_agent(int(agent_id))
+        if agent is None:
+            raise ValueError(f"Agent not found: {agent_id}")
+
+        workspace_root = str(agent.workspace_root or "").strip()
+        if not workspace_root:
+            workspace_root = str(self._workspace_root / "agents" / f"agent-{int(agent.id or agent_id)}")
+
+        task = AgentLoopTask(
+            id=new_task_id(),
+            owner_user_id=agent.owner_user_id,
+            owner_group_id=agent.owner_group_id,
+            mode=agent.mode,
+            title=f"Alarm run for {agent.name or f'Agent {agent_id}'}",
+            contact_kind="agent",
+            contact_id=str(agent_id),
+            prompt=str(prompt or "").strip(),
+            checklist=(),
+            participant_agent_ids=(),
+            agent_id=int(agent_id),
+            selected_model_id=None if model_id is None else int(model_id),
+            chat_mode="single",
+            allow_tools=True,
+            max_model_turns=5,
+            max_tool_calls=10,
+            status=TaskStatus.QUEUED,
+            execution_status=ExecutionStatus.PENDING,
+            workspace_root=workspace_root,
+            knowledge_root="",
+            metadata={"source": "agent_alarms"},
+        )
+        token = EventCancellationToken()
+        self._repository.save(task)
+        with self._lock:
+            self._tokens[str(task.id or "")] = token
+            thread = Thread(
+                target=self._run_task,
+                args=(str(task.id or ""), token),
+                name=f"apmatia-agent-loop-{task.id}",
+                daemon=True,
+            )
+            self._threads[str(task.id or "")] = thread
+            thread.start()
+        return self.get_loop_run(str(task.id or "")) or task.to_dict()
+
     def list_tasks(self, *, contact_kind: str | None = None, contact_id: int | str | None = None) -> list[dict[str, Any]]:
         tasks = self._repository.list_all()
         if contact_kind is not None:
@@ -714,6 +775,9 @@ class AgentLoopRuntime:
     def get_task(self, task_id: str) -> dict[str, Any] | None:
         task = self._repository.get(task_id)
         return None if task is None else task.to_dict()
+
+    def get_loop_run(self, run_id: str) -> dict[str, Any] | None:
+        return self.get_task(run_id)
 
     def stop_task(self, task_id: str) -> dict[str, Any] | None:
         task = self._repository.get(task_id)
@@ -831,9 +895,10 @@ class AgentLoopRuntime:
             max_model_turns=max(1, int(request.max_iterations)),
             max_tool_calls=max(1, int(request.max_tool_calls)),
             timeout_seconds=request.timeout_seconds,
+            selected_model_id=request.selected_model_id,
             status=TaskStatus.QUEUED,
             execution_status=ExecutionStatus.PENDING,
-            workspace_root=str(roots.workspace_root),
+            workspace_root=str(request.workspace_root or roots.workspace_root),
             knowledge_root=str(roots.knowledge_root),
             metadata={
                 "member_group_ids": sorted(int(item) for item in (request.member_group_ids or set()) if str(item).strip()),
@@ -850,3 +915,11 @@ def get_agent_loop_runner() -> AgentLoopRuntime:
     if _runtime is None:
         _runtime = AgentLoopRuntime()
     return _runtime
+
+
+def start_agent_loop(*, agent_id: int, prompt: str, model_id: int | None = None) -> dict[str, Any]:
+    return get_agent_loop_runner().start_loop(agent_id=agent_id, prompt=prompt, model_id=model_id)
+
+
+def get_agent_loop_run(run_id: str) -> dict[str, Any] | None:
+    return get_agent_loop_runner().get_loop_run(run_id)

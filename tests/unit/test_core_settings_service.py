@@ -12,6 +12,9 @@ def _valid_payload() -> dict:
         "auto_scan_gguf_directory": True,
         "llama_server_executable_path": "/usr/bin/llama-server",
         "llama_server_default_args": "--ctx-size 4096\n--host 0.0.0.0",
+        "workspace_root": "/tmp/workspace",
+        "knowledge_root": "/tmp/knowledge",
+        "timezone": "America/Phoenix",
         "theme": "light",
         "font_family": "serif",
         "accent_color": "#123abc",
@@ -21,7 +24,9 @@ def _valid_payload() -> dict:
     }
 
 
-def test_get_settings_payload_returns_ui_preferences():
+def test_get_settings_payload_returns_ui_preferences(tmp_path):
+    workspace_root = tmp_path / "workspace"
+    knowledge_root = tmp_path / "knowledge"
     values = {
         ("llama_server", "log_dir"): "/var/log/llama.cpp",
         ("ai_model_manager", "gguf_directories"): ["/models/gguf", "/alt/models/gguf"],
@@ -29,6 +34,9 @@ def test_get_settings_payload_returns_ui_preferences():
         ("ai_model_manager", "auto_scan_gguf_directory"): True,
         ("ai_model_executor", "runtime_config", "executable_path"): "/usr/bin/llama-server",
         ("ai_model_executor", "runtime_config", "default_args"): ["--ctx-size 4096", "--host 0.0.0.0"],
+        ("workspace", "root"): str(workspace_root),
+        ("knowledge", "root"): str(knowledge_root),
+        ("ui", "timezone"): "America/Phoenix",
         ("ui", "theme"): "light",
         ("ui", "font_family"): "monospace",
         ("ui", "accent_color"): "#123abc",
@@ -54,6 +62,9 @@ def test_get_settings_payload_returns_ui_preferences():
         "auto_scan_gguf_directory": True,
         "llama_server_executable_path": "/usr/bin/llama-server",
         "llama_server_default_args": "--ctx-size 4096\n--host 0.0.0.0",
+        "workspace_root": str(workspace_root),
+        "knowledge_root": str(knowledge_root),
+        "timezone": "America/Phoenix",
         "theme": "light",
         "font_family": "monospace",
         "accent_color": "#123abc",
@@ -65,11 +76,17 @@ def test_get_settings_payload_returns_ui_preferences():
         "terminal_border_color": "rgba(110, 255, 170, 0.35)",
         "terminal_muted_color": "rgba(157, 255, 173, 0.72)",
     }
+    assert workspace_root.is_dir()
+    assert knowledge_root.is_dir()
 
 
 @patch("apmatia.core.settings_service.set_config_value")
-def test_save_settings_payload_persists_ui_settings(mock_set_config_value):
-    save_settings_payload(**_valid_payload())
+def test_save_settings_payload_persists_ui_settings(mock_set_config_value, tmp_path):
+    payload = _valid_payload()
+    payload["workspace_root"] = str(tmp_path / "workspace")
+    payload["knowledge_root"] = str(tmp_path / "knowledge")
+
+    save_settings_payload(**payload)
 
     mock_set_config_value.assert_any_call("llama_server", "log_dir", value="/var/log/llama.cpp")
     mock_set_config_value.assert_any_call("ai_model_manager", "gguf_directories", value=["/models/gguf", "/alt/models/gguf"])
@@ -77,6 +94,9 @@ def test_save_settings_payload_persists_ui_settings(mock_set_config_value):
     mock_set_config_value.assert_any_call("ai_model_manager", "auto_scan_gguf_directory", value=True)
     mock_set_config_value.assert_any_call("ai_model_executor", "runtime_config", "executable_path", value="/usr/bin/llama-server")
     mock_set_config_value.assert_any_call("ai_model_executor", "runtime_config", "default_args", value=["--ctx-size 4096", "--host 0.0.0.0"])
+    mock_set_config_value.assert_any_call("workspace", "root", value=str(tmp_path / "workspace"))
+    mock_set_config_value.assert_any_call("knowledge", "root", value=str(tmp_path / "knowledge"))
+    mock_set_config_value.assert_any_call("ui", "timezone", value="America/Phoenix")
     mock_set_config_value.assert_any_call("ui", "theme", value="light")
     mock_set_config_value.assert_any_call("ui", "font_family", value="serif")
     mock_set_config_value.assert_any_call("ui", "accent_color", value="#123abc")
@@ -87,6 +107,8 @@ def test_save_settings_payload_persists_ui_settings(mock_set_config_value):
     mock_set_config_value.assert_any_call("ui", "terminal_text_color", value="#9dffad")
     mock_set_config_value.assert_any_call("ui", "terminal_border_color", value="rgba(110, 255, 170, 0.35)")
     mock_set_config_value.assert_any_call("ui", "terminal_muted_color", value="rgba(157, 255, 173, 0.72)")
+    assert (tmp_path / "workspace").is_dir()
+    assert (tmp_path / "knowledge").is_dir()
 
 
 @pytest.mark.parametrize(
@@ -97,6 +119,7 @@ def test_save_settings_payload_persists_ui_settings(mock_set_config_value):
         ("font_size", 11, "Font size must be between 12 and 24."),
         ("title_bar_height", 39, "Title bar height must be between 40 and 96."),
         ("title_bar_font_size", 41, "Title bar font size must be between 12 and 40."),
+        ("timezone", "Not/A-Real-Zone", "Timezone must be a valid IANA timezone like America/Phoenix."),
     ],
 )
 def test_save_settings_payload_validates_inputs(field, value, message):
@@ -107,7 +130,9 @@ def test_save_settings_payload_validates_inputs(field, value, message):
         save_settings_payload(**payload)
 
 
-def test_get_settings_payload_falls_back_to_llama_server_env():
+def test_get_settings_payload_falls_back_to_llama_server_env(tmp_path):
+    workspace_root = tmp_path / "workspace"
+    knowledge_root = tmp_path / "knowledge"
     def fake_get_config_value(*keys, default=None):
         if keys == ("llama_server", "log_dir"):
             return None
@@ -121,6 +146,12 @@ def test_get_settings_payload_falls_back_to_llama_server_env():
             return None
         if keys == ("ai_model_executor", "runtime_config", "default_args"):
             return []
+        if keys == ("workspace", "root"):
+            return str(workspace_root)
+        if keys == ("knowledge", "root"):
+            return str(knowledge_root)
+        if keys == ("ui", "timezone"):
+            return "America/Phoenix"
         return default
 
     with patch.dict(
@@ -139,6 +170,9 @@ def test_get_settings_payload_falls_back_to_llama_server_env():
     assert payload["gguf_directory"] == "/models/gguf"
     assert payload["llama_server_executable_path"] == "/usr/bin/llama-server"
     assert payload["llama_server_default_args"] == ""
+    assert payload["workspace_root"] == str(workspace_root)
+    assert payload["knowledge_root"] == str(knowledge_root)
+    assert payload["timezone"] == "America/Phoenix"
 
 
 @patch("apmatia.core.settings_service.set_config_value")
@@ -147,6 +181,8 @@ def test_save_settings_payload_auto_scans_gguf_directory(mock_manager_cls, mock_
     gguf_dir = tmp_path / "models"
     gguf_dir.mkdir()
     (gguf_dir / "alpha-7b.gguf").write_bytes(b"gguf")
+    workspace_root = tmp_path / "workspace"
+    knowledge_root = tmp_path / "knowledge"
 
     save_settings_payload(
         llama_server_log_dir="",
@@ -154,6 +190,9 @@ def test_save_settings_payload_auto_scans_gguf_directory(mock_manager_cls, mock_
         auto_scan_gguf_directory=True,
         llama_server_executable_path="llama-server",
         llama_server_default_args="",
+        workspace_root=str(workspace_root),
+        knowledge_root=str(knowledge_root),
+        timezone="America/Phoenix",
         theme="light",
         font_family="serif",
         accent_color="#123abc",
@@ -171,6 +210,8 @@ def test_save_settings_payload_scans_gguf_directory_even_when_auto_scan_disabled
     gguf_dir = tmp_path / "models"
     gguf_dir.mkdir()
     (gguf_dir / "alpha-7b.gguf").write_bytes(b"gguf")
+    workspace_root = tmp_path / "workspace"
+    knowledge_root = tmp_path / "knowledge"
 
     save_settings_payload(
         llama_server_log_dir="",
@@ -178,6 +219,9 @@ def test_save_settings_payload_scans_gguf_directory_even_when_auto_scan_disabled
         auto_scan_gguf_directory=False,
         llama_server_executable_path="llama-server",
         llama_server_default_args="",
+        workspace_root=str(workspace_root),
+        knowledge_root=str(knowledge_root),
+        timezone="America/Phoenix",
         theme="light",
         font_family="serif",
         accent_color="#123abc",
@@ -191,12 +235,17 @@ def test_save_settings_payload_scans_gguf_directory_even_when_auto_scan_disabled
 
 @patch("apmatia.core.settings_service.set_config_value")
 def test_save_settings_payload_normalizes_multiple_gguf_directories(mock_set_config_value):
+    workspace_root = "/tmp/workspace"
+    knowledge_root = "/tmp/knowledge"
     save_settings_payload(
         llama_server_log_dir="",
         gguf_directories="/models/gguf, /alt/models/gguf\n\n /third/models ",
         auto_scan_gguf_directory=True,
         llama_server_executable_path="llama-server",
         llama_server_default_args="",
+        workspace_root=workspace_root,
+        knowledge_root=knowledge_root,
+        timezone="America/Phoenix",
         theme="light",
         font_family="serif",
         accent_color="#123abc",
@@ -207,3 +256,6 @@ def test_save_settings_payload_normalizes_multiple_gguf_directories(mock_set_con
 
     mock_set_config_value.assert_any_call("ai_model_manager", "gguf_directories", value=["/models/gguf", "/alt/models/gguf", "/third/models"])
     mock_set_config_value.assert_any_call("ai_model_manager", "gguf_directory", value="/models/gguf")
+    mock_set_config_value.assert_any_call("workspace", "root", value=workspace_root)
+    mock_set_config_value.assert_any_call("knowledge", "root", value=knowledge_root)
+    mock_set_config_value.assert_any_call("ui", "timezone", value="America/Phoenix")

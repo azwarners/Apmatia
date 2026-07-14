@@ -58,6 +58,8 @@ class TestDefaultConfig:
         assert "ai_model_manager" in config
         assert "ai_model_executor" in config
         assert "llama_server" in config
+        assert "workspace" in config
+        assert "knowledge" in config
         assert "ui" in config
 
     def test_server_config_structure(self):
@@ -98,12 +100,19 @@ class TestDefaultConfig:
         assert config["ui"]["theme"] == "dark"
         assert config["ui"]["font_family"] == "system-ui"
         assert config["ui"]["accent_color"] == "#ff6b6b"
+        assert config["ui"]["timezone"] == "America/Phoenix"
         assert config["ui"]["font_size"] == 16
 
     def test_llama_server_config_structure(self):
         config = app_config._default_config()
 
         assert config["llama_server"]["log_dir"] == ""
+
+    def test_workspace_and_knowledge_config_structure(self):
+        config = app_config._default_config()
+
+        assert config["workspace"]["root"] == str(Path.home() / ".apmatia" / "workspace")
+        assert config["knowledge"]["root"] == str(Path.home() / ".apmatia" / "knowledge")
 
     def test_ai_model_manager_config_structure(self):
         config = app_config._default_config()
@@ -228,6 +237,7 @@ class TestSeedFromEnv:
             "APMATIA_LLAMA_SERVER_EXECUTABLE_PATH": "/usr/bin/llama-server",
             "APMATIA_LLAMA_SERVER_DEFAULT_ARGS": "--ctx-size 4096 --host 0.0.0.0",
             "APMATIA_LLAMA_SERVER_LOG_DIR": "/var/log/llama.cpp",
+            "APMATIA_TIMEZONE": "UTC",
         }
         with patch.dict(os.environ, env_vars):
             result = app_config._seed_from_env(config)
@@ -252,6 +262,7 @@ class TestSeedFromEnv:
         assert result["ai_model_executor"]["runtime_config"]["executable_path"] == "/usr/bin/llama-server"
         assert result["ai_model_executor"]["runtime_config"]["default_args"] == ["--ctx-size", "4096", "--host", "0.0.0.0"]
         assert result["llama_server"]["log_dir"] == "/var/log/llama.cpp"
+        assert result["ui"]["timezone"] == "UTC"
 
     def test_does_not_override_existing_saved_values_with_env_defaults(self):
         config = {
@@ -269,6 +280,12 @@ class TestSeedFromEnv:
 
         assert result["ai_model_manager"]["gguf_directory"] == "/saved/models"
         assert result["ai_model_manager"]["gguf_directories"] == ["/saved/models", "/saved/vision"]
+
+    def test_seeds_timezone_override(self):
+        config = app_config._default_config()
+        with patch.dict(os.environ, {"APMATIA_TIMEZONE": "UTC"}):
+            result = app_config._seed_from_env(config)
+        assert result["ui"]["timezone"] == "UTC"
 
 
 class TestMigrateLegacyState:

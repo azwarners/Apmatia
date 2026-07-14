@@ -29,6 +29,8 @@ def create_new_agent(
     tool_ids: list[int] = Body(default_factory=list, description="Tool IDs"),
     default_model_id: int | None = Body(None, description="Default model ID"),
     active_model_id: int | None = Body(None, description="Active model ID"),
+    workspace_root: str = Body("", description="Workspace root"),
+    knowledge_root: str = Body("", description="Knowledge root"),
     metadata: dict = Body(default_factory=dict, description="Metadata"),
 ) -> dict:
     """Create a new agent."""
@@ -44,6 +46,8 @@ def create_new_agent(
         tool_ids=tool_ids,
         default_model_id=default_model_id,
         active_model_id=active_model_id,
+        workspace_root=workspace_root,
+        knowledge_root=knowledge_root,
         metadata=metadata,
     )
 
@@ -79,6 +83,8 @@ def update_agent_by_id(
     tool_ids: list[int] | None = Body(None, description="Tool IDs"),
     default_model_id: int | None = Body(None, description="Default model ID"),
     active_model_id: int | None = Body(None, description="Active model ID"),
+    workspace_root: str | None = Body(None, description="Workspace root"),
+    knowledge_root: str | None = Body(None, description="Knowledge root"),
     metadata: dict | None = Body(None, description="Metadata"),
 ) -> dict:
     """Update an agent."""
@@ -126,6 +132,10 @@ def update_agent_by_id(
         updates["default_model_id"] = default_model_id
     if active_model_id is not None:
         updates["active_model_id"] = active_model_id
+    if workspace_root is not None:
+        updates["workspace_root"] = workspace_root
+    if knowledge_root is not None:
+        updates["knowledge_root"] = knowledge_root
     if metadata is not None:
         updates["metadata"] = metadata
     return update_agent(agent_id, **updates)

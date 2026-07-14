@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import importlib
+from datetime import date, time
 from unittest.mock import MagicMock, patch
 
 from apmatia.interfaces.streamlit.module_views.models import (
+    CollectionColumnDescriptor,
     CollectionViewDescriptor,
     ModuleViewActionDescriptor,
     ModuleViewFormActionDescriptor,
@@ -56,6 +58,193 @@ def test_module_views_page_renders_selected_catalog_view(mock_streamlit):
 
     mock_list_items.assert_called_once_with("example.collection.view")
     mock_render.assert_called_once()
+
+
+def test_module_views_page_saves_agent_config_changes(mock_streamlit):
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    module_views_page = importlib.reload(module_views_page)
+    mock_streamlit.session_state["selected_module_id"] = "apmatia_knowledge"
+    mock_streamlit.session_state["selected_module_view_id"] = "apmatia_knowledge.agent_config.view"
+    modules = [
+        {
+            "module_id": "apmatia_knowledge",
+            "name": "Agent Config",
+            "hidden": False,
+            "views": [
+                {
+                    "module_id": "apmatia_knowledge",
+                    "action_id": "apmatia_knowledge.agent_config",
+                    "view_id": "apmatia_knowledge.agent_config.view",
+                    "name": "Agent Config",
+                    "description": "Select an agent and configure its roots.",
+                    "metadata": {"ui": {"render_mode": "collection"}},
+                    "effective_hidden": False,
+                }
+            ],
+        }
+    ]
+    spec = CollectionViewDescriptor(
+        view_id="apmatia_knowledge.agent_config.view",
+        title="Agent Config",
+        view_actions=(
+            ModuleViewActionDescriptor(
+                key="save",
+                label="Save configuration",
+                intent="save",
+                scope="view",
+                style="primary",
+                payload={"command_id": "apmatia_knowledge.agent_config.save"},
+            ),
+        ),
+        items=(
+            {
+                "id": 1,
+                "name": "Planner",
+                "workspace_root": "/tmp/workspace",
+                "knowledge_root": "/tmp/knowledge",
+                "workspace_root_status": "Ready",
+                "knowledge_root_status": "Missing",
+            },
+        ),
+    )
+    save_intent = ModuleViewIntent(
+        view_id="apmatia_knowledge.agent_config.view",
+        intent="save",
+        action_key="save",
+        scope="view",
+        payload={
+            "command_id": "apmatia_knowledge.agent_config.save",
+            "agent_id": "1",
+            "workspace_root": "/tmp/workspace",
+            "knowledge_root": "/tmp/knowledge",
+        },
+    )
+
+    with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
+        module_views_page, "list_module_view_items", return_value=list(spec.items)
+    ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
+        module_views_page, "render_module_view", return_value=[save_intent]
+    ), patch.object(
+        module_views_page,
+        "execute_module_command",
+        return_value={
+            "status": "updated",
+            "message": "Saved configuration for Planner.",
+            "warnings": ["Knowledge root does not exist yet: /tmp/knowledge"],
+        },
+    ) as mock_execute:
+        module_views_page.render()
+
+    mock_execute.assert_called_once_with(
+        "apmatia_knowledge.agent_config.save",
+        agent_id="1",
+        workspace_root="/tmp/workspace",
+        knowledge_root="/tmp/knowledge",
+    )
+    mock_streamlit.warning.assert_any_call("Knowledge root does not exist yet: /tmp/knowledge")
+    mock_streamlit.success.assert_called_with("Saved configuration for Planner.")
+
+
+def test_render_module_view_emits_agent_config_save_intent(mock_streamlit):
+    from apmatia.interfaces.streamlit.module_views import renderers
+
+    renderers = importlib.reload(renderers)
+    spec = CollectionViewDescriptor(
+        view_id="apmatia_knowledge.agent_config.view",
+        title="Agent Config",
+        caption="Configure an agent.",
+        description="Select an agent and update its roots.",
+        empty_state="No agents available.",
+        columns=(
+            CollectionColumnDescriptor(key="name", label="Agent"),
+            CollectionColumnDescriptor(key="workspace_root", label="Workspace Root"),
+            CollectionColumnDescriptor(key="knowledge_root", label="Knowledge Root"),
+        ),
+        view_actions=(
+            ModuleViewActionDescriptor(
+                key="save",
+                label="Save configuration",
+                intent="save",
+                scope="view",
+                style="primary",
+                payload={"command_id": "apmatia_knowledge.agent_config.save"},
+            ),
+        ),
+        items=(
+            {
+                "id": 1,
+                "name": "Planner",
+                "workspace_root": "/tmp/workspace",
+                "knowledge_root": "/tmp/knowledge",
+                "workspace_root_status": "Ready",
+                "knowledge_root_status": "Missing",
+            },
+        ),
+    )
+    mock_streamlit.selectbox.return_value = spec.items[0]
+    mock_streamlit.text_input.side_effect = ["/tmp/workspace", "/tmp/knowledge"]
+    mock_streamlit.button.return_value = True
+
+    intents = renderers.render_module_view(spec)
+
+    assert intents
+    assert intents[0].intent == "save"
+    assert intents[0].payload["command_id"] == "apmatia_knowledge.agent_config.save"
+    assert intents[0].payload["agent_id"] == "1"
+    assert intents[0].payload["workspace_root"] == "/tmp/workspace"
+    assert intents[0].payload["knowledge_root"] == "/tmp/knowledge"
+
+
+def test_render_module_view_form_supports_label_value_select_and_datetime_fields(mock_streamlit):
+    from apmatia.interfaces.streamlit.module_views import renderers
+
+    renderers = importlib.reload(renderers)
+    mock_streamlit.form_submit_button.side_effect = [True]
+    form = ModuleViewFormDescriptor(
+        key="schedule_alarm",
+        title="Schedule alarm",
+        submit_label="Save",
+        cancel_label="",
+        fields=(
+            ModuleViewFormFieldDescriptor(
+                key="agent_id",
+                label="Agent",
+                field_type="select",
+                options=(
+                    {"label": "Planner", "value": 7},
+                    {"label": "Reviewer", "value": 8},
+                ),
+            ),
+            ModuleViewFormFieldDescriptor(
+                key="scheduled_start_date",
+                label="Scheduled date",
+                field_type="date",
+            ),
+            ModuleViewFormFieldDescriptor(
+                key="scheduled_start_time",
+                label="Scheduled time",
+                field_type="time",
+            ),
+        ),
+    )
+
+    submitted, cancelled, payload, action_key = renderers.render_module_view_form(
+        form,
+        form_key="schedule_alarm_form",
+        initial_values={
+            "agent_id": 8,
+            "scheduled_start_date": date(2026, 7, 13),
+            "scheduled_start_time": time(8, 30),
+        },
+    )
+
+    assert submitted is True
+    assert cancelled is False
+    assert action_key is None
+    assert payload["agent_id"] == 8
+    assert payload["scheduled_start_date"] == date(2026, 7, 13)
+    assert payload["scheduled_start_time"] == time(8, 30)
 
 
 def test_module_views_page_submits_create_form(mock_streamlit):
@@ -269,6 +458,84 @@ def test_module_views_page_prepares_ssh_key_from_form_action(mock_streamlit):
     assert mock_streamlit.session_state["module_view_create_draft:example.collection.view"]["credential_ref"] == "~/.apmatia/ssh/id_ed25519"
     assert mock_streamlit.session_state["module_view_create_notice:example.collection.view"]["message"] == "SSH key prepared at ~/.apmatia/ssh/id_ed25519."
     mock_streamlit.rerun.assert_called()
+
+
+def test_module_views_page_enriches_agent_alarm_dropdowns_and_schedule_fields(mock_streamlit):
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    module_views_page = importlib.reload(module_views_page)
+    mock_streamlit.session_state["selected_module_id"] = "agent_alarms"
+    mock_streamlit.session_state["selected_module_view_id"] = "agent_alarms.alarms.view"
+    mock_streamlit.session_state["module_view_create_open:agent_alarms.alarms.view"] = True
+    modules = [
+        {
+            "module_id": "agent_alarms",
+            "name": "Agent Alarms",
+            "hidden": False,
+            "views": [
+                {
+                    "module_id": "agent_alarms",
+                    "action_id": "agent_alarms.alarms",
+                    "view_id": "agent_alarms.alarms.view",
+                    "name": "Agent Alarms",
+                    "description": "Schedule autonomous alarm-style agent runs.",
+                    "metadata": {"ui": {"render_mode": "collection"}},
+                    "effective_hidden": False,
+                }
+            ],
+        }
+    ]
+    spec = CollectionViewDescriptor(
+        view_id="agent_alarms.alarms.view",
+        title="Agent Alarms",
+        view_actions=(
+            ModuleViewActionDescriptor(
+                key="create",
+                label="Create alarm",
+                intent="create",
+                scope="view",
+                style="primary",
+                payload={"command_id": "agent_alarms.alarms.create"},
+            ),
+        ),
+        create_form=ModuleViewFormDescriptor(
+            key="create_alarm",
+            title="Create alarm",
+            submit_label="Create alarm",
+            fields=(
+                ModuleViewFormFieldDescriptor(key="agent_id", label="Agent", field_type="select"),
+                ModuleViewFormFieldDescriptor(key="model_id", label="Model", field_type="select"),
+                ModuleViewFormFieldDescriptor(key="scheduled_start_date", label="Scheduled date", field_type="date"),
+                ModuleViewFormFieldDescriptor(key="scheduled_start_time", label="Scheduled time", field_type="time"),
+            ),
+        ),
+    )
+
+    captured_form = {}
+
+    def capture_form(form, **_kwargs):
+        captured_form["form"] = form
+        return False, False, {}, None
+
+    with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
+        module_views_page, "list_module_view_items", return_value=[]
+    ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
+        module_views_page, "render_module_view", return_value=[]
+    ), patch.object(module_views_page, "render_module_view_form", side_effect=capture_form), patch.object(
+        module_views_page, "list_agents", return_value=[{"id": 7, "name": "Planner"}]
+    ), patch.object(module_views_page, "list_llm_configs", return_value=[{"id": 11, "user_alias": "Fast alias"}]):
+        module_views_page.render()
+
+    rendered_form = captured_form["form"]
+    agent_field = next(field for field in rendered_form.fields if field.key == "agent_id")
+    model_field = next(field for field in rendered_form.fields if field.key == "model_id")
+    date_field = next(field for field in rendered_form.fields if field.key == "scheduled_start_date")
+    time_field = next(field for field in rendered_form.fields if field.key == "scheduled_start_time")
+
+    assert agent_field.options == ({"label": "Planner", "value": 7},)
+    assert model_field.options == ({"label": "Fast alias", "value": 11},)
+    assert date_field.field_type == "date"
+    assert time_field.field_type == "time"
 
 
 def test_module_views_page_creates_participant_for_agent_target(mock_streamlit):

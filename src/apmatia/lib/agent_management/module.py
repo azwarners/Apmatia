@@ -86,6 +86,8 @@ class AgentManager(AgentService):
             tool_ids=kwargs.get("tool_ids", []),
             default_model_id=kwargs.get("default_model_id", kwargs.get("default_llm_id")),
             active_model_id=kwargs.get("active_model_id"),
+            workspace_root=str(kwargs.get("workspace_root", "")),
+            knowledge_root=str(kwargs.get("knowledge_root", "")),
             metadata=kwargs.get("metadata", {}),
         )
         agent_id = self._agent_repo.create(agent)
@@ -132,6 +134,8 @@ class AgentManager(AgentService):
             tool_ids=list(tool_ids or []),
             default_model_id=kwargs.get("default_model_id", source_agent.default_model_id),
             active_model_id=kwargs.get("active_model_id", source_agent.active_model_id),
+            workspace_root=str(kwargs.get("workspace_root", source_agent.workspace_root)),
+            knowledge_root=str(kwargs.get("knowledge_root", source_agent.knowledge_root)),
             metadata=dict(metadata or {}),
         )
         agent_id = self._agent_repo.create(cloned)
@@ -157,6 +161,8 @@ class AgentManager(AgentService):
             tool_ids=updates.get("tool_ids", agent.tool_ids),
             default_model_id=updates.get("default_model_id", updates.get("default_llm_id", agent.default_model_id)),
             active_model_id=updates.get("active_model_id", agent.active_model_id),
+            workspace_root=updates.get("workspace_root", agent.workspace_root),
+            knowledge_root=updates.get("knowledge_root", agent.knowledge_root),
             metadata=updates.get("metadata", agent.metadata),
             updated_at=utc_now(),
         )

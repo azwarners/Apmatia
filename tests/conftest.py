@@ -35,6 +35,8 @@ def mock_streamlit(monkeypatch):
     mock_st.write = MagicMock()
     mock_st.text_input = MagicMock(return_value="testuser")
     mock_st.text_area = MagicMock(return_value="Be concise")
+    mock_st.date_input = MagicMock(side_effect=lambda _label, value=None, **_kwargs: value)
+    mock_st.time_input = MagicMock(side_effect=lambda _label, value=None, **_kwargs: value)
     mock_st.color_picker = MagicMock(return_value="#ff6b6b")
     mock_st.file_uploader = MagicMock(return_value=[])
     mock_st.button = MagicMock(return_value=False)

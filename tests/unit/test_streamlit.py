@@ -104,6 +104,9 @@ def test_settings_page_loads_and_saves(mock_streamlit):
         "auto_scan_gguf_directory": True,
         "llama_server_executable_path": "/usr/bin/llama-server",
         "llama_server_default_args": "--ctx-size 4096\n--host 0.0.0.0",
+        "workspace_root": "/home/nick/.apmatia/workspace",
+        "knowledge_root": "/home/nick/.apmatia/knowledge",
+        "timezone": "America/Phoenix",
         "theme": "dark",
         "font_family": "system-ui",
         "accent_color": "#ff6b6b",
@@ -151,7 +154,12 @@ def test_settings_page_loads_and_saves(mock_streamlit):
     assert payload.auto_scan_gguf_directory is True
     assert payload.llama_server_executable_path == "/usr/bin/llama-server"
     assert payload.llama_server_default_args == "--ctx-size 4096\n--host 0.0.0.0"
+    assert payload.workspace_root == "/home/nick/.apmatia/workspace"
+    assert payload.knowledge_root == "/home/nick/.apmatia/knowledge"
+    assert payload.timezone == "America/Phoenix"
     assert payload.theme == "dark"
+    assert any(c.args[:1] == ("Current local time",) for c in mock_streamlit.metric.call_args_list)
+    assert any(c.args[:1] == ("Current UTC",) for c in mock_streamlit.metric.call_args_list)
     mock_streamlit.success.assert_called_with("Settings saved.")
 
 
@@ -2501,6 +2509,17 @@ def test_start_script_publishes_ports_on_host_loopback_only():
     assert '-p 127.0.0.1:8501:8501' in launcher
     assert '-p 0.0.0.0:8000:8000' not in launcher
     assert '-p 0.0.0.0:8501:8501' not in launcher
+
+
+def test_start_script_supports_dev_mode():
+    """The standard launcher must expose a dev mode that starts both services."""
+    launcher = (REPO_ROOT / "start.sh").read_text()
+
+    assert 'Usage: ./start.sh [core|streamlit|dev]' in launcher
+    assert 'core|streamlit|dev' in launcher
+    assert 'if [ "$MODE" = "dev" ]; then' in launcher
+    assert 'run_core_container_detached "$CORE_IMAGE_NAME" >/dev/null' in launcher
+    assert 'run_streamlit_container "$STREAMLIT_IMAGE_NAME"' in launcher
 
 
 def test_docker_compose_publishes_ports_on_host_loopback_only():

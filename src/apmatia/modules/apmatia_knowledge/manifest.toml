@@ -1,13 +1,13 @@
 [module]
 module_id = "apmatia_knowledge"
-name = "Apmatia Knowledge"
+name = "Agent Config"
 version = "0.1.0"
-description = "Agent tools for browsing and reading files in ~/.apmatia/workspace/knowledge."
+description = "Configure and inspect agent workspace and knowledge directories."
 author = "Nick"
 
 [metadata]
-category = "knowledge"
-tags = ["knowledge", "tree", "read", "workspace"]
+category = "agent-config"
+tags = ["agent-config", "knowledge", "workspace", "directories"]
 
 [dependencies]
 python = ">=3.10"

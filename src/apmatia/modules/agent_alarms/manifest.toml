@@ -1,0 +1,17 @@
+[module]
+module_id = "agent_alarms"
+name = "Agent Alarms"
+version = "0.1.0"
+description = "An experimental alarm scheduler that dispatches prompts to Agent Loops."
+author = "Nick"
+
+[metadata]
+category = "automation"
+tags = ["alarms", "scheduler", "agent-loops", "automation"]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = ["apmatia_agent_loops"]
+tools = []

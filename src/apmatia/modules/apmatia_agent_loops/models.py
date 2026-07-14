@@ -212,6 +212,7 @@ class AgentLoopTask(ApmatiaObject):
     checklist: tuple[dict[str, Any], ...] = field(default_factory=tuple)
     participant_agent_ids: tuple[int, ...] = field(default_factory=tuple)
     agent_id: int | None = None
+    selected_model_id: int | None = None
     chat_mode: str = "single"
     allow_tools: bool = True
     max_model_turns: int = 5
@@ -268,6 +269,7 @@ class AgentLoopTask(ApmatiaObject):
             checklist=checklist,
             participant_agent_ids=participant_agent_ids,
             agent_id=None if payload.get("agent_id") in (None, "") else int(payload.get("agent_id")),
+            selected_model_id=None if payload.get("selected_model_id") in (None, "") else int(payload.get("selected_model_id")),
             chat_mode=str(payload.get("chat_mode") or "single"),
             allow_tools=bool(payload.get("allow_tools", True)),
             max_model_turns=int(payload.get("max_model_turns") or 5),

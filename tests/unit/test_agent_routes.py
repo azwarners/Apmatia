@@ -22,6 +22,8 @@ def test_create_new_agent_assigns_authenticated_owner():
             tool_ids=[],
             default_model_id=None,
             active_model_id=None,
+            workspace_root="",
+            knowledge_root="",
             metadata={},
         )
 
@@ -37,6 +39,8 @@ def test_create_new_agent_assigns_authenticated_owner():
         tool_ids=[],
         default_model_id=None,
         active_model_id=None,
+        workspace_root="",
+        knowledge_root="",
         metadata={},
     )
 
@@ -69,6 +73,8 @@ def test_update_agent_allows_patching_ownership_fields():
             tool_ids=None,
             default_model_id=None,
             active_model_id=None,
+            workspace_root=None,
+            knowledge_root=None,
             metadata=None,
         )
 
@@ -112,6 +118,8 @@ def test_update_ownerless_agent_allows_repair_by_current_user():
             tool_ids=None,
             default_model_id=None,
             active_model_id=None,
+            workspace_root=None,
+            knowledge_root=None,
             metadata=None,
         )
 
@@ -150,6 +158,8 @@ def test_update_locked_owned_agent_repairs_mode():
             tool_ids=None,
             default_model_id=None,
             active_model_id=None,
+            workspace_root=None,
+            knowledge_root=None,
             metadata=None,
         )
 

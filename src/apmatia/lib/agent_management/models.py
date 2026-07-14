@@ -14,4 +14,6 @@ class Agent(ApmatiaObject):
     tool_ids: list[int] = field(default_factory=list)
     default_model_id: int | None = None
     active_model_id: int | None = None
+    workspace_root: str = ""
+    knowledge_root: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)

@@ -4,6 +4,7 @@ import os
 import re
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from apmatia.core.app_config import get_config_value, set_config_value
 
@@ -13,6 +14,7 @@ DEFAULT_TERMINAL_BACKGROUND_COLOR = "#000000"
 DEFAULT_TERMINAL_TEXT_COLOR = "#9dffad"
 DEFAULT_TERMINAL_BORDER_COLOR = "rgba(110, 255, 170, 0.35)"
 DEFAULT_TERMINAL_MUTED_COLOR = "rgba(157, 255, 173, 0.72)"
+DEFAULT_TIMEZONE = "America/Phoenix"
 _HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 
 
@@ -41,6 +43,17 @@ def get_settings_payload() -> dict:
     llama_server_default_args = _join_args(get_config_value("ai_model_executor", "runtime_config", "default_args", default=[]))
     if not llama_server_default_args:
         llama_server_default_args = _join_args(os.getenv("APMATIA_LLAMA_SERVER_DEFAULT_ARGS") or "")
+    workspace_root = _ensure_directory(
+        get_config_value("workspace", "root", default=None) or os.getenv("APMATIA_WORKSPACE_ROOT"),
+        default=Path.home() / ".apmatia" / "workspace",
+    )
+    knowledge_root = _ensure_directory(
+        get_config_value("knowledge", "root", default=None) or os.getenv("APMATIA_KNOWLEDGE_ROOT"),
+        default=Path.home() / ".apmatia" / "knowledge",
+    )
+    timezone_name = _normalize_timezone_name(
+        get_config_value("ui", "timezone", default=None) or os.getenv("APMATIA_TIMEZONE"),
+    )
     theme = get_config_value("ui", "theme", default="dark")
     font_family = get_config_value("ui", "font_family", default="system-ui")
     accent_color = _normalize_hex_color(get_config_value("ui", "accent_color", default=DEFAULT_ACCENT_COLOR))
@@ -68,6 +81,9 @@ def get_settings_payload() -> dict:
         "auto_scan_gguf_directory": auto_scan_gguf_directory,
         "llama_server_executable_path": str(llama_server_executable_path or "llama-server"),
         "llama_server_default_args": llama_server_default_args,
+        "workspace_root": str(workspace_root),
+        "knowledge_root": str(knowledge_root),
+        "timezone": timezone_name,
         "theme": str(theme or "dark"),
         "font_family": str(font_family or "system-ui"),
         "accent_color": accent_color,
@@ -88,6 +104,9 @@ def save_settings_payload(
     auto_scan_gguf_directory: bool,
     llama_server_executable_path: str,
     llama_server_default_args: str,
+    workspace_root: str,
+    knowledge_root: str,
+    timezone: str,
     theme: str,
     font_family: str,
     accent_color: str,
@@ -115,6 +134,7 @@ def save_settings_payload(
     )
     clean_terminal_border_color = str(terminal_border_color).strip() or DEFAULT_TERMINAL_BORDER_COLOR
     clean_terminal_muted_color = str(terminal_muted_color).strip() or DEFAULT_TERMINAL_MUTED_COLOR
+    clean_timezone = _normalize_timezone_name(timezone, strict=True)
     if theme not in {"system", "dark", "light"}:
         raise ValueError("Theme must be 'system', 'dark', or 'light'.")
     if clean_accent_color != accent_color.strip().lower():
@@ -130,7 +150,13 @@ def save_settings_payload(
     if title_bar_font_size < 12 or title_bar_font_size > 40:
         raise ValueError("Title bar font size must be between 12 and 40.")
 
+    clean_workspace_root = _ensure_directory(workspace_root, default=Path.home() / ".apmatia" / "workspace")
+    clean_knowledge_root = _ensure_directory(knowledge_root, default=Path.home() / ".apmatia" / "knowledge")
+
     set_config_value("llama_server", "log_dir", value=clean_llama_server_log_dir)
+    set_config_value("workspace", "root", value=str(clean_workspace_root))
+    set_config_value("knowledge", "root", value=str(clean_knowledge_root))
+    set_config_value("ui", "timezone", value=clean_timezone)
     set_config_value("ai_model_manager", "gguf_directories", value=clean_gguf_directories)
     set_config_value("ai_model_manager", "gguf_directory", value=clean_gguf_directory)
     set_config_value("ai_model_manager", "auto_scan_gguf_directory", value=bool(auto_scan_gguf_directory))
@@ -156,6 +182,36 @@ def save_settings_payload(
             if not gguf_path.exists() or not gguf_path.is_dir():
                 continue
             manager.scan_gguf_directory(gguf_path, recursive=True)
+
+
+def _ensure_directory(value: object, *, default: Path) -> Path:
+    raw_value = str(value or "").strip()
+    path = Path(raw_value).expanduser() if raw_value else default.expanduser()
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _normalize_timezone_name(value: object, *, default: str = DEFAULT_TIMEZONE, strict: bool = False) -> str:
+    timezone_name = str(value or "").strip()
+    if not timezone_name:
+        return default
+    try:
+        ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError as error:
+        if not strict:
+            return default
+        raise ValueError(
+            "Timezone must be a valid IANA timezone like America/Phoenix."
+        ) from error
+    return timezone_name
+
+
+def resolve_timezone_name() -> str:
+    return _normalize_timezone_name(get_config_value("ui", "timezone", default=None) or os.getenv("APMATIA_TIMEZONE"))
+
+
+def resolve_timezone() -> ZoneInfo:
+    return ZoneInfo(resolve_timezone_name())
 
 
 def _get_gguf_directories() -> list[str]:

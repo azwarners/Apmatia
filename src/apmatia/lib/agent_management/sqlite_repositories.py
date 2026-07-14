@@ -48,6 +48,8 @@ class SQLiteAgentRepository(AgentRepository):
             "tool_ids": _serialize_json(agent.tool_ids),
             "default_model_id": agent.default_model_id,
             "active_model_id": agent.active_model_id,
+            "workspace_root": agent.workspace_root,
+            "knowledge_root": agent.knowledge_root,
             "metadata": _serialize_json(agent.metadata),
         }
         return self._store.insert(self._tables.agents, payload)
@@ -94,6 +96,8 @@ class SQLiteAgentRepository(AgentRepository):
                 "tool_ids": _serialize_json(agent.tool_ids),
                 "default_model_id": agent.default_model_id,
                 "active_model_id": agent.active_model_id,
+                "workspace_root": agent.workspace_root,
+                "knowledge_root": agent.knowledge_root,
                 "metadata": _serialize_json(agent.metadata),
             },
         )
@@ -119,6 +123,8 @@ class SQLiteAgentRepository(AgentRepository):
             tool_ids=_parse_json(row.get("tool_ids", "[]")),
             default_model_id=_parse_int(row.get("default_model_id", row.get("default_llm_id"))),
             active_model_id=_parse_int(row.get("active_model_id")),
+            workspace_root=str(row.get("workspace_root", "")),
+            knowledge_root=str(row.get("knowledge_root", "")),
             metadata=_parse_json(row.get("metadata", "{}")),
         )
 

@@ -118,7 +118,7 @@ This starts the FastAPI service using the configured transport-security policy.
 
 This starts the Streamlit interface using the configured transport-security policy.
 
-During development, run both the core service and the Streamlit app locally.
+During development, `./start.sh dev` starts both the core service and the Streamlit app locally.
 
 See [docs/TRANSPORT_SECURITY.md](docs/TRANSPORT_SECURITY.md) for the deployment profiles that control when HTTP is allowed and how HTTPS is configured.
 

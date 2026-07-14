@@ -1,44 +1,58 @@
 #!/bin/bash
 
 # Apmatia Docker startup script
-# Usage: ./start.sh [core|streamlit]
+# Usage: ./start.sh [core|streamlit|dev]
 #   core     - Start the Apmatia core container on localhost:8000 (default)
 #   streamlit - Start the Streamlit interface container
+#   dev      - Start both the core and Streamlit containers
 
 set -e
 
 MODE="core"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
+CORE_IMAGE_NAME="apmatia"
+STREAMLIT_IMAGE_NAME="apmatia-streamlit"
+CORE_CONTAINER_NAME="apmatia"
+STREAMLIT_CONTAINER_NAME="apmatia-streamlit"
 
 for arg in "$@"; do
     case "$arg" in
-        core|streamlit)
+        core|streamlit|dev)
             MODE="$arg"
             ;;
         *)
             echo "Unknown argument: $arg"
-            echo "Usage: ./start.sh [core|streamlit]"
+            echo "Usage: ./start.sh [core|streamlit|dev]"
             exit 1
             ;;
     esac
 done
 
-BUILD_ARGS=(--build-arg MODE="$MODE")
+IMAGE_NAME="$CORE_IMAGE_NAME"
+if [ "$MODE" = "streamlit" ]; then
+    IMAGE_NAME="$STREAMLIT_IMAGE_NAME"
+fi
+
+build_image() {
+    local image_name="$1"
+    local build_mode="$2"
+    local build_message="$3"
+
+    echo "$build_message"
+    docker build -t "$image_name" --build-arg MODE="$build_mode" .
+}
 
 if [ "$MODE" = "core" ]; then
-    IMAGE_NAME="apmatia"
-    CONTAINER_NAME="apmatia"
-    echo "Building Apmatia core container..."
-    docker build -t "$IMAGE_NAME" "${BUILD_ARGS[@]}" .
+    build_image "$CORE_IMAGE_NAME" "core" "Building Apmatia core container..."
 elif [ "$MODE" = "streamlit" ]; then
-    IMAGE_NAME="apmatia-streamlit"
-    CONTAINER_NAME="apmatia-streamlit"
-    echo "Building Apmatia Streamlit interface container..."
-    docker build -t "$IMAGE_NAME" "${BUILD_ARGS[@]}" .
+    build_image "$STREAMLIT_IMAGE_NAME" "streamlit" "Building Apmatia Streamlit interface container..."
+elif [ "$MODE" = "dev" ]; then
+    build_image "$CORE_IMAGE_NAME" "core" "Building Apmatia core container..."
+    build_image "$STREAMLIT_IMAGE_NAME" "streamlit" "Building Apmatia Streamlit interface container..."
 else
     echo "Unknown mode: $MODE"
-    echo "Usage: ./start.sh [core|streamlit]"
+    echo "Usage: ./start.sh [core|streamlit|dev]"
     exit 1
 fi
 
@@ -82,6 +96,147 @@ ensure_host_permissions() {
         repair_host_permissions "$host_dir" "$container_dir"
     fi
     mkdir -p "$host_dir"
+}
+
+build_runtime_args() {
+    LOG_DIR_ARGS=()
+    if [ -n "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST" ]; then
+        LOG_DIR_ARGS+=(
+            -v "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST":"$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
+            -e APMATIA_LLAMA_SERVER_LOG_DIR="$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
+        )
+    fi
+
+    GGUF_DIR_ARGS=()
+    if [ -n "$APMATIA_GGUF_DIRECTORIES_HOST" ]; then
+        GGUF_DIRECTORY_ENV=""
+        GGUF_DIRECTORY_FIRST=""
+        while IFS= read -r gguf_directory_host; do
+            if [ -z "$gguf_directory_host" ] || [ ! -d "$gguf_directory_host" ]; then
+                continue
+            fi
+            GGUF_DIR_ARGS+=(
+                -v "$gguf_directory_host":"$gguf_directory_host"
+            )
+            if [ -z "$GGUF_DIRECTORY_FIRST" ]; then
+                GGUF_DIRECTORY_FIRST="$gguf_directory_host"
+            fi
+            if [ -z "$GGUF_DIRECTORY_ENV" ]; then
+                GGUF_DIRECTORY_ENV="$gguf_directory_host"
+            else
+                GGUF_DIRECTORY_ENV="$GGUF_DIRECTORY_ENV:$gguf_directory_host"
+            fi
+        done <<EOF
+$APMATIA_GGUF_DIRECTORIES_HOST
+EOF
+        if [ -n "$GGUF_DIRECTORY_ENV" ]; then
+            GGUF_DIR_ARGS+=(
+                -e APMATIA_GGUF_DIRECTORY="$GGUF_DIRECTORY_FIRST"
+                -e APMATIA_GGUF_DIRECTORIES="$GGUF_DIRECTORY_ENV"
+            )
+        fi
+    fi
+}
+
+stop_container_if_exists() {
+    local container_name="$1"
+
+    if docker ps -a --format '{{.Names}}' | grep -q "^$container_name$"; then
+        echo "Stopping existing container..."
+        docker stop "$container_name"
+        docker rm "$container_name"
+    fi
+}
+
+run_core_container() {
+    local image_name="$1"
+
+    build_runtime_args
+    docker run \
+        --name "$CORE_CONTAINER_NAME" \
+        -p 127.0.0.1:8000:8000 \
+        -v "$REPO_ROOT":/app \
+        -v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR" \
+        -v "$APMATIA_HOME_HOST":"$APMATIA_CONTAINER_HOME_DIR" \
+        -v "$APMATIA_CONFIG_DIR_HOST":"$APMATIA_CONTAINER_CONFIG_DIR" \
+        -v "$APMATIA_DATA_DIR_HOST":"$APMATIA_CONTAINER_DATA_DIR" \
+        -e HOME="$APMATIA_CONTAINER_HOME" \
+        -e APMATIA_HOME="$APMATIA_CONTAINER_HOME_DIR" \
+        -e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR" \
+        -e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules" \
+        -e APMATIA_SERVER_HOST=0.0.0.0 \
+        -e APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true \
+        --user "$(id -u):$(id -g)" \
+        "${LOG_DIR_ARGS[@]}" \
+        "${GGUF_DIR_ARGS[@]}" \
+        --entrypoint /bin/bash \
+        "$image_name" /app/scripts/entrypoint.sh
+}
+
+run_core_container_detached() {
+    local image_name="$1"
+
+    build_runtime_args
+    docker run -d \
+        --name "$CORE_CONTAINER_NAME" \
+        -p 127.0.0.1:8000:8000 \
+        -v "$REPO_ROOT":/app \
+        -v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR" \
+        -v "$APMATIA_HOME_HOST":"$APMATIA_CONTAINER_HOME_DIR" \
+        -v "$APMATIA_CONFIG_DIR_HOST":"$APMATIA_CONTAINER_CONFIG_DIR" \
+        -v "$APMATIA_DATA_DIR_HOST":"$APMATIA_CONTAINER_DATA_DIR" \
+        -e HOME="$APMATIA_CONTAINER_HOME" \
+        -e APMATIA_HOME="$APMATIA_CONTAINER_HOME_DIR" \
+        -e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR" \
+        -e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules" \
+        -e APMATIA_SERVER_HOST=0.0.0.0 \
+        -e APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true \
+        --user "$(id -u):$(id -g)" \
+        "${LOG_DIR_ARGS[@]}" \
+        "${GGUF_DIR_ARGS[@]}" \
+        --entrypoint /bin/bash \
+        "$image_name" /app/scripts/entrypoint.sh
+}
+
+run_streamlit_container() {
+    local image_name="$1"
+
+    build_runtime_args
+    docker run \
+        --name "$STREAMLIT_CONTAINER_NAME" \
+        -p 127.0.0.1:8501:8501 \
+        -v "$REPO_ROOT":/app \
+        -v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR" \
+        -v "$APMATIA_HOME_HOST":"$APMATIA_CONTAINER_HOME_DIR" \
+        -v "$APMATIA_CONFIG_DIR_HOST":"$APMATIA_CONTAINER_CONFIG_DIR" \
+        -v "$APMATIA_DATA_DIR_HOST":"$APMATIA_CONTAINER_DATA_DIR" \
+        -e HOME="$APMATIA_CONTAINER_HOME" \
+        -e APMATIA_HOME="$APMATIA_CONTAINER_HOME_DIR" \
+        -e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR" \
+        -e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules" \
+        -e APMATIA_STREAMLIT_HOST=0.0.0.0 \
+        -e APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true \
+        --user "$(id -u):$(id -g)" \
+        "${LOG_DIR_ARGS[@]}" \
+        "${GGUF_DIR_ARGS[@]}" \
+        --entrypoint /bin/bash \
+        "$image_name" /app/scripts/entrypoint.sh
+}
+
+run_dev_mode() {
+    cleanup_dev_mode() {
+        docker stop "$CORE_CONTAINER_NAME" >/dev/null 2>&1 || true
+        docker stop "$STREAMLIT_CONTAINER_NAME" >/dev/null 2>&1 || true
+    }
+
+    trap cleanup_dev_mode EXIT INT TERM
+
+    stop_container_if_exists "$CORE_CONTAINER_NAME"
+    stop_container_if_exists "$STREAMLIT_CONTAINER_NAME"
+
+    echo "Starting $CORE_CONTAINER_NAME and $STREAMLIT_CONTAINER_NAME..."
+    run_core_container_detached "$CORE_IMAGE_NAME" >/dev/null
+    run_streamlit_container "$STREAMLIT_IMAGE_NAME"
 }
 
 if [ -z "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST" ] && [ -f "$APMATIA_CONFIG_DIR_HOST/config.json" ]; then
@@ -144,125 +299,15 @@ if [ -n "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST" ]; then
     mkdir -p "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
 fi
 
-# Stop and remove existing container if it exists
-if docker ps -a --format '{{.Names}}' | grep -q "^$CONTAINER_NAME$"; then
-    echo "Stopping existing container..."
-    docker stop "$CONTAINER_NAME"
-    docker rm "$CONTAINER_NAME"
-fi
-
 # Run the container
-echo "Starting $CONTAINER_NAME..."
-if [ "$MODE" = "streamlit" ]; then
-    LOG_DIR_ARGS=()
-    if [ -n "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST" ]; then
-        LOG_DIR_ARGS+=(
-            -v "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST":"$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
-            -e APMATIA_LLAMA_SERVER_LOG_DIR="$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
-        )
-    fi
-    GGUF_DIR_ARGS=()
-    if [ -n "$APMATIA_GGUF_DIRECTORIES_HOST" ]; then
-        GGUF_DIRECTORY_ENV=""
-        GGUF_DIRECTORY_FIRST=""
-        while IFS= read -r gguf_directory_host; do
-            if [ -z "$gguf_directory_host" ] || [ ! -d "$gguf_directory_host" ]; then
-                continue
-            fi
-            GGUF_DIR_ARGS+=(
-                -v "$gguf_directory_host":"$gguf_directory_host"
-            )
-            if [ -z "$GGUF_DIRECTORY_FIRST" ]; then
-                GGUF_DIRECTORY_FIRST="$gguf_directory_host"
-            fi
-            if [ -z "$GGUF_DIRECTORY_ENV" ]; then
-                GGUF_DIRECTORY_ENV="$gguf_directory_host"
-            else
-                GGUF_DIRECTORY_ENV="$GGUF_DIRECTORY_ENV:$gguf_directory_host"
-            fi
-        done <<EOF
-$APMATIA_GGUF_DIRECTORIES_HOST
-EOF
-        if [ -n "$GGUF_DIRECTORY_ENV" ]; then
-            GGUF_DIR_ARGS+=(
-                -e APMATIA_GGUF_DIRECTORY="$GGUF_DIRECTORY_FIRST"
-                -e APMATIA_GGUF_DIRECTORIES="$GGUF_DIRECTORY_ENV"
-            )
-        fi
-    fi
-    docker run \
-        --name "$CONTAINER_NAME" \
-        -p 127.0.0.1:8501:8501 \
-        -v "$REPO_ROOT":/app \
-        -v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR" \
-        -v "$APMATIA_HOME_HOST":"$APMATIA_CONTAINER_HOME_DIR" \
-        -v "$APMATIA_CONFIG_DIR_HOST":"$APMATIA_CONTAINER_CONFIG_DIR" \
-        -v "$APMATIA_DATA_DIR_HOST":"$APMATIA_CONTAINER_DATA_DIR" \
-        -e HOME="$APMATIA_CONTAINER_HOME" \
-        -e APMATIA_HOME="$APMATIA_CONTAINER_HOME_DIR" \
-        -e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR" \
-        -e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules" \
-        -e APMATIA_STREAMLIT_HOST=0.0.0.0 \
-        -e APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true \
-        --user "$(id -u):$(id -g)" \
-        "${LOG_DIR_ARGS[@]}" \
-        "${GGUF_DIR_ARGS[@]}" \
-        --entrypoint /bin/bash \
-        "$IMAGE_NAME" /app/scripts/entrypoint.sh
+if [ "$MODE" = "dev" ]; then
+    run_dev_mode
+elif [ "$MODE" = "streamlit" ]; then
+    stop_container_if_exists "$STREAMLIT_CONTAINER_NAME"
+    echo "Starting $STREAMLIT_CONTAINER_NAME..."
+    run_streamlit_container "$STREAMLIT_IMAGE_NAME"
 else
-    LOG_DIR_ARGS=()
-    if [ -n "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST" ]; then
-        LOG_DIR_ARGS+=(
-            -v "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST":"$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
-            -e APMATIA_LLAMA_SERVER_LOG_DIR="$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
-        )
-    fi
-    GGUF_DIR_ARGS=()
-    if [ -n "$APMATIA_GGUF_DIRECTORIES_HOST" ]; then
-        GGUF_DIRECTORY_ENV=""
-        GGUF_DIRECTORY_FIRST=""
-        while IFS= read -r gguf_directory_host; do
-            if [ -z "$gguf_directory_host" ] || [ ! -d "$gguf_directory_host" ]; then
-                continue
-            fi
-            GGUF_DIR_ARGS+=(
-                -v "$gguf_directory_host":"$gguf_directory_host"
-            )
-            if [ -z "$GGUF_DIRECTORY_FIRST" ]; then
-                GGUF_DIRECTORY_FIRST="$gguf_directory_host"
-            fi
-            if [ -z "$GGUF_DIRECTORY_ENV" ]; then
-                GGUF_DIRECTORY_ENV="$gguf_directory_host"
-            else
-                GGUF_DIRECTORY_ENV="$GGUF_DIRECTORY_ENV:$gguf_directory_host"
-            fi
-        done <<EOF
-$APMATIA_GGUF_DIRECTORIES_HOST
-EOF
-        if [ -n "$GGUF_DIRECTORY_ENV" ]; then
-            GGUF_DIR_ARGS+=(
-                -e APMATIA_GGUF_DIRECTORY="$GGUF_DIRECTORY_FIRST"
-                -e APMATIA_GGUF_DIRECTORIES="$GGUF_DIRECTORY_ENV"
-            )
-        fi
-    fi
-    docker run \
-        --name "$CONTAINER_NAME" \
-        -p 127.0.0.1:8000:8000 \
-        -v "$REPO_ROOT":/app \
-        -v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR" \
-        -v "$APMATIA_HOME_HOST":"$APMATIA_CONTAINER_HOME_DIR" \
-        -v "$APMATIA_CONFIG_DIR_HOST":"$APMATIA_CONTAINER_CONFIG_DIR" \
-        -v "$APMATIA_DATA_DIR_HOST":"$APMATIA_CONTAINER_DATA_DIR" \
-        -e HOME="$APMATIA_CONTAINER_HOME" \
-        -e APMATIA_HOME="$APMATIA_CONTAINER_HOME_DIR" \
-        -e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR" \
-        -e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules" \
-        -e APMATIA_SERVER_HOST=0.0.0.0 \
-        -e APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true \
-        --user "$(id -u):$(id -g)" \
-        "${LOG_DIR_ARGS[@]}" \
-        "${GGUF_DIR_ARGS[@]}" \
-        --entrypoint /bin/bash \
-        "$IMAGE_NAME" /app/scripts/entrypoint.sh
+    stop_container_if_exists "$CORE_CONTAINER_NAME"
+    echo "Starting $CORE_CONTAINER_NAME..."
+    run_core_container "$CORE_IMAGE_NAME"
 fi

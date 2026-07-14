@@ -111,10 +111,17 @@ def _default_config() -> dict[str, Any]:
         "llama_server": {
             "log_dir": "",
         },
+        "workspace": {
+            "root": str(Path.home() / ".apmatia" / "workspace"),
+        },
+        "knowledge": {
+            "root": str(Path.home() / ".apmatia" / "knowledge"),
+        },
         "ui": {
             "theme": "dark",
             "font_family": "system-ui",
             "accent_color": "#ff6b6b",
+            "timezone": "America/Phoenix",
             "font_size": 16,
             "title_bar_height": 56,
             "title_bar_font_size": 20,
@@ -196,6 +203,9 @@ def _seed_from_env(config: dict[str, Any]) -> dict[str, Any]:
         "APMATIA_LLAMA_SERVER_EXECUTABLE_PATH": ("ai_model_executor", "runtime_config", "executable_path"),
         "APMATIA_LLAMA_SERVER_DEFAULT_ARGS": ("ai_model_executor", "runtime_config", "default_args"),
         "APMATIA_LLAMA_SERVER_LOG_DIR": ("llama_server", "log_dir"),
+        "APMATIA_WORKSPACE_ROOT": ("workspace", "root"),
+        "APMATIA_KNOWLEDGE_ROOT": ("knowledge", "root"),
+        "APMATIA_TIMEZONE": ("ui", "timezone"),
     }
 
     seeded = dict(config)

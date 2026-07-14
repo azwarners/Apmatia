@@ -25,6 +25,7 @@ class TestAgent:
         assert agent.tool_ids == []
         assert agent.default_model_id is None
         assert agent.active_model_id is None
+        assert agent.knowledge_root == ""
         assert agent.metadata == {}
 
     def test_create_agent_full(self):
@@ -55,6 +56,7 @@ class TestAgent:
         assert agent.tool_ids == [300, 400]
         assert agent.default_model_id == 50
         assert agent.active_model_id == 60
+        assert agent.knowledge_root == ""
         assert agent.metadata == {"version": "1.0"}
 
     def test_agent_default_values(self):
@@ -65,6 +67,7 @@ class TestAgent:
         assert agent.tool_ids == []
         assert agent.default_model_id is None
         assert agent.active_model_id is None
+        assert agent.knowledge_root == ""
         assert agent.metadata == {}
 
     def test_agent_equality(self):

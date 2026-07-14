@@ -58,5 +58,7 @@ def _agent_to_dict(agent) -> dict:
         "tool_ids": agent.tool_ids,
         "default_model_id": agent.default_model_id,
         "active_model_id": agent.active_model_id,
+        "workspace_root": getattr(agent, "workspace_root", ""),
+        "knowledge_root": getattr(agent, "knowledge_root", ""),
         "metadata": agent.metadata,
     }

@@ -1,6 +1,9 @@
 """Settings page for configuring Apmatia through the API."""
 from __future__ import annotations
 
+from datetime import datetime, timezone as dt_timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 import streamlit as st
 
 from apmatia.api.http.routes.settings_routes import SettingsPayload
@@ -64,6 +67,47 @@ def render() -> None:
                 "The scanner records every GGUF file it finds recursively. "
                 "At launch time, the executor will use the first GGUF file in a model directory."
             )
+
+        st.subheader("Agent Roots")
+        roots_left, roots_right = st.columns(2)
+        with roots_left:
+            workspace_root = st.text_input(
+                "Workspace root",
+                value=current.get("workspace_root", ""),
+                help="Base directory for agent workspace roots. Agent configs can point to subdirectories under this path.",
+            )
+        with roots_right:
+            knowledge_root = st.text_input(
+                "Knowledge root",
+                value=current.get("knowledge_root", ""),
+                help="Base directory for shared knowledge roots. Agents can point at shared or per-agent subdirectories here.",
+            )
+        st.caption(
+            "Default roots are `~/.apmatia/workspace` and `~/.apmatia/knowledge`. "
+            "Missing directories are created when settings are saved."
+        )
+
+        st.subheader("Time Zone")
+        timezone = st.selectbox(
+            "Alarm time zone",
+            options=[
+                "America/Phoenix",
+                "America/Denver",
+                "America/Chicago",
+                "America/New_York",
+                "UTC",
+            ],
+            index=_timezone_index(current.get("timezone", "America/Phoenix")),
+            help="Alarms use this zone when combining the selected date and time. America/Phoenix ignores daylight saving time.",
+        )
+        clock_left, clock_right = st.columns(2)
+        current_time_text = _format_time_clock(timezone)
+        utc_time_text = datetime.now(dt_timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        with clock_left:
+            st.metric("Current local time", current_time_text)
+        with clock_right:
+            st.metric("Current UTC", utc_time_text)
+        st.caption("Arizona option: `America/Phoenix` stays on standard time year-round and does not observe DST.")
 
         st.subheader("Appearance")
         appearance_left, appearance_right = st.columns(2)
@@ -135,6 +179,9 @@ def render() -> None:
         auto_scan_gguf_directory=auto_scan_gguf_directory,
         llama_server_executable_path=llama_server_executable_path,
         llama_server_default_args=llama_server_default_args,
+        workspace_root=workspace_root,
+        knowledge_root=knowledge_root,
+        timezone=timezone,
         theme=theme,
         font_family=font_family,
         accent_color=accent_color,
@@ -157,9 +204,26 @@ def render() -> None:
     st.session_state["ui_theme_preference"] = theme
     st.session_state["ui_font_family"] = font_family
     st.session_state["ui_accent_color"] = accent_color
+    st.session_state["ui_timezone"] = timezone
     st.session_state["ui_terminal_background_color"] = terminal_background_color
     st.session_state["ui_terminal_text_color"] = terminal_text_color
     st.session_state["ui_terminal_border_color"] = terminal_border_color
     st.session_state["ui_terminal_muted_color"] = terminal_muted_color
     st.session_state["settings_save_message"] = "Settings saved."
     st.rerun()
+
+
+def _timezone_index(timezone_name: object) -> int:
+    options = ["America/Phoenix", "America/Denver", "America/Chicago", "America/New_York", "UTC"]
+    value = str(timezone_name or "").strip()
+    if value in options:
+        return options.index(value)
+    return 0
+
+
+def _format_time_clock(timezone_name: str) -> str:
+    try:
+        tz = ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError:
+        tz = dt_timezone.utc
+    return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S %Z")

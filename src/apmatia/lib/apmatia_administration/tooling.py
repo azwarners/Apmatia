@@ -53,6 +53,8 @@ def apmatia_administration_tool_definitions() -> list[dict[str, Any]]:
                     "tool_ids": {"type": "array", "items": {"type": "integer"}},
                     "default_model_id": {"type": "integer"},
                     "active_model_id": {"type": "integer"},
+                    "workspace_root": {"type": "string"},
+                    "knowledge_root": {"type": "string"},
                     "metadata": {"type": "object"},
                     **_AGENT_PROMPT_PROPERTIES,
                 },
@@ -171,6 +173,8 @@ class ApmatiaAdministrationToolProvider:
                 tool_ids=list(arguments.get("tool_ids", [])),
                 default_model_id=arguments.get("default_model_id", getattr(agent, "default_model_id", None)),
                 active_model_id=arguments.get("active_model_id", getattr(agent, "active_model_id", None)),
+                workspace_root=arguments.get("workspace_root", getattr(agent, "workspace_root", "")),
+                knowledge_root=arguments.get("knowledge_root", getattr(agent, "knowledge_root", "")),
                 metadata=dict(arguments.get("metadata", getattr(agent, "metadata", {}))),
                 **prompt_kwargs,
             )
@@ -293,6 +297,8 @@ def _agent_summary(agent: Any) -> dict[str, Any]:
         "tool_ids": agent.tool_ids,
         "default_model_id": agent.default_model_id,
         "active_model_id": agent.active_model_id,
+        "workspace_root": getattr(agent, "workspace_root", ""),
+        "knowledge_root": getattr(agent, "knowledge_root", ""),
         "metadata": agent.metadata,
     }
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import streamlit as st
 
@@ -32,6 +33,8 @@ def _empty_form_values() -> dict[str, object]:
         "tool_ids": [],
         "default_model_id": None,
         "active_model_id": None,
+        "workspace_root": "",
+        "knowledge_root": "",
         "metadata": {},
         "personality": "Helpful, calm, and thoughtful.",
         "skills": "General assistance, analysis, and coordination.",
@@ -274,6 +277,8 @@ def render() -> None:
             {
                 "rag_root_ids": selected_agent.get("rag_root_ids", []),
                 "tool_ids": selected_agent.get("tool_ids", []),
+                "workspace_root": selected_agent.get("workspace_root", ""),
+                "knowledge_root": selected_agent.get("knowledge_root", ""),
                 "metadata": selected_agent.get("metadata", {}),
             }
         )
@@ -389,6 +394,16 @@ def render() -> None:
                 index=_model_option_index(model_options[1:], form_values["active_model_id"]),
                 format_func=_model_option_label,
             )
+            workspace_root = st.text_input(
+                "Workspace root",
+                value=str(form_values["workspace_root"]),
+                help="Absolute path where this agent should work.",
+            )
+            knowledge_root = st.text_input(
+                "Knowledge root",
+                value=str(form_values["knowledge_root"]),
+                help="Absolute path where this agent should read and write knowledge.",
+            )
             rag_root_ids = st.text_area(
                 "RAG root IDs (JSON list)",
                 value=_json_text(form_values["rag_root_ids"]),
@@ -439,6 +454,8 @@ def render() -> None:
                 "active_model_id": (
                     None if active_model_id.get("id") is None else int(active_model_id.get("id"))
                 ),
+                "workspace_root": workspace_root,
+                "knowledge_root": knowledge_root,
                 "metadata": _parse_json_field(metadata, {}),
                 "prompt_id": form_values.get("prompt_id"),
                 "personality": personality,
@@ -535,3 +552,19 @@ def render() -> None:
     )
     with st.expander("Compiled prompt preview", expanded=False):
         st.code(prompt_preview, language="text")
+
+    st.divider()
+    st.subheader("Directory checks")
+    _render_directory_check("Workspace", str(form_values["workspace_root"]))
+    _render_directory_check("Knowledge", str(form_values["knowledge_root"]))
+
+
+def _render_directory_check(label: str, path_text: str) -> None:
+    if not path_text.strip():
+        st.info(f"{label} root is not set yet.")
+        return
+    path = Path(path_text).expanduser()
+    if path.exists():
+        st.success(f"{label} root exists: {path}")
+    else:
+        st.warning(f"{label} root does not exist yet: {path}")

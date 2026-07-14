@@ -56,6 +56,7 @@ class InMemoryAgentService(AgentService):
             tool_ids=kwargs.get("tool_ids", []),
             default_model_id=kwargs.get("default_model_id"),
             active_model_id=kwargs.get("active_model_id"),
+            knowledge_root=kwargs.get("knowledge_root", ""),
             metadata=kwargs.get("metadata", {}),
         )
         self._agents[self._next_agent_id] = agent
@@ -81,6 +82,7 @@ class InMemoryAgentService(AgentService):
             tool_ids=list(kwargs.get("tool_ids", source.tool_ids)),
             default_model_id=kwargs.get("default_model_id", source.default_model_id),
             active_model_id=kwargs.get("active_model_id", source.active_model_id),
+            knowledge_root=kwargs.get("knowledge_root", source.knowledge_root),
             metadata=kwargs.get("metadata", dict(source.metadata)),
         )
 

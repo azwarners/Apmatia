@@ -54,7 +54,7 @@ class ModuleViewFormFieldDescriptor:
     min_value: int | float | None = None
     max_value: int | float | None = None
     step: int | float | None = None
-    options: tuple[str, ...] = ()
+    options: tuple[Any, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

@@ -242,11 +242,7 @@ def _parse_form_fields(raw_fields: Any) -> list[ModuleViewFormFieldDescriptor]:
         max_value = entry.get("max_value")
         step = entry.get("step")
         raw_options = entry.get("options") or ()
-        options = (
-            tuple(str(option) for option in raw_options)
-            if isinstance(raw_options, Sequence) and not isinstance(raw_options, (str, bytes))
-            else ()
-        )
+        options = tuple(raw_options) if isinstance(raw_options, Sequence) and not isinstance(raw_options, (str, bytes)) else ()
         fields.append(
             ModuleViewFormFieldDescriptor(
                 key=key,
@@ -374,11 +370,7 @@ def _form_from_schema(
             if not key:
                 continue
             options = entry.get("options") or ()
-            parsed_options = (
-                tuple(str(option) for option in options)
-                if isinstance(options, Sequence) and not isinstance(options, (str, bytes))
-                else ()
-            )
+            parsed_options = tuple(options) if isinstance(options, Sequence) and not isinstance(options, (str, bytes)) else ()
             fields.append(
                 ModuleViewFormFieldDescriptor(
                     key=key,

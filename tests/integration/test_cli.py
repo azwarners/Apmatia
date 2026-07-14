@@ -148,6 +148,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert exit_code == 0
     assert isinstance(payload, list)
     assert [item["module"]["module_id"] for item in payload] == [
+        "agent_alarms",
         "apmatia_agent_loops",
         "apmatia_ai_host_management",
         "apmatia_ai_model_executor",
@@ -158,6 +159,33 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "apmatia_source_inspection",
         "apmatia_worksim",
     ]
+    assert payload[0]["module"]["module_id"] == "agent_alarms"
+    assert payload[0]["module"]["name"] == "Agent Alarms"
+    assert payload[0]["module"]["version"] == "0.1.0"
+    assert payload[0]["module"]["description"] == "An experimental alarm scheduler that dispatches prompts to Agent Loops."
+    assert payload[0]["module"]["author"] == "Nick"
+    assert payload[0]["module"]["metadata"] == {
+        "category": "automation",
+        "tags": ["alarms", "scheduler", "agent-loops", "automation"],
+    }
+    assert payload[0]["module"]["dependencies"] == {
+        "python": ">=3.10",
+        "python_packages": [],
+        "system_packages": [],
+        "modules": ["apmatia_agent_loops"],
+        "tools": [],
+    }
+    assert payload[0]["actions"] == ["agent_alarms.alarms"]
+    assert payload[0]["commands"] == [
+        "agent_alarms.alarms.create",
+        "agent_alarms.alarms.delete",
+        "agent_alarms.alarms.edit",
+        "agent_alarms.alarms.list",
+    ]
+    assert payload[0]["views"] == ["agent_alarms.alarms.view"]
+    assert payload[0]["source"] == "bundled"
+    assert payload[0]["is_workspace"] is False
+    payload = payload[1:]
     assert payload[0]["module"]["module_id"] == "apmatia_agent_loops"
     assert payload[0]["module"]["name"] == "Apmatia Agent Loops"
     assert payload[0]["module"]["version"] == "0.1.0"
@@ -346,13 +374,13 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "apmatia_ipe.task.view",
     ]
     assert payload[6]["module"]["module_id"] == "apmatia_knowledge"
-    assert payload[6]["module"]["name"] == "Apmatia Knowledge"
+    assert payload[6]["module"]["name"] == "Agent Config"
     assert payload[6]["module"]["version"] == "0.1.0"
-    assert payload[6]["module"]["description"] == "Agent tools for browsing and reading files in ~/.apmatia/workspace/knowledge."
+    assert payload[6]["module"]["description"] == "Configure and inspect agent workspace and knowledge directories."
     assert payload[6]["module"]["author"] == "Nick"
     assert payload[6]["module"]["metadata"] == {
-        "category": "knowledge",
-        "tags": ["knowledge", "tree", "read", "workspace"],
+        "category": "agent-config",
+        "tags": ["agent-config", "knowledge", "workspace", "directories"],
     }
     assert payload[6]["module"]["dependencies"] == {
         "python": ">=3.10",
@@ -361,9 +389,9 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "modules": [],
         "tools": [],
     }
-    assert payload[6]["actions"] == []
-    assert payload[6]["commands"] == []
-    assert payload[6]["views"] == []
+    assert payload[6]["actions"] == ["apmatia_knowledge.agent_config"]
+    assert payload[6]["commands"] == ["apmatia_knowledge.agent_config.save"]
+    assert payload[6]["views"] == ["apmatia_knowledge.agent_config.view"]
     assert payload[7]["module"]["module_id"] == "apmatia_source_inspection"
     assert payload[7]["module"]["name"] == "Apmatia Source Inspection"
     assert payload[7]["module"]["version"] == "0.1.0"

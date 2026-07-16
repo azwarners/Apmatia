@@ -427,7 +427,10 @@ def test_tool_management_page_executes_safe_tool_calls(mock_streamlit):
             "read_only": None,
         }
     ]
+
     def selectbox_side_effect(label, options, index=0, **_kwargs):
+        if label == "Tool group":
+            return "Tool management"
         if label == "Available tool":
             return next(option for option in options if option.get("provider_id") == "builtin.echo")
         return options[index]
@@ -472,7 +475,8 @@ def test_tool_management_page_executes_safe_tool_calls(mock_streamlit):
         approval_granted=False,
     )
     assert mock_streamlit.subheader.call_args_list[0] == call("Agent access")
-    mock_streamlit.write.assert_any_call("**Administration tools**")
+    mock_streamlit.write.assert_any_call("**Apmatia administration**")
+    mock_streamlit.write.assert_any_call("**Tool management**")
     mock_streamlit.title.assert_called_with("Tool Management")
     mock_streamlit.caption.assert_any_call(
         "Create tool definitions, grant them to agents, and run safe demo calls through the local API."
@@ -2443,6 +2447,139 @@ def test_main_function_authenticated_routes_to_user_management(mock_streamlit):
     assert mock_streamlit.session_state["selected_page"] == "user_management"
 
 
+def test_main_function_wraps_each_page_in_a_generation_specific_shell(mock_streamlit):
+    """Switching pages should render each body inside a fresh generation-scoped shell."""
+
+    class _Container:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    mock_streamlit.container.side_effect = lambda **_kwargs: _Container()
+
+    import apmatia.interfaces.streamlit.app as app
+
+    app = importlib.reload(app)
+
+    with patch.object(
+        app,
+        "get_auth_session",
+        return_value={"authenticated": True, "username": "testuser"},
+    ), patch.object(
+        app,
+        "get_settings",
+        return_value={"theme": "dark"},
+    ), patch.object(
+        app,
+        "initialize_ui_preferences",
+    ), patch.object(
+        app,
+        "apply_theme_styles",
+    ), patch.object(
+        app,
+        "_process_header_actions",
+    ), patch.object(
+        app,
+        "render_top_bar",
+    ), patch.object(
+        app,
+        "render_sidebar",
+        side_effect=["discussion", "module_view"],
+    ), patch.object(
+        app,
+        "ensure_ipe_coach_agent_for_user",
+    ), patch(
+        "apmatia.interfaces.streamlit.pages.discussion.render",
+    ) as mock_discussion_render, patch(
+        "apmatia.interfaces.streamlit.pages.module_views.render",
+    ) as mock_module_views_render:
+        app.main()
+        app.main()
+
+    assert mock_discussion_render.call_count == 1
+    assert mock_module_views_render.call_count == 1
+    shell_keys = [kwargs.get("key") for _args, kwargs in mock_streamlit.container.call_args_list]
+    assert len(shell_keys) == 2
+    assert shell_keys[0].startswith("apm-page-shell:discussion:")
+    assert shell_keys[1].startswith("apm-page-shell:module_view:")
+    first_generation = int(shell_keys[0].rsplit(":", 1)[-1])
+    second_generation = int(shell_keys[1].rsplit(":", 1)[-1])
+    assert second_generation == first_generation + 1
+
+
+def test_main_function_restarts_shell_when_module_view_detail_changes(mock_streamlit):
+    """Changing the module-view detail while staying on module_view should still refresh the shell."""
+
+    class _Container:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    mock_streamlit.container.side_effect = lambda **_kwargs: _Container()
+
+    module_view_states = [
+        ("agent_loops", "agent_loops.tasks.view"),
+        ("agent_alarms", "agent_alarms.alarms.view"),
+    ]
+
+    def _render_sidebar():
+        selected_module_id, selected_module_view_id = module_view_states.pop(0)
+        mock_streamlit.session_state["selected_page"] = "module_view"
+        mock_streamlit.session_state["selected_module_id"] = selected_module_id
+        mock_streamlit.session_state["selected_module_view_id"] = selected_module_view_id
+        return "module_view"
+
+    import apmatia.interfaces.streamlit.app as app
+
+    app = importlib.reload(app)
+
+    with patch.object(
+        app,
+        "get_auth_session",
+        return_value={"authenticated": True, "username": "testuser"},
+    ), patch.object(
+        app,
+        "get_settings",
+        return_value={"theme": "dark"},
+    ), patch.object(
+        app,
+        "initialize_ui_preferences",
+    ), patch.object(
+        app,
+        "apply_theme_styles",
+    ), patch.object(
+        app,
+        "_process_header_actions",
+    ), patch.object(
+        app,
+        "render_top_bar",
+    ), patch.object(
+        app,
+        "render_sidebar",
+        side_effect=_render_sidebar,
+    ), patch.object(
+        app,
+        "ensure_ipe_coach_agent_for_user",
+    ), patch(
+        "apmatia.interfaces.streamlit.pages.module_views.render",
+    ) as mock_module_views_render:
+        app.main()
+        app.main()
+
+    assert mock_module_views_render.call_count == 2
+    shell_keys = [kwargs.get("key") for _args, kwargs in mock_streamlit.container.call_args_list]
+    assert len(shell_keys) == 2
+    assert shell_keys[0].startswith("apm-page-shell:module_view:")
+    assert shell_keys[1].startswith("apm-page-shell:module_view:")
+    first_generation = int(shell_keys[0].rsplit(":", 1)[-1])
+    second_generation = int(shell_keys[1].rsplit(":", 1)[-1])
+    assert second_generation == first_generation + 1
+
+
 def test_header_menu_settings_button_selects_settings_page(mock_streamlit):
     """The top-right menu routes users to settings without a page reload."""
     mock_streamlit.button.side_effect = (
@@ -2544,9 +2681,9 @@ def test_docker_launchers_bind_processes_to_container_all_interfaces():
     assert 'APMATIA_SERVER_HOST=0.0.0.0' in compose
     assert 'APMATIA_STREAMLIT_HOST=0.0.0.0' in compose
     assert 'APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true' in compose
-    assert 'HOME=${HOME}' in compose
-    assert 'APMATIA_HOME=${HOME}/.apmatia' in compose
-    assert 'APMATIA_WORKSPACE_ROOT=${HOME}/.apmatia/workspace/modules' in compose
+    assert 'HOME=/home/apmatia' in compose
+    assert 'APMATIA_HOME=/home/apmatia/.apmatia' in compose
+    assert 'APMATIA_WORKSPACE_ROOT=/home/apmatia/.apmatia/workspace/modules' in compose
 
 
 def test_start_script_mounts_persistent_user_state():
@@ -2561,7 +2698,7 @@ def test_start_script_mounts_persistent_user_state():
     assert '-e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR"' in launcher
     assert '-v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR"' in launcher
     assert '-e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules"' in launcher
-    assert 'APMATIA_CONTAINER_HOME="$HOME"' in launcher
+    assert 'APMATIA_CONTAINER_HOME="/home/apmatia"' in launcher
     assert '--user "$(id -u):$(id -g)"' in launcher
 
 
@@ -2572,12 +2709,12 @@ def test_start_script_bootstraps_workspace_modules_on_the_host():
     assert 'APMATIA_WORKSPACE_DIR_HOST="${APMATIA_WORKSPACE_DIR:-$HOME/.apmatia/workspace}"' in launcher
     assert 'APMATIA_WORKSPACE_ROOT_HOST="$APMATIA_WORKSPACE_DIR_HOST/modules"' in launcher
     assert "repair_host_permissions()" in launcher
-    assert 'ensure_host_permissions "$APMATIA_HOME_HOST" "$APMATIA_HOME_HOST"' in launcher
-    assert 'ensure_host_permissions "$APMATIA_DATA_DIR_HOST" "$APMATIA_DATA_DIR_HOST"' in launcher
-    assert 'ensure_host_permissions "$APMATIA_CONFIG_DIR_HOST" "$APMATIA_CONFIG_DIR_HOST"' in launcher
+    assert 'ensure_host_permissions "$APMATIA_HOME_HOST" "$APMATIA_CONTAINER_HOME_DIR"' in launcher
+    assert 'ensure_host_permissions "$APMATIA_DATA_DIR_HOST" "$APMATIA_CONTAINER_DATA_DIR"' in launcher
+    assert 'ensure_host_permissions "$APMATIA_CONFIG_DIR_HOST" "$APMATIA_CONTAINER_CONFIG_DIR"' in launcher
     assert 'mkdir -p "$APMATIA_WORKSPACE_ROOT_HOST"' in launcher
     assert 'mkdir -p "$APMATIA_HOME_HOST/workspace/modules"' not in launcher
-    assert 'APMATIA_CONTAINER_HOME="/home/apmatia"' not in launcher
+    assert 'APMATIA_CONTAINER_HOME="/home/apmatia"' in launcher
 
 
 def test_start_script_uses_saved_llama_server_log_dir_when_env_is_missing():

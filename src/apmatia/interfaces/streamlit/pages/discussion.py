@@ -34,6 +34,7 @@ from apmatia.interfaces.streamlit.components.message_card import (
 from apmatia.interfaces.streamlit.components.clipboard_button import (
     render_clipboard_image_paste_bridge,
 )
+from apmatia.interfaces.streamlit.page_runtime import current_page_generation, is_current_page_generation
 
 
 def _agent_label(agent: dict[str, object]) -> str:
@@ -791,6 +792,7 @@ def _render_compact_messages(
 
 
 def _render_contacts_shell() -> None:
+    page_generation = current_page_generation()
     contact_label = str(st.session_state.get("contacts_active_contact_label") or "Contact")
     contact_type = str(st.session_state.get("contacts_active_contact_type") or "agent")
     active_discussion_id = str(st.session_state.get("contacts_active_discussion_id") or "").strip()
@@ -838,6 +840,9 @@ def _render_contacts_shell() -> None:
         if getattr(fragment_factory, "__module__", "").startswith("streamlit"):
             @fragment_factory(run_every=0.5)
             def _contacts_fragment() -> dict[str, object]:
+                if not is_current_page_generation(page_generation):
+                    st.empty()
+                    return {"is_streaming": False, "messages": []}
                 current_snapshot = discussion_state()
                 current_activity = current_snapshot.get("activity") if isinstance(current_snapshot.get("activity"), dict) else None
                 current_activity_message_index = _activity_message_index(
@@ -904,6 +909,7 @@ def _render_contacts_shell() -> None:
 
 
 def render() -> None:
+    page_generation = current_page_generation()
     apply_message_card_css()
     if st.session_state.get("contacts_shell_active"):
         _render_contacts_shell()
@@ -1297,6 +1303,9 @@ def render() -> None:
             )
             @fragment_factory(run_every=0.5)
             def _streaming_fragment() -> dict[str, object]:
+                if not is_current_page_generation(page_generation):
+                    st.empty()
+                    return {"is_streaming": False, "messages": [], "chat_is_paused": False}
                 current_snapshot = _render_streaming_messages(
                     username=username,
                     agent_name=agent_name,

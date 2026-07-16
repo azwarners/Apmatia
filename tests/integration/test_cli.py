@@ -162,8 +162,9 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "ai_model_executor",
         "ai_model_manager",
         "contacts_and_discussions",
+        "dev_tools",
         "ipe",
-        "source_inspection",
+        "logging",
         "worksim",
     ]
     assert payload[0]["module"]["module_id"] == "agent_alarms"
@@ -357,23 +358,42 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[4]["views"] == [
         "contacts_and_discussions.chat_targets.view",
     ]
-    assert payload[5]["module"]["module_id"] == "ipe"
-    assert payload[5]["module"]["name"] == "Apmatia Integrated Productivity Environment"
+    assert payload[5]["module"]["module_id"] == "dev_tools"
+    assert payload[5]["module"]["name"] == "Apmatia Dev Tools"
     assert payload[5]["module"]["version"] == "0.1.0"
-    assert payload[5]["module"]["description"] == "An integrated workspace for ideas, tasks, projects, habits, and calendar planning."
+    assert payload[5]["module"]["description"] == "Developer tools for tree inspection, source reading, and dependency tracing."
     assert payload[5]["module"]["author"] == "Nick"
     assert payload[5]["module"]["metadata"] == {
+        "category": "developer-tools",
+        "tags": ["tree", "source", "imports", "inspection"],
+    }
+    assert payload[5]["module"]["dependencies"] == {
+        "python": ">=3.10",
+        "python_packages": [],
+        "system_packages": [],
+        "modules": [],
+        "tools": [],
+    }
+    assert payload[5]["actions"] == []
+    assert payload[5]["commands"] == []
+    assert payload[5]["views"] == []
+    assert payload[6]["module"]["module_id"] == "ipe"
+    assert payload[6]["module"]["name"] == "Apmatia Integrated Productivity Environment"
+    assert payload[6]["module"]["version"] == "0.1.0"
+    assert payload[6]["module"]["description"] == "An integrated workspace for ideas, tasks, projects, habits, and calendar planning."
+    assert payload[6]["module"]["author"] == "Nick"
+    assert payload[6]["module"]["metadata"] == {
         "category": "productivity",
         "tags": ["ideas", "tasks", "projects", "habits", "calendar", "assistant"],
     }
-    assert payload[5]["actions"] == [
+    assert payload[6]["actions"] == [
         "ipe.calendar_event",
         "ipe.habit",
         "ipe.idea",
         "ipe.project",
         "ipe.task",
     ]
-    assert payload[5]["commands"] == [
+    assert payload[6]["commands"] == [
         "ipe.calendar_event.create",
         "ipe.calendar_event.delete",
         "ipe.calendar_event.edit",
@@ -395,49 +415,49 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "ipe.task.edit",
         "ipe.task.list",
     ]
-    assert payload[5]["views"] == [
+    assert payload[6]["views"] == [
         "ipe.calendar_event.view",
         "ipe.habit.view",
         "ipe.idea.view",
         "ipe.project.view",
         "ipe.task.view",
     ]
-    assert payload[6]["module"]["module_id"] == "source_inspection"
-    assert payload[6]["module"]["name"] == "Apmatia Source Inspection"
-    assert payload[6]["module"]["version"] == "0.1.0"
-    assert payload[6]["module"]["description"] == "Developer tools for tree inspection, source reading, and dependency tracing."
-    assert payload[6]["module"]["author"] == "Nick"
-    assert payload[6]["module"]["metadata"] == {
+    assert payload[7]["module"]["module_id"] == "logging"
+    assert payload[7]["module"]["name"] == "Apmatia Logging"
+    assert payload[7]["module"]["version"] == "0.1.0"
+    assert payload[7]["module"]["description"] == "Structured runtime logging and a browsable log viewer for Apmatia."
+    assert payload[7]["module"]["author"] == "Nick"
+    assert payload[7]["module"]["metadata"] == {
         "category": "developer-tools",
-        "tags": ["tree", "source", "imports", "inspection"],
+        "tags": ["logging", "debugging", "observability", "diagnostics", "runtime"],
     }
-    assert payload[6]["module"]["dependencies"] == {
+    assert payload[7]["module"]["dependencies"] == {
         "python": ">=3.10",
         "python_packages": [],
         "system_packages": [],
         "modules": [],
         "tools": [],
     }
-    assert payload[6]["actions"] == []
-    assert payload[6]["commands"] == []
-    assert payload[6]["views"] == []
-    assert payload[7]["module"]["module_id"] == "worksim"
-    assert payload[7]["module"]["name"] == "Apmatia Worksim"
-    assert payload[7]["module"]["version"] == "0.1.0"
-    assert payload[7]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
-    assert payload[7]["module"]["author"] == "Nick"
-    assert payload[7]["module"]["metadata"] == {
+    assert payload[7]["actions"] == []
+    assert payload[7]["commands"] == []
+    assert payload[7]["views"] == ["logging.entries.view"]
+    assert payload[8]["module"]["module_id"] == "worksim"
+    assert payload[8]["module"]["name"] == "Apmatia Worksim"
+    assert payload[8]["module"]["version"] == "0.1.0"
+    assert payload[8]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
+    assert payload[8]["module"]["author"] == "Nick"
+    assert payload[8]["module"]["metadata"] == {
         "category": "workspace",
         "tags": ["wiki", "org-chart", "agents", "teams", "simulation"],
     }
-    assert payload[7]["actions"] == ["worksim.org_chart_node"]
-    assert payload[7]["commands"] == [
+    assert payload[8]["actions"] == ["worksim.org_chart_node"]
+    assert payload[8]["commands"] == [
         "worksim.org_chart_node.create",
         "worksim.org_chart_node.delete",
         "worksim.org_chart_node.edit",
         "worksim.org_chart_node.list",
     ]
-    assert payload[7]["views"] == ["worksim.org_chart_node.view"]
+    assert payload[8]["views"] == ["worksim.org_chart_node.view"]
 
 
 def test_cli_module_show_displays_worksim_module_details(capsys):

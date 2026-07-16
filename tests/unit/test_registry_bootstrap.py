@@ -20,8 +20,9 @@ def test_load_bundled_modules_loads_bundled_modules():
         "ai_model_executor",
         "ai_model_manager",
         "contacts_and_discussions",
+        "dev_tools",
         "ipe",
-        "source_inspection",
+        "logging",
         "worksim",
     ]
     assert [action.action_id for action in registry.list_actions()] == [
@@ -140,6 +141,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "ipe.idea.view",
         "ipe.project.view",
         "ipe.task.view",
+        "logging.entries.view",
         "worksim.org_chart_node.view",
     ]
 
@@ -168,7 +170,8 @@ def test_get_application_registry_returns_cached_registry():
         "ai_model_executor",
         "ai_model_manager",
         "contacts_and_discussions",
+        "dev_tools",
         "ipe",
-        "source_inspection",
+        "logging",
         "worksim",
     ]

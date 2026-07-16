@@ -352,28 +352,16 @@ class YsparrModelExecutor:
     def _build_system_prompt(self, request) -> str:  # type: ignore[no-untyped-def]
         task = request.task
         identity_prompt = self._resolve_agent_identity_prompt(task)
-        task_summary_lines = [
-            f"You are executing an autonomous agent loop task titled: {task.title or 'Untitled Task'}.",
-            f"Task prompt: {task.prompt or '(no prompt provided)'}",
-            f"Contact kind: {task.contact_kind or 'unknown'}",
-            f"Contact ID: {task.contact_id if task.contact_id is not None else 'unknown'}",
-        ]
-        if task.checklist:
-            task_summary_lines.append("Checklist:")
-            for index, item in enumerate(task.checklist, start=1):
-                label = str(item.get("label") or item.get("title") or item.get("text") or f"Item {index}").strip()
-                status = "done" if bool(item.get("done")) else "open"
-                task_summary_lines.append(f"- [{status}] {label}")
-        else:
-            task_summary_lines.append("Checklist: none provided.")
-
-        task_summary_lines.append("Keep working across turns until the checklist is fully complete.")
-        task_summary_lines.append(
-            "At the end of every turn, include a <loop_status> JSON block with keys: "
-            '"done", "summary", "completed_items", "remaining_items", "next_action", and "executive_analysis".'
+        task_summary_lines = self._build_task_brief_lines(task)
+        task_summary_lines.extend(
+            [
+                "Keep working across turns until the checklist is fully complete.",
+                "At the end of every turn, include a <loop_status> JSON block with keys: "
+                '"done", "summary", "completed_items", "remaining_items", "next_action", and "executive_analysis".',
+                "Only set done to true when every checklist item is complete.",
+                "When done is false, continue with the next step instead of concluding the task.",
+            ]
         )
-        task_summary_lines.append("Only set done to true when every checklist item is complete.")
-        task_summary_lines.append("When done is false, continue with the next step instead of concluding the task.")
         base_prompt = "\n".join(task_summary_lines)
         if identity_prompt:
             base_prompt = f"{identity_prompt}\n\n{base_prompt}"
@@ -381,11 +369,11 @@ class YsparrModelExecutor:
 
     def _build_user_prompt(self, request) -> str:  # type: ignore[no-untyped-def]
         lines = [
-            f"Turn {request.turn_index} of {int(request.task.max_model_turns or 1)}.",
-            "Current task status:",
+            "Latest turn state:",
+            f"- turn_index: {request.turn_index}",
+            f"- max_model_turns: {int(request.task.max_model_turns or 1)}",
             f"- status: {request.task.status.value if hasattr(request.task.status, 'value') else request.task.status}",
             f"- execution_status: {request.task.execution_status.value if hasattr(request.task.execution_status, 'value') else request.task.execution_status}",
-            f"- prompt: {request.task.prompt or '(no prompt provided)'}",
         ]
         if request.tool_results:
             lines.append("Tool results from the previous turn:")
@@ -394,7 +382,7 @@ class YsparrModelExecutor:
                 lines.append(f"- {result.tool_name} [{result.status}]: {payload}")
         loop_status = request.task.metadata.get("loop_status") if isinstance(request.task.metadata, dict) else None
         if isinstance(loop_status, dict) and loop_status:
-            lines.append("Current loop status:")
+            lines.append("Current loop status JSON:")
             lines.append(json.dumps(loop_status, indent=2, ensure_ascii=False))
         if request.prior_events:
             lines.append("Recent execution events:")
@@ -402,6 +390,23 @@ class YsparrModelExecutor:
                 lines.append(f"- {event.event_type.value}: {event.payload}")
         lines.append("Respond with the next step for the task and include the required <loop_status> block.")
         return "\n".join(lines)
+
+    def _build_task_brief_lines(self, task: AgentLoopTask) -> list[str]:
+        lines = [
+            f"You are executing an autonomous agent loop task titled: {task.title or 'Untitled Task'}.",
+            f"Task prompt: {task.prompt or '(no prompt provided)'}",
+            f"Contact kind: {task.contact_kind or 'unknown'}",
+            f"Contact ID: {task.contact_id if task.contact_id is not None else 'unknown'}",
+        ]
+        if task.checklist:
+            lines.append("Checklist:")
+            for index, item in enumerate(task.checklist, start=1):
+                label = str(item.get("label") or item.get("title") or item.get("text") or f"Item {index}").strip()
+                status = "done" if bool(item.get("done")) else "open"
+                lines.append(f"- [{status}] {label}")
+        else:
+            lines.append("Checklist: none provided.")
+        return lines
 
     def _build_response(self, *, request, reply_text: str, tool_requests: tuple, final_text: str | None, llm_config) -> "ModelResponse":  # type: ignore[no-untyped-def]
         from .models import ModelResponse

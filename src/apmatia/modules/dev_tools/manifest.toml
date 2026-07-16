@@ -1,6 +1,6 @@
 [module]
-module_id = "source_inspection"
-name = "Apmatia Source Inspection"
+module_id = "dev_tools"
+name = "Apmatia Dev Tools"
 version = "0.1.0"
 description = "Developer tools for tree inspection, source reading, and dependency tracing."
 author = "Nick"

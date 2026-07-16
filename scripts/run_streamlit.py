@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 import subprocess
 import sys
@@ -13,15 +12,15 @@ from apmatia.core.security.transport import (
     create_server_ssl_context,
     validate_transport_security,
 )
+from apmatia.lib.persistence.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STREAMLIT_APP = REPO_ROOT / "src" / "apmatia" / "interfaces" / "streamlit" / "app.py"
 
 
 def _ensure_logging_configured() -> None:
-    if not logging.getLogger().handlers:
-        logging.basicConfig(level=logging.INFO)
+    get_logger(__name__)
 
 
 def _get_streamlit_config() -> tuple[str, int, TransportSecurityConfig]:

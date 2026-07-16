@@ -19,6 +19,7 @@ from apmatia.interfaces.streamlit.api_client import (
 )
 from apmatia.interfaces.streamlit.module_views.adapter import adapt_module_view
 from apmatia.interfaces.streamlit.module_views.renderers import render_navigation_pane
+from apmatia.interfaces.streamlit.page_runtime import sync_page_generation
 from apmatia.interfaces.streamlit.pages.login import show_auth_form
 from apmatia.interfaces.streamlit.pages import (
     settings,
@@ -35,6 +36,7 @@ from apmatia.interfaces.streamlit.pages import (
     tutor_session_config,
     tutor_session_wiki,
 )
+from apmatia.lib.persistence.logger import get_logger
 
 FAVICON_PATH = Path(__file__).resolve().parents[4] / "assets" / "favicon.png"
 PAGE_OPTIONS = [
@@ -53,6 +55,7 @@ PAGE_OPTIONS = [
     "settings",
 ]
 THEME_OPTIONS = ["dark", "light", "system"]
+LOGGER = get_logger(__name__)
 
 
 def _format_page_label(page: str) -> str:
@@ -986,24 +989,47 @@ def _render_module_sidebar_section(module: dict[str, object]) -> None:
 
 def _select_module_for_navigation(module_id: str, module_views: list[dict[str, object]]) -> None:
     if module_id == "contacts_and_discussions":
+        LOGGER.info(
+            "Module navigation selected discussion shell",
+            extra={
+                "selected_page": "discussion",
+                "selected_module_id": module_id,
+                "selected_module_view_id": "contacts_and_discussions.chat_targets.view",
+            },
+        )
         st.session_state["selected_page"] = "discussion"
         st.session_state["selected_module_id"] = module_id
         st.session_state["selected_module_view_id"] = "contacts_and_discussions.chat_targets.view"
         st.session_state["contacts_shell_active"] = True
     elif module_id == "agent_loops":
+        selected_module_view_id = None if not module_views else str(module_views[0].get("view_id") or "")
+        LOGGER.info(
+            "Module navigation selected module view shell",
+            extra={
+                "selected_page": "module_view",
+                "selected_module_id": module_id,
+                "selected_module_view_id": selected_module_view_id or "",
+            },
+        )
         st.session_state["selected_page"] = "module_view"
         st.session_state["selected_module_id"] = module_id
-        st.session_state["selected_module_view_id"] = None if not module_views else str(module_views[0].get("view_id") or "")
+        st.session_state["selected_module_view_id"] = selected_module_view_id
         st.session_state["agent_loops_shell_active"] = True
     else:
-        st.session_state["selected_page"] = "module_view"
-        st.session_state["selected_module_id"] = module_id
         current_view_id = st.session_state.get("selected_module_view_id")
         visible_view_ids = {str(view.get("view_id") or "") for view in module_views}
-        if current_view_id in visible_view_ids:
-            st.session_state["selected_module_view_id"] = current_view_id
-        else:
-            st.session_state["selected_module_view_id"] = None if not module_views else str(module_views[0].get("view_id") or "")
+        next_view_id = current_view_id if current_view_id in visible_view_ids else None if not module_views else str(module_views[0].get("view_id") or "")
+        LOGGER.info(
+            "Module navigation selected module view shell",
+            extra={
+                "selected_page": "module_view",
+                "selected_module_id": module_id,
+                "selected_module_view_id": next_view_id or "",
+            },
+        )
+        st.session_state["selected_page"] = "module_view"
+        st.session_state["selected_module_id"] = module_id
+        st.session_state["selected_module_view_id"] = next_view_id
     st.rerun()
 
 
@@ -1110,57 +1136,72 @@ def main():
 
     # Keep the custom sidebar visible while preserving top-menu navigation state.
     selected_page = render_sidebar()
-
-    if selected_page == "settings":
-        settings.render()
-        return
-
-    if selected_page == "model_management":
-        model_management.render()
-        return
-
-    if selected_page == "module_management":
-        module_management.render()
-        return
-
-    if selected_page == "agent_management":
-        agent_management.render()
-        return
-
+    page_detail = None
     if selected_page == "module_view":
-        module_views.render()
-        return
+        module_id = str(st.session_state.get("selected_module_id") or "").strip()
+        module_view_id = str(st.session_state.get("selected_module_view_id") or "").strip()
+        page_detail = ":".join(part for part in (module_id, module_view_id) if part)
+    page_generation = sync_page_generation(selected_page, detail=page_detail)
+    LOGGER.info(
+        "Rendering page",
+        extra={
+            "selected_page": selected_page,
+            "selected_page_detail": page_detail or "",
+            "page_generation": page_generation,
+        },
+    )
 
-    if selected_page == "user_management":
-        user_management.render()
-        return
+    with st.container(key=f"apm-page-shell:{selected_page}:{page_generation}"):
+        if selected_page == "settings":
+            settings.render()
+            return
 
-    if selected_page == "tool_management":
-        tool_management.render()
-        return
+        if selected_page == "model_management":
+            model_management.render()
+            return
 
-    if selected_page == "memory_management":
-        memory_management.render()
-        return
+        if selected_page == "module_management":
+            module_management.render()
+            return
 
-    if selected_page == "discussion":
-        discussion.render()
-        return
+        if selected_page == "agent_management":
+            agent_management.render()
+            return
 
-    if selected_page == "tutor_session_config":
-        tutor_session_config.render()
-        return
+        if selected_page == "module_view":
+            module_views.render()
+            return
 
-    if selected_page == "tutor_live_discussion":
-        tutor_live_discussion.render()
-        return
+        if selected_page == "user_management":
+            user_management.render()
+            return
 
-    if selected_page == "tutor_session_wiki":
-        tutor_session_wiki.render()
-        return
+        if selected_page == "tool_management":
+            tool_management.render()
+            return
 
-    if selected_page == "tutor":
-        tutor.render()
+        if selected_page == "memory_management":
+            memory_management.render()
+            return
+
+        if selected_page == "discussion":
+            discussion.render()
+            return
+
+        if selected_page == "tutor_session_config":
+            tutor_session_config.render()
+            return
+
+        if selected_page == "tutor_live_discussion":
+            tutor_live_discussion.render()
+            return
+
+        if selected_page == "tutor_session_wiki":
+            tutor_session_wiki.render()
+            return
+
+        if selected_page == "tutor":
+            tutor.render()
 
 
 if __name__ == "__main__":

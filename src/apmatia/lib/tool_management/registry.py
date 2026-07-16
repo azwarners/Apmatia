@@ -68,7 +68,7 @@ def builtin_tool_definitions(extra_definitions: list[dict[str, Any]] | None = No
             "enabled": True,
             "confirmation_required": False,
             "read_only": True,
-            "metadata": {"builtin": True},
+            "metadata": {"builtin": True, "library": "tool_management"},
         },
         {
             "name": "get_current_time",
@@ -90,7 +90,7 @@ def builtin_tool_definitions(extra_definitions: list[dict[str, Any]] | None = No
             "enabled": True,
             "confirmation_required": False,
             "read_only": True,
-            "metadata": {"builtin": True},
+            "metadata": {"builtin": True, "library": "tool_management"},
         },
     ]
     if extra_definitions:

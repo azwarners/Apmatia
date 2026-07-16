@@ -1,0 +1,18 @@
+[module]
+module_id = "logging"
+name = "Apmatia Logging"
+version = "0.1.0"
+description = "Structured runtime logging and a browsable log viewer for Apmatia."
+author = "Nick"
+
+[metadata]
+category = "developer-tools"
+tags = ["logging", "debugging", "observability", "diagnostics", "runtime"]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []
+

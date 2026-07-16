@@ -35,7 +35,7 @@ def workspace_module_tool_definitions() -> list[dict[str, Any]]:
             "enabled": True,
             "confirmation_required": False,
             "read_only": True,
-            "metadata": {"builtin": True, "workspace": True},
+            "metadata": {"builtin": True, "library": "tool_management", "workspace": True},
         },
         {
             "name": "create_workspace_module",
@@ -57,7 +57,7 @@ def workspace_module_tool_definitions() -> list[dict[str, Any]]:
             "enabled": True,
             "confirmation_required": False,
             "read_only": False,
-            "metadata": {"builtin": True, "workspace": True},
+            "metadata": {"builtin": True, "library": "tool_management", "workspace": True},
         },
         {
             "name": "list_workspace_module_files",
@@ -75,7 +75,7 @@ def workspace_module_tool_definitions() -> list[dict[str, Any]]:
             "enabled": True,
             "confirmation_required": False,
             "read_only": True,
-            "metadata": {"builtin": True, "workspace": True},
+            "metadata": {"builtin": True, "library": "tool_management", "workspace": True},
         },
         {
             "name": "read_workspace_module_file",
@@ -94,7 +94,7 @@ def workspace_module_tool_definitions() -> list[dict[str, Any]]:
             "enabled": True,
             "confirmation_required": False,
             "read_only": True,
-            "metadata": {"builtin": True, "workspace": True},
+            "metadata": {"builtin": True, "library": "tool_management", "workspace": True},
         },
         {
             "name": "write_workspace_module_file",
@@ -114,7 +114,7 @@ def workspace_module_tool_definitions() -> list[dict[str, Any]]:
             "enabled": True,
             "confirmation_required": False,
             "read_only": False,
-            "metadata": {"builtin": True, "workspace": True},
+            "metadata": {"builtin": True, "library": "tool_management", "workspace": True},
         },
         {
             "name": "validate_workspace_module",
@@ -132,7 +132,7 @@ def workspace_module_tool_definitions() -> list[dict[str, Any]]:
             "enabled": True,
             "confirmation_required": False,
             "read_only": True,
-            "metadata": {"builtin": True, "workspace": True},
+            "metadata": {"builtin": True, "library": "tool_management", "workspace": True},
         },
         ]
 

@@ -16,7 +16,7 @@ from apmatia.modules.agent_loops.tools import build_agent_loop_tool_providers, a
 from apmatia.modules.agent_config.tooling import build_agent_config_tool_providers, agent_config_tool_definitions
 from apmatia.lib.system_audit.tooling import build_system_audit_tool_providers, system_audit_tool_definitions
 from apmatia.lib.memory_management.tooling import build_memory_tool_providers, memory_tool_definitions
-from apmatia.lib.source_inspection.tooling import build_source_inspection_tool_providers, source_inspection_tool_definitions
+from apmatia.lib.dev_tools.tooling import build_dev_tools_tool_providers, dev_tools_tool_definitions
 from apmatia.lib.tool_management.module import ToolManager
 from apmatia.lib.tool_management.workspace_modules import (
     build_workspace_module_tool_providers,
@@ -64,7 +64,7 @@ def _ensure_runtime() -> None:
                 *build_system_audit_tool_providers(agent_manager),
                 *build_memory_tool_providers(get_memory_manager(), agent_manager),
                 *build_agent_config_tool_providers(get_app_dir()),
-                *build_source_inspection_tool_providers(),
+                *build_dev_tools_tool_providers(agent_manager),
                 *build_wiki_tool_providers(get_wiki_manager(), agent_manager),
                 *build_workspace_module_tool_providers(),
                 *build_agent_loop_tool_providers(agent_manager),
@@ -76,7 +76,7 @@ def _ensure_runtime() -> None:
                 *system_audit_tool_definitions(),
                 *memory_tool_definitions(),
                 *agent_config_tool_definitions(),
-                *source_inspection_tool_definitions(),
+                *dev_tools_tool_definitions(),
                 *wiki_tool_definitions(),
                 *workspace_module_tool_definitions(),
             ],

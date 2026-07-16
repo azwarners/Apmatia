@@ -33,6 +33,7 @@ from apmatia.interfaces.streamlit.module_views.renderers import (
 )
 from apmatia.interfaces.streamlit.components.shell_tabs import render_shell_tabs
 from apmatia.interfaces.streamlit.components.terminal_output import render_terminal_block
+from apmatia.interfaces.streamlit.page_runtime import current_page_generation, is_current_page_generation
 from apmatia.modules.agent_loops.prompt_helpers import parse_checklist_text
 
 
@@ -1191,25 +1192,46 @@ def _item_id(item: object) -> int | str | None:
 
 
 def _render_agent_loops_shell(selected_module: dict[str, object]) -> None:
+    page_generation = current_page_generation()
     st.markdown(
         """
         <style>
+            html,
+            body {
+                height: 100%;
+                overflow: hidden;
+            }
+
             div[data-testid="stAppViewContainer"] {
                 height: 100vh;
                 overflow: hidden;
             }
 
+            div[data-testid="stAppViewContainer"] > .main,
             div[data-testid="stMain"] {
                 height: 100vh;
+                overflow: hidden;
             }
 
             div[data-testid="stMainBlockContainer"] {
                 max-width: none;
                 height: 100vh;
+                min-height: 0;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
                 padding-top: 0.5rem;
                 padding-right: 1rem;
                 padding-bottom: 0.5rem;
                 padding-left: 1rem;
+            }
+
+            div[data-testid="stVerticalBlock"] {
+                min-height: 0;
+            }
+
+            div[data-testid="stVerticalBlock"] > div {
+                min-height: 0;
             }
 
             div[data-testid="stVerticalBlock"] {
@@ -1322,7 +1344,7 @@ def _render_agent_loops_shell(selected_module: dict[str, object]) -> None:
                 current_items,
                 selected_task_id=str(st.session_state.get(selected_task_key) or "").strip(),
             )
-            with st.container(border=True, height="stretch", key="agent-loops-shell-content"):
+            with st.container(border=True, key="agent-loops-shell-content"):
                 if st.session_state.get(launch_form_key):
                     _render_agent_loops_task_form(
                         selected_contact=selected_contact,
@@ -1342,6 +1364,9 @@ def _render_agent_loops_shell(selected_module: dict[str, object]) -> None:
         if should_use_live_fragment:
             @fragment_factory(run_every=0.5)
             def _current_task_fragment() -> dict[str, object]:
+                if not is_current_page_generation(page_generation):
+                    st.empty()
+                    return {"running": False}
                 current_items = _filter_agent_loops_tasks(
                     list_module_view_items(str(runs_view.get("view_id") or "")),
                     contact_kind=contact_kind,
@@ -1374,6 +1399,9 @@ def _render_agent_loops_shell(selected_module: dict[str, object]) -> None:
             if getattr(fragment_factory, "__module__", "").startswith("streamlit"):
                 @fragment_factory(run_every=0.5)
                 def _task_history_fragment() -> dict[str, object]:
+                    if not is_current_page_generation(page_generation):
+                        st.empty()
+                        return {"running": False}
                     current_items = _filter_agent_loops_tasks(
                         list_module_view_items(str(runs_view.get("view_id") or "")),
                         contact_kind=contact_kind,
@@ -1431,7 +1459,7 @@ def _selected_agent_loops_task(
 def _render_agent_loops_current_task_output(item: dict[str, object], *, roots: dict[str, object]) -> None:
     task_id = str(item.get("task_id") or item.get("id") or "").strip()
     status = str(item.get("status") or "queued").strip().lower()
-    _render_agent_loops_live_output(item, task_id=task_id, roots=roots, body_height="stretch")
+    _render_agent_loops_live_output(item, task_id=task_id, roots=roots, body_height=28)
     _render_agent_loops_task_progress(item)
 
     if status in {"running", "stopping"}:
@@ -1497,6 +1525,7 @@ def _render_agent_loops_task_history(items: list[dict[str, object]], *, roots: d
                         item,
                         task_id=task_id,
                         roots=roots,
+                        body_height=24,
                     )
                 if summary:
                     _render_agent_loops_terminal_block(

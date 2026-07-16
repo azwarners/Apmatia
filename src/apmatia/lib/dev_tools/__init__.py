@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from apmatia.lib.dev_tools import (
+from .tooling import (
     DEV_TOOLS_PROVIDER_IDS,
     SourceInspectionToolProvider,
     build_dev_tools_tool_providers,

@@ -23,6 +23,7 @@ from apmatia.interfaces.streamlit.api_client import (
     update_discussion,
     update_wiki_node,
 )
+from apmatia.interfaces.streamlit.page_runtime import current_page_generation, is_current_page_generation
 from apmatia.interfaces.streamlit.pages import discussion as discussion_page
 from apmatia.interfaces.streamlit.pages.tutor_shared import build_tutor_wiki_context, ensure_selected_node, render_tree, render_wiki_search, render_wiki_summary
 
@@ -35,6 +36,7 @@ def _find_discussion(discussions: list[dict[str, object]], discussion_id: object
 
 
 def render() -> None:
+    page_generation = current_page_generation()
     discussion_page.apply_message_card_css()
     try:
         agents = list_agents()
@@ -229,6 +231,9 @@ def render() -> None:
                 )
                 @fragment_factory(run_every=0.5)
                 def _streaming_fragment() -> dict[str, object]:
+                    if not is_current_page_generation(page_generation):
+                        st.empty()
+                        return {"is_streaming": False, "messages": [], "chat_is_paused": False}
                     current_snapshot = discussion_page._render_streaming_messages(
                         username=username,
                         agent_name=agent_name,

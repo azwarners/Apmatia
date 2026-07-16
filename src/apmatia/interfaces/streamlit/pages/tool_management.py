@@ -140,6 +140,67 @@ _TOOL_TEMPLATES = {
     },
 }
 
+_GROUP_ORDER = {
+    "Apmatia administration": 0,
+    "Integrated productivity environment": 1,
+    "System audit": 2,
+    "Memory management": 3,
+    "Agent config": 4,
+    "Dev tools": 5,
+    "Wiki management": 6,
+    "Tool management": 7,
+    "Workspace modules": 8,
+    "Agent loops": 9,
+}
+
+_SOURCE_LABELS = {
+    "apmatia_administration": "Apmatia administration",
+    "ipe": "Integrated productivity environment",
+    "system_audit": "System audit",
+    "memory_management": "Memory management",
+    "agent_config": "Agent config",
+    "dev_tools": "Dev tools",
+    "wiki_management": "Wiki management",
+    "tool_management": "Tool management",
+    "workspace_modules": "Workspace modules",
+    "agent_loops": "Agent loops",
+}
+
+_PROVIDER_GROUP_FALLBACKS: dict[str, tuple[str, str, str]] = {
+    "builtin.apmatia_create_agent": ("library", "apmatia_administration", "Apmatia administration"),
+    "builtin.apmatia_clone_agent_as": ("library", "apmatia_administration", "Apmatia administration"),
+    "builtin.apmatia_set_agent_mode": ("library", "apmatia_administration", "Apmatia administration"),
+    "builtin.apmatia_system_audit": ("library", "system_audit", "System audit"),
+    "builtin.ipe_what_do_i_do": ("library", "ipe", "Integrated productivity environment"),
+    "builtin.memory_create": ("library", "memory_management", "Memory management"),
+    "builtin.memory_search": ("library", "memory_management", "Memory management"),
+    "builtin.memory_get": ("library", "memory_management", "Memory management"),
+    "builtin.memory_update": ("library", "memory_management", "Memory management"),
+    "builtin.memory_archive": ("library", "memory_management", "Memory management"),
+    "builtin.agent_config_readme_first": ("module", "agent_config", "Agent config"),
+    "builtin.agent_config_tree": ("module", "agent_config", "Agent config"),
+    "builtin.agent_config_read": ("module", "agent_config", "Agent config"),
+    "builtin.apmatia_tree": ("library", "dev_tools", "Dev tools"),
+    "builtin.apmatia_read": ("library", "dev_tools", "Dev tools"),
+    "builtin.apmatia_trace_import": ("library", "dev_tools", "Dev tools"),
+    "builtin.wiki_create_branch": ("library", "wiki_management", "Wiki management"),
+    "builtin.wiki_create_leaf": ("library", "wiki_management", "Wiki management"),
+    "builtin.wiki_update_node": ("library", "wiki_management", "Wiki management"),
+    "builtin.wiki_get_tree": ("library", "wiki_management", "Wiki management"),
+    "builtin.wiki_search": ("library", "wiki_management", "Wiki management"),
+    "builtin.wiki_move_node": ("library", "wiki_management", "Wiki management"),
+    "builtin.wiki_reorder_node": ("library", "wiki_management", "Wiki management"),
+    "builtin.plan_workspace_module": ("library", "tool_management", "Tool management"),
+    "builtin.create_workspace_module": ("library", "tool_management", "Tool management"),
+    "builtin.list_workspace_module_files": ("library", "tool_management", "Tool management"),
+    "builtin.read_workspace_module_file": ("library", "tool_management", "Tool management"),
+    "builtin.write_workspace_module_file": ("library", "tool_management", "Tool management"),
+    "builtin.validate_workspace_module": ("library", "tool_management", "Tool management"),
+    "builtin.agent_loops_list_agents": ("module", "agent_loops", "Agent loops"),
+    "builtin.echo": ("library", "tool_management", "Tool management"),
+    "builtin.get_current_time": ("library", "tool_management", "Tool management"),
+}
+
 
 def _json_text(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, indent=2)
@@ -159,25 +220,55 @@ def _tool_label(tool: dict[str, Any]) -> str:
     return f"{name} (ID {tool_id}, {provider_id})"
 
 
+def _tool_source(tool: dict[str, Any]) -> tuple[str, str, str]:
+    metadata = tool.get("metadata")
+    if isinstance(metadata, dict):
+        for key in ("library", "module"):
+            source = str(metadata.get(key) or "").strip()
+            if source:
+                return key, source, _SOURCE_LABELS.get(source, _humanize_source_name(source))
+
+    provider_id = str(tool.get("provider_id") or "").strip()
+    if provider_id in _PROVIDER_GROUP_FALLBACKS:
+        return _PROVIDER_GROUP_FALLBACKS[provider_id]
+    return ("library", "other", "Other tools")
+
+
+def _humanize_source_name(source: str) -> str:
+    normalized = source.replace("-", "_").strip("_")
+    if not normalized:
+        return "Other tools"
+    parts = [part for part in normalized.split("_") if part]
+    pretty = " ".join(parts)
+    return pretty[:1].upper() + pretty[1:] if pretty else "Other tools"
+
+
 def _tool_group_label(tool: dict[str, Any]) -> str:
-    provider_id = str(tool.get("provider_id") or "")
-    if provider_id.startswith("builtin.apmatia_"):
-        return "Administration tools"
-    if provider_id.startswith("builtin.memory_"):
-        return "Memory tools"
-    if provider_id.startswith("builtin.wiki_"):
-        return "Wiki tools"
-    return "Other tools"
+    _, _, label = _tool_source(tool)
+    return label
+
+
+def _tool_group_caption(tool: dict[str, Any]) -> str:
+    kind, source_id, label = _tool_source(tool)
+    if label == "Other tools":
+        return "Source unavailable"
+    return f"{kind} `{source_id}`"
 
 
 def _tool_group_sort_key(tool: dict[str, Any]) -> tuple[str, str, int]:
-    group_order = {"Administration tools": 0, "Memory tools": 1, "Wiki tools": 2, "Other tools": 3}
     group = _tool_group_label(tool)
     return (
-        str(group_order.get(group, 99)),
+        str(_GROUP_ORDER.get(group, 99)),
         str(tool.get("name") or ""),
         int(tool.get("id") or 0),
     )
+
+
+def _group_tools(tools: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    grouped_tools: dict[str, list[dict[str, Any]]] = {}
+    for tool in sorted(tools, key=_tool_group_sort_key):
+        grouped_tools.setdefault(_tool_group_label(tool), []).append(tool)
+    return grouped_tools
 
 
 def _agent_label(agent: dict[str, Any]) -> str:
@@ -296,15 +387,13 @@ def render() -> None:
                     for assignment in assignments
                     if assignment.get("tool_id") is not None
                 }
-                grouped_tools: dict[str, list[dict[str, Any]]] = {}
-                for tool in sorted(tools, key=_tool_group_sort_key):
-                    grouped_tools.setdefault(_tool_group_label(tool), []).append(tool)
+                grouped_tools = _group_tools(tools)
 
                 selected_tool_ids: list[int] = []
                 for group_name, grouped_items in grouped_tools.items():
                     with st.container(border=True):
                         st.write(f"**{group_name}**")
-                        st.caption("Select one or more tools to grant in a single step.")
+                        st.caption(f"Select one or more tools from {_tool_group_caption(grouped_items[0])}.")
                         for tool in grouped_items:
                             tool_id = int(tool.get("id"))
                             selected = st.checkbox(
@@ -394,12 +483,16 @@ def render() -> None:
             if not available_tools:
                 st.info("No enabled tools are currently available to this agent.")
             else:
-                for tool in available_tools:
-                    st.caption(
-                        f"{tool.get('name')} (ID {tool.get('id')}) · "
-                        f"{tool.get('provider_id')} · "
-                        f"{'confirmation required' if tool.get('confirmation_required') else 'no confirmation'}"
-                    )
+                for group_name, grouped_items in _group_tools(available_tools).items():
+                    with st.container(border=True):
+                        st.write(f"**{group_name}**")
+                        st.caption(f"Source: {_tool_group_caption(grouped_items[0])}.")
+                        for tool in grouped_items:
+                            st.caption(
+                                f"{tool.get('name')} (ID {tool.get('id')}) · "
+                                f"{tool.get('provider_id')} · "
+                                f"{'confirmation required' if tool.get('confirmation_required') else 'no confirmation'}"
+                            )
 
     st.divider()
     st.subheader("Edit tool definition" if is_editing else "Tool definition")
@@ -484,9 +577,15 @@ def render() -> None:
     elif not available_tools or agent_id is None:
         st.info("Grant at least one enabled tool to run a manual tool call.")
     else:
+        grouped_execution_tools = _group_tools(available_tools)
+        selected_tool_group = st.selectbox(
+            "Tool group",
+            options=list(grouped_execution_tools.keys()),
+            key="tool_management_execute_tool_group_select",
+        )
         selected_execution_tool = st.selectbox(
             "Available tool",
-            options=available_tools,
+            options=grouped_execution_tools[selected_tool_group],
             format_func=_tool_label,
             key="tool_management_execute_tool_select",
         )

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 
 from apmatia.api.http.app import app
@@ -11,13 +10,13 @@ from apmatia.core.security.transport import (
     create_server_ssl_context,
     validate_transport_security,
 )
+from apmatia.lib.persistence.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _ensure_logging_configured() -> None:
-    if not logging.getLogger().handlers:
-        logging.basicConfig(level=logging.INFO)
+    get_logger(__name__)
 
 
 def _get_server_config() -> tuple[str, int, TransportSecurityConfig]:

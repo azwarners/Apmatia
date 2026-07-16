@@ -4,11 +4,13 @@ from __future__ import annotations
 import streamlit as st
 
 from apmatia.interfaces.streamlit.api_client import ApiError, discussion_state, get_wiki_tree, list_agents, prompt_discussion, stop_discussion
+from apmatia.interfaces.streamlit.page_runtime import current_page_generation, is_current_page_generation
 from apmatia.interfaces.streamlit.pages import discussion as discussion_page
 from apmatia.interfaces.streamlit.pages.tutor_shared import build_tutor_wiki_context, ensure_selected_node, get_tutor_selected_agent_id
 
 
 def render() -> None:
+    page_generation = current_page_generation()
     try:
         agents = list_agents()
     except ApiError as error:
@@ -61,6 +63,9 @@ def render() -> None:
             )
             @fragment_factory(run_every=0.5)
             def _streaming_fragment() -> dict[str, object]:
+                if not is_current_page_generation(page_generation):
+                    st.empty()
+                    return {"is_streaming": False, "messages": [], "chat_is_paused": False}
                 current_snapshot = discussion_page._render_streaming_messages(
                     username=username,
                     agent_name=agent_name,

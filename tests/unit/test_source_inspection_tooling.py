@@ -7,9 +7,9 @@ import pytest
 
 from apmatia.lib.agent_management.models import Agent
 from apmatia.lib.agent_management.services import AgentService
-from apmatia.lib.source_inspection.tooling import (
-    build_source_inspection_tool_providers,
-    source_inspection_tool_definitions,
+from apmatia.lib.dev_tools.tooling import (
+    build_dev_tools_tool_providers,
+    dev_tools_tool_definitions,
 )
 from apmatia.lib.tool_management import ToolCall, ToolManager
 from apmatia.lib.tool_management.repositories import AgentToolAssignmentRepository, ToolDefinitionRepository
@@ -82,7 +82,15 @@ class InMemoryAssignmentRepository(AgentToolAssignmentRepository):
 
 class InMemoryAgentService(AgentService):
     def __init__(self):
-        self._agents = {1: Agent(id=1, name="Agent One", owner_user_id=1)}
+        self._agents = {
+            1: Agent(
+                id=1,
+                name="Agent One",
+                owner_user_id=1,
+                workspace_root="",
+                knowledge_root="",
+            )
+        }
 
     def create_agent(self, name: str, **kwargs):
         raise NotImplementedError
@@ -114,8 +122,8 @@ def source_tool_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         InMemoryToolDefinitionRepository(),
         InMemoryAssignmentRepository(),
         agent_service,
-        builtin_providers=build_source_inspection_tool_providers(base_dir=tmp_path),
-        builtin_definitions=source_inspection_tool_definitions(),
+        builtin_providers=build_dev_tools_tool_providers(agent_service, base_dir=tmp_path),
+        builtin_definitions=dev_tools_tool_definitions(),
     )
 
 
@@ -125,31 +133,42 @@ def _assign_tool(manager: ToolManager, agent_id: int, tool_name: str) -> int:
     return int(tool.id)
 
 
-def test_source_inspection_tools_are_registered(source_tool_manager: ToolManager):
+def test_dev_tools_are_registered(source_tool_manager: ToolManager):
     names = {tool.name for tool in source_tool_manager.list_tool_definitions()}
 
     assert {"apmatia_tree", "apmatia_read", "apmatia_trace_import"} <= names
 
 
 def test_tree_filters_noise_and_marks_special_files(source_tool_manager: ToolManager, tmp_path: Path):
-    root = tmp_path / "project"
+    root = tmp_path / "workspace"
     root.mkdir()
-    (root / "src").mkdir()
-    (root / "src" / "__init__.py").write_text("", encoding="utf-8")
-    (root / "src" / "main.py").write_text("print('hi')\n", encoding="utf-8")
-    (root / "src" / "cli.py").write_text("print('cli')\n", encoding="utf-8")
-    (root / "src" / "module.py").write_text("value = 1\n", encoding="utf-8")
+    (root / "project").mkdir()
+    (root / "project" / "src").mkdir()
+    (root / "project" / "src" / "__init__.py").write_text("", encoding="utf-8")
+    (root / "project" / "src" / "main.py").write_text("print('hi')\n", encoding="utf-8")
+    (root / "project" / "src" / "cli.py").write_text("print('cli')\n", encoding="utf-8")
+    (root / "project" / "src" / "module.py").write_text("value = 1\n", encoding="utf-8")
     (root / ".git").mkdir()
     (root / "venv").mkdir()
     (root / "__pycache__").mkdir()
+    source_tool_manager._agent_service._agents[1] = Agent(
+        id=1,
+        name="Agent One",
+        owner_user_id=1,
+        workspace_root=str(root / "project"),
+        knowledge_root=str(tmp_path / "knowledge"),
+    )
+    (tmp_path / "knowledge").mkdir()
 
     tool_id = _assign_tool(source_tool_manager, 1, "apmatia_tree")
     result = source_tool_manager.execute_tool_call(
-        ToolCall(tool_id=tool_id, requester_agent_id=1, arguments={"root_dir": str(root), "depth": 2})
+        ToolCall(tool_id=tool_id, requester_agent_id=1, arguments={"root_dir": ".", "depth": 2})
     )
 
     assert result.status == "success"
     assert result.result["ok"] is True
+    assert result.result["root_dir"] == str(root / "project")
+    assert result.result["repo_root"] == str(root / "project")
     assert result.result["counts"]["files"] == 4
     child_kinds = {child["name"]: child["kind"] for child in result.result["tree"]["children"]}
     assert child_kinds["src"] == "directory"
@@ -162,7 +181,18 @@ def test_tree_filters_noise_and_marks_special_files(source_tool_manager: ToolMan
 
 
 def test_read_file_truncates_middle_section_and_reports_metadata(source_tool_manager: ToolManager, tmp_path: Path):
-    source = tmp_path / "long.py"
+    workspace = tmp_path / "workspace"
+    knowledge = tmp_path / "knowledge"
+    workspace.mkdir()
+    knowledge.mkdir()
+    source_tool_manager._agent_service._agents[1] = Agent(
+        id=1,
+        name="Agent One",
+        owner_user_id=1,
+        workspace_root=str(workspace),
+        knowledge_root=str(knowledge),
+    )
+    source = workspace / "long.py"
     lines = [f"line {index}\n" for index in range(1, 1002)]
     source.write_text("".join(lines), encoding="utf-8")
 
@@ -176,13 +206,26 @@ def test_read_file_truncates_middle_section_and_reports_metadata(source_tool_man
     assert result.result["line_count"] == 1001
     assert result.result["file_size"] == source.stat().st_size
     assert result.result["truncated"] is True
+    assert result.result["file_path"] == str(source)
+    assert result.result["repo_root"] == str(workspace)
     assert "line 1" in result.result["content"]
     assert "line 1001" in result.result["content"]
     assert "[truncated 901 middle lines]" in result.result["content"]
 
 
 def test_trace_import_classifies_dependencies_and_reports_cycles(source_tool_manager: ToolManager, tmp_path: Path):
-    pkg = tmp_path / "pkg"
+    workspace = tmp_path / "workspace"
+    knowledge = tmp_path / "knowledge"
+    workspace.mkdir()
+    knowledge.mkdir()
+    source_tool_manager._agent_service._agents[1] = Agent(
+        id=1,
+        name="Agent One",
+        owner_user_id=1,
+        workspace_root=str(workspace),
+        knowledge_root=str(knowledge),
+    )
+    pkg = workspace / "pkg"
     pkg.mkdir()
     (pkg / "__init__.py").write_text("", encoding="utf-8")
     (pkg / "a.py").write_text("import json\nfrom .b import helper\n", encoding="utf-8")
@@ -202,3 +245,54 @@ def test_trace_import_classifies_dependencies_and_reports_cycles(source_tool_man
     cycle = result.result["cycles"][0]
     assert str(pkg / "a.py") in cycle
     assert str(pkg / "b.py") in cycle
+
+
+def test_tools_can_read_from_knowledge_root(source_tool_manager: ToolManager, tmp_path: Path):
+    workspace = tmp_path / "workspace"
+    knowledge = tmp_path / "knowledge"
+    workspace.mkdir()
+    knowledge.mkdir()
+    source_tool_manager._agent_service._agents[1] = Agent(
+        id=1,
+        name="Agent One",
+        owner_user_id=1,
+        workspace_root=str(workspace),
+        knowledge_root=str(knowledge),
+    )
+    note = knowledge / "facts.md"
+    note.write_text("knowledge base\n", encoding="utf-8")
+
+    tool_id = _assign_tool(source_tool_manager, 1, "apmatia_read")
+    result = source_tool_manager.execute_tool_call(
+        ToolCall(tool_id=tool_id, requester_agent_id=1, arguments={"file_path": "facts.md"})
+    )
+
+    assert result.status == "success"
+    assert result.result["ok"] is True
+    assert result.result["file_path"] == str(note)
+    assert result.result["repo_root"] == str(knowledge)
+
+
+def test_tools_reject_paths_outside_agent_roots(source_tool_manager: ToolManager, tmp_path: Path):
+    workspace = tmp_path / "workspace"
+    knowledge = tmp_path / "knowledge"
+    outside = tmp_path / "outside.txt"
+    workspace.mkdir()
+    knowledge.mkdir()
+    outside.write_text("nope\n", encoding="utf-8")
+    source_tool_manager._agent_service._agents[1] = Agent(
+        id=1,
+        name="Agent One",
+        owner_user_id=1,
+        workspace_root=str(workspace),
+        knowledge_root=str(knowledge),
+    )
+
+    tool_id = _assign_tool(source_tool_manager, 1, "apmatia_read")
+    result = source_tool_manager.execute_tool_call(
+        ToolCall(tool_id=tool_id, requester_agent_id=1, arguments={"file_path": str(outside)})
+    )
+
+    assert result.status == "success"
+    assert result.result["ok"] is False
+    assert result.result["error"]["code"] == "DEV_TOOLS_ERROR"

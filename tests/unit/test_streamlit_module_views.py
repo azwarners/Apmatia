@@ -1550,3 +1550,31 @@ def test_agent_loop_task_progress_redraws_checklist_and_status(mock_streamlit):
     assert "Test all available tools to ensure they are functioning correctly." not in rendered_markdown
     assert "The introduction is done, and tool verification is next." not in rendered_markdown
     assert "LOOP STATUS" not in rendered_markdown
+
+
+def test_agent_loops_current_task_output_renders_live_output_instead_of_separate_checklist(mock_streamlit):
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    module_views_page = importlib.reload(module_views_page)
+    item = {
+        "task_id": "task-1",
+        "status": "running",
+        "prompt": "Build the report.",
+        "checklist": [{"label": "Draft the report."}],
+        "loop_status": {"completed_items": [], "remaining_items": ["Draft the report."]},
+        "events": [
+            {
+                "type": "task_started",
+                "payload": {"title": "Report task"},
+            }
+        ],
+    }
+
+    with patch.object(module_views_page, "_render_agent_loops_live_output") as mock_live_output, patch.object(
+        module_views_page, "_render_agent_loops_task_progress"
+    ) as mock_task_progress:
+        module_views_page._render_agent_loops_current_task_output(item, roots={"workspace_root": "/tmp/workspace"})
+
+    mock_live_output.assert_called_once()
+    assert mock_live_output.call_args.kwargs["body_height"] == 520
+    mock_task_progress.assert_not_called()

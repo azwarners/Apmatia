@@ -15,21 +15,21 @@ VIEW_DESCRIPTORS: tuple[ViewContribution, ...] = (
             "singular_label": "Log entry",
             "plural_label": "Log entries",
             "empty_state": "No log entries have been recorded yet.",
-            "ui": {
-                "render_mode": "collection",
-                "title": "Application Logs",
-                "caption": "Recent runtime events, warnings, and errors recorded by Apmatia.",
-                "empty_state": "No log entries have been recorded yet.",
-                "item_key": "id",
-                "columns": [
-                    {"key": "timestamp", "label": "Time"},
-                    {"key": "level", "label": "Level"},
-                    {"key": "logger", "label": "Logger"},
-                    {"key": "message", "label": "Message"},
-                    {"key": "context_summary", "label": "Context"},
-                ],
-            },
+                "ui": {
+                    "render_mode": "collection",
+                    "title": "Application Logs",
+                    "caption": "Recent runtime events, warnings, and errors recorded by Apmatia.",
+                    "empty_state": "No log entries have been recorded yet.",
+                    "item_key": "id",
+                    "columns": [
+                        {"key": "timestamp", "label": "Time"},
+                        {"key": "level", "label": "Level"},
+                        {"key": "source", "label": "Source"},
+                        {"key": "logger", "label": "Logger"},
+                        {"key": "message", "label": "Message"},
+                        {"key": "context_summary", "label": "Context"},
+                    ],
+                },
         },
     ),
 )
-

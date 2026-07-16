@@ -23,7 +23,11 @@ def test_logging_module_registers_module_metadata_and_view_descriptors(monkeypat
 
 
 def test_logging_module_view_provider_reads_structured_log_entries(monkeypatch, tmp_path: Path):
-    log_file = tmp_path / "apmatia.jsonl"
+    log_dir = tmp_path / "logs"
+    log_file = log_dir / "apmatia.jsonl"
+    agent_loop_dir = log_dir / "agent_loop"
+    agent_loop_file = agent_loop_dir / "loop_1.jsonl"
+    monkeypatch.setenv("APMATIA_LOG_DIR", str(log_dir))
     monkeypatch.setenv("APMATIA_LOG_FILE", str(log_file))
 
     log_file.write_text(
@@ -56,6 +60,33 @@ def test_logging_module_view_provider_reads_structured_log_entries(monkeypatch, 
         + "\n",
         encoding="utf-8",
     )
+    agent_loop_dir.mkdir(parents=True, exist_ok=True)
+    agent_loop_file.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "timestamp": "2026-07-15T12:34:56.790+00:00",
+                        "level": "INFO",
+                        "logger": "apmatia.agent_loop",
+                        "message": "task_started",
+                        "module": "executor",
+                        "function": "execute",
+                        "line": 42,
+                        "pathname": "/home/nick/ServerData/repos/apmatia/src/apmatia/modules/agent_loops/executor.py",
+                        "process": 1234,
+                        "thread": "MainThread",
+                        "context": {
+                            "task_id": "loop_1",
+                            "title": "Task in progress",
+                        },
+                    }
+                )
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
     module_views = importlib.import_module("apmatia.modules.logging.module_views")
     module_views = importlib.reload(module_views)
@@ -64,10 +95,11 @@ def test_logging_module_view_provider_reads_structured_log_entries(monkeypatch, 
     view = importlib.import_module("apmatia.modules.logging.views").VIEW_DESCRIPTORS[0]
     items = provider.list_items(view=view, context=ModuleViewContext())
 
-    assert len(items) == 1
+    assert len(items) == 2
     assert items[0]["level"] == "INFO"
     assert items[0]["logger"] == "apmatia.interfaces.streamlit.page_runtime"
     assert items[0]["message"] == "Page generation advanced"
+    assert items[0]["source"] == "app"
     assert items[0]["context_summary"] == (
         "selected_page=module_view, "
         "selected_page_detail=agent_loops:agent_loops.tasks.view, "
@@ -76,6 +108,8 @@ def test_logging_module_view_provider_reads_structured_log_entries(monkeypatch, 
         "page_signature=module_view:agent_loops:agent_loops.tasks.view, "
         "page_generation=12"
     )
+    assert items[1]["message"] == "task_started"
+    assert items[1]["source"] == "agent_loop/loop_1"
 
 
 def test_logging_configuration_suppresses_watchdog_debug_noise(monkeypatch, tmp_path: Path):

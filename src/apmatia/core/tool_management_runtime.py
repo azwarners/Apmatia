@@ -22,6 +22,10 @@ from apmatia.lib.tool_management.workspace_modules import (
     build_workspace_module_tool_providers,
     workspace_module_tool_definitions,
 )
+from apmatia.lib.tool_management.workspace_files import (
+    build_workspace_file_tool_providers,
+    workspace_file_tool_definitions,
+)
 from apmatia.lib.wiki_management.tooling import build_wiki_tool_providers, wiki_tool_definitions
 
 if TYPE_CHECKING:
@@ -66,6 +70,7 @@ def _ensure_runtime() -> None:
                 *build_agent_config_tool_providers(get_app_dir()),
                 *build_dev_tools_tool_providers(agent_manager),
                 *build_wiki_tool_providers(get_wiki_manager(), agent_manager),
+                *build_workspace_file_tool_providers(agent_manager),
                 *build_workspace_module_tool_providers(),
                 *build_agent_loop_tool_providers(agent_manager),
             ],
@@ -78,6 +83,7 @@ def _ensure_runtime() -> None:
                 *agent_config_tool_definitions(),
                 *dev_tools_tool_definitions(),
                 *wiki_tool_definitions(),
+                *workspace_file_tool_definitions(),
                 *workspace_module_tool_definitions(),
             ],
         )

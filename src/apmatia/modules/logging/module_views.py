@@ -19,7 +19,7 @@ class ApmatiaLoggingModuleViewProvider:
         if object_type != "log_entry":
             raise ValueError(f"Unsupported logging view type: {object_type}")
 
-        entries = read_structured_log_entries(limit=250)
+        entries = read_structured_log_entries(limit=250, include_agent_loop_logs=True)
         return [_log_entry_to_item(entry) for entry in entries]
 
     def execute_command(
@@ -49,6 +49,7 @@ def _log_entry_to_item(entry: dict[str, Any]) -> dict[str, Any]:
         "pathname": entry.get("pathname"),
         "process": entry.get("process"),
         "thread": entry.get("thread"),
+        "source": entry.get("source"),
         "raw": entry.get("raw"),
     }
 
@@ -57,6 +58,7 @@ def _context_summary(context: dict[str, Any]) -> str:
     if not context:
         return ""
     interesting_keys = (
+        "source",
         "selected_page",
         "selected_page_detail",
         "selected_module_id",
@@ -73,4 +75,3 @@ def _context_summary(context: dict[str, Any]) -> str:
     if parts:
         return ", ".join(parts)
     return ", ".join(f"{key}={value}" for key, value in sorted(context.items()))
-

@@ -1459,8 +1459,7 @@ def _selected_agent_loops_task(
 def _render_agent_loops_current_task_output(item: dict[str, object], *, roots: dict[str, object]) -> None:
     task_id = str(item.get("task_id") or item.get("id") or "").strip()
     status = str(item.get("status") or "queued").strip().lower()
-    _render_agent_loops_live_output(item, task_id=task_id, roots=roots, body_height=28)
-    _render_agent_loops_task_progress(item)
+    _render_agent_loops_live_output(item, task_id=task_id, roots=roots, body_height=520)
 
     if status in {"running", "stopping"}:
         st.caption("The current task is still active and can be stopped from the task history tab.")
@@ -1525,7 +1524,7 @@ def _render_agent_loops_task_history(items: list[dict[str, object]], *, roots: d
                         item,
                         task_id=task_id,
                         roots=roots,
-                        body_height=24,
+                        body_height=520,
                     )
                 if summary:
                     _render_agent_loops_terminal_block(

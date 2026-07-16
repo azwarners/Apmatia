@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from collections import deque
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from threading import Lock
 from typing import Any
 
 from apmatia.core.runtime_paths import get_app_dir
@@ -16,7 +18,10 @@ _LOGGER_NAME = "apmatia"
 _FILE_HANDLER_MARKER = "_apmatia_file_handler"
 _STREAM_HANDLER_MARKER = "_apmatia_stream_handler"
 _CONFIGURED_MARKER = "_apmatia_logging_configured"
+_AGENT_LOOP_HANDLER_MARKER = "_apmatia_agent_loop_handler"
+_AGENT_LOOP_LOGGER_NAME = "apmatia.agent_loop"
 _DEFAULT_LOG_BASENAME = "apmatia.jsonl"
+_AGENT_LOOP_LOG_DIR_NAME = "agent_loop"
 _DEFAULT_TAIL_LIMIT = 200
 _NOISY_LOGGER_LEVELS = {
     "watchdog": logging.WARNING,
@@ -35,6 +40,16 @@ def get_log_file_path() -> Path:
     if override:
         return Path(override).expanduser()
     return get_log_dir() / _DEFAULT_LOG_BASENAME
+
+
+def get_agent_loop_log_dir() -> Path:
+    return get_log_dir() / _AGENT_LOOP_LOG_DIR_NAME
+
+
+def get_agent_loop_log_path(task_id: str | None = None) -> Path:
+    if task_id is None or not str(task_id).strip():
+        return get_agent_loop_log_dir() / "agent_loop.jsonl"
+    return get_agent_loop_log_dir() / f"{_sanitize_log_stem(str(task_id))}.jsonl"
 
 
 def configure_logging() -> logging.Logger:
@@ -62,34 +77,82 @@ def configure_logging() -> logging.Logger:
     return logging.getLogger(_LOGGER_NAME)
 
 
+def configure_agent_loop_logging() -> logging.Logger:
+    logger = logging.getLogger(_AGENT_LOOP_LOGGER_NAME)
+    log_dir = get_agent_loop_log_dir()
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    existing_handlers = [handler for handler in logger.handlers if getattr(handler, _AGENT_LOOP_HANDLER_MARKER, False)]
+    for handler in existing_handlers:
+        if getattr(handler, "_log_dir", None) == log_dir:
+            logger.setLevel(logging.DEBUG)
+            logger.propagate = False
+            return logger
+        logger.removeHandler(handler)
+
+    handler = _AgentLoopFileHandler(log_dir)
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
+    logger.propagate = False
+    setattr(logger, _AGENT_LOOP_HANDLER_MARKER, True)
+    return logger
+
+
 def get_logger(name: str | None = None) -> logging.Logger:
     configure_logging()
     normalized_name = str(name or _LOGGER_NAME).strip() or _LOGGER_NAME
     return logging.getLogger(normalized_name)
 
 
-def read_structured_log_entries(*, limit: int = _DEFAULT_TAIL_LIMIT) -> list[dict[str, Any]]:
-    log_file = get_log_file_path()
-    if limit <= 0 or not log_file.exists():
-        return []
+def get_agent_loop_logger(name: str | None = None) -> logging.Logger:
+    configure_agent_loop_logging()
+    normalized_name = str(name or _AGENT_LOOP_LOGGER_NAME).strip() or _AGENT_LOOP_LOGGER_NAME
+    return logging.getLogger(normalized_name)
 
-    lines = deque(maxlen=limit)
-    with log_file.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            clean_line = line.strip()
-            if clean_line:
-                lines.append(clean_line)
+
+def read_structured_log_entries(
+    *,
+    limit: int = _DEFAULT_TAIL_LIMIT,
+    include_agent_loop_logs: bool = False,
+) -> list[dict[str, Any]]:
+    log_files: list[tuple[Path, str]] = [(get_log_file_path(), "app")]
+    if include_agent_loop_logs:
+        agent_loop_dir = get_agent_loop_log_dir()
+        if agent_loop_dir.exists():
+            for path in sorted(agent_loop_dir.glob("*.jsonl")):
+                log_files.append((path, f"agent_loop/{path.stem}"))
 
     entries: list[dict[str, Any]] = []
-    for index, line in enumerate(lines, start=1):
-        entries.append(_parse_log_entry(line, index=index))
+    for log_file, source in log_files:
+        if not log_file.exists():
+            continue
+        entries.extend(_read_structured_log_entries_from_file(log_file, source=source))
+
+    if limit <= 0 or not entries:
+        return []
+
+    entries.sort(key=_log_entry_sort_key)
+    if len(entries) > limit:
+        entries = entries[-limit:]
     return entries
+
+
+def read_agent_loop_log_entries(*, limit: int = _DEFAULT_TAIL_LIMIT) -> list[dict[str, Any]]:
+    return read_structured_log_entries(limit=limit, include_agent_loop_logs=True)
 
 
 def clear_log_file() -> None:
     log_file = get_log_file_path()
     log_file.parent.mkdir(parents=True, exist_ok=True)
     log_file.write_text("", encoding="utf-8")
+
+
+def clear_agent_loop_log_dir() -> None:
+    log_dir = get_agent_loop_log_dir()
+    if not log_dir.exists():
+        return
+    for path in log_dir.glob("*.jsonl"):
+        path.unlink(missing_ok=True)
 
 
 def _build_file_handler(log_file: Path) -> logging.Handler:
@@ -106,6 +169,28 @@ def _build_stream_handler() -> logging.Handler:
     handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
     setattr(handler, _STREAM_HANDLER_MARKER, True)
     return handler
+
+
+class _AgentLoopFileHandler(logging.Handler):
+    def __init__(self, log_dir: Path) -> None:
+        super().__init__(level=logging.DEBUG)
+        self._log_dir = log_dir
+        self._lock = Lock()
+        self.setFormatter(_JsonLogFormatter())
+        setattr(self, _AGENT_LOOP_HANDLER_MARKER, True)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            task_id = _record_context(record).get("task_id")
+            log_path = get_agent_loop_log_path(str(task_id) if task_id else None)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            payload = self.format(record)
+            with self._lock:
+                with log_path.open("a", encoding="utf-8") as handle:
+                    handle.write(payload)
+                    handle.write("\n")
+        except Exception:
+            self.handleError(record)
 
 
 def _remove_apmatia_handlers(root_logger: logging.Logger) -> None:
@@ -133,7 +218,7 @@ class _JsonLogFormatter(logging.Formatter):
             "process": record.process,
             "thread": record.threadName,
         }
-        context = _record_context(record)
+        context = _json_safe(_record_context(record))
         if context:
             payload["context"] = context
         if record.exc_info:
@@ -174,7 +259,49 @@ def _record_context(record: logging.LogRecord) -> dict[str, Any]:
     return context
 
 
-def _parse_log_entry(line: str, *, index: int) -> dict[str, Any]:
+def _json_safe(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, set):
+        return sorted(_json_safe(item) for item in value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, Path):
+        return str(value)
+    if hasattr(value, "value") and not isinstance(value, (str, bytes, bytearray)):
+        try:
+            return _json_safe(value.value)
+        except Exception:
+            return str(value)
+    if hasattr(value, "to_dict") and callable(getattr(value, "to_dict")):
+        try:
+            return _json_safe(value.to_dict())
+        except Exception:
+            return str(value)
+    return value
+
+
+def _read_structured_log_entries_from_file(log_file: Path, *, source: str) -> list[dict[str, Any]]:
+    lines = deque(maxlen=_DEFAULT_TAIL_LIMIT)
+    with log_file.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            clean_line = line.strip()
+            if clean_line:
+                lines.append(clean_line)
+
+    entries: list[dict[str, Any]] = []
+    for index, line in enumerate(lines, start=1):
+        entries.append(_parse_log_entry(line, index=index, source=source))
+    return entries
+
+
+def _log_entry_sort_key(entry: dict[str, Any]) -> tuple[str, str]:
+    return (str(entry.get("timestamp") or ""), str(entry.get("id") or ""))
+
+
+def _parse_log_entry(line: str, *, index: int, source: str) -> dict[str, Any]:
     try:
         entry = json.loads(line)
     except json.JSONDecodeError:
@@ -186,6 +313,7 @@ def _parse_log_entry(line: str, *, index: int) -> dict[str, Any]:
             "message": line,
             "context": {},
             "raw": line,
+            "source": source,
         }
 
     context = entry.get("context")
@@ -210,7 +338,14 @@ def _parse_log_entry(line: str, *, index: int) -> dict[str, Any]:
         "pathname": str(entry.get("pathname") or ""),
         "process": entry.get("process"),
         "thread": str(entry.get("thread") or ""),
+        "source": source,
     }
+
+
+def _sanitize_log_stem(value: str) -> str:
+    normalized = re.sub(r"[^A-Za-z0-9._-]+", "_", value.strip())
+    normalized = normalized.strip("._-")
+    return normalized or "agent_loop"
 
 
 logger = get_logger(_LOGGER_NAME)

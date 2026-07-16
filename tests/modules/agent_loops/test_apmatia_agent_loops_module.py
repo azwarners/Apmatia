@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import importlib
 from dataclasses import replace
 from pathlib import Path
+
+import pytest
 
 from apmatia.core.module_view_runtime import ModuleViewContext
 from apmatia.core.registry import Registry
@@ -123,6 +126,119 @@ def test_agent_loop_executor_completes_a_single_turn(tmp_path: Path):
         LoopEventType.MODEL_TURN_COMPLETED,
         LoopEventType.TASK_COMPLETED,
     ]
+
+
+def test_agent_loop_executor_stops_on_fatal_workspace_write_failure(tmp_path: Path):
+    class _FatalWriteModel:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def generate(self, request: ModelRequest, cancellation: CancellationToken) -> ModelResponse:
+            self.calls += 1
+            return ModelResponse(
+                tool_requests=(
+                    ToolRequest(
+                        tool_name="workspace_write_file",
+                        arguments={"relative_path": "apmatia_agents.txt", "content": "Agents"},
+                    ),
+                ),
+            )
+
+    class _FatalWriteTools:
+        def list_tools(self, context):
+            from apmatia.modules.agent_loops.models import ToolDefinition
+
+            return (ToolDefinition(name="workspace_write_file"),)
+
+        def execute(self, request: ToolRequest, context, cancellation: CancellationToken) -> ToolResult:
+            return ToolResult(
+                tool_name=request.tool_name,
+                call_id=request.call_id,
+                status="failed",
+                error={
+                    "code": "PERMISSION_DENIED",
+                    "message": "No write access to the workspace root.",
+                    "tool_name": request.tool_name,
+                },
+            )
+
+    repository = InMemoryAgentLoopTaskRepository()
+    task = _task_for_executor(tmp_path)
+    repository.save(task)
+    model = _FatalWriteModel()
+    executor = AgentLoopExecutor(repository, model, _FatalWriteTools())
+
+    result = executor.execute(AgentLoopExecutionRequest(task_id=str(task.id or "")), _Token())
+
+    assert result.status == ExecutionStatus.FAILED
+    assert result.stop_reason == "tool_error:workspace_write_file:PERMISSION_DENIED"
+    assert result.task.status == TaskStatus.FAILED
+    assert model.calls == 1
+    assert any(event.event_type == LoopEventType.TASK_FAILED for event in result.events)
+
+
+def test_agent_loop_runtime_fails_fast_when_workspace_root_is_not_writable(monkeypatch, tmp_path: Path):
+    from apmatia.modules.agent_loops import service as service_module
+
+    monkeypatch.setenv("APMATIA_HOME", str(tmp_path / "home"))
+    monkeypatch.setattr(service_module.os, "access", lambda *args, **kwargs: False)
+
+    with pytest.raises(RuntimeError, match="Agent loop workspace root is not writable"):
+        service_module.AgentLoopRuntime()
+
+
+def test_agent_loop_executor_writes_detailed_logs_with_speed_metrics(tmp_path: Path, monkeypatch):
+    log_dir = tmp_path / "logs"
+    monkeypatch.setenv("APMATIA_LOG_DIR", str(log_dir))
+    monkeypatch.setenv("APMATIA_LOG_FILE", str(log_dir / "apmatia.jsonl"))
+
+    logger_module = importlib.import_module("apmatia.lib.persistence.logger")
+    logger_module = importlib.reload(logger_module)
+    logger_module.clear_agent_loop_log_dir()
+
+    class _LoggedModel:
+        def generate(self, request: ModelRequest, cancellation: CancellationToken) -> ModelResponse:
+            from apmatia.modules.agent_loops.models import ModelUsage
+
+            return ModelResponse(
+                final_text="Done",
+                usage=ModelUsage(prompt_tokens=5, completion_tokens=9, total_tokens=14),
+            )
+
+    class _LoggedTools:
+        def list_tools(self, context):
+            from apmatia.modules.agent_loops.models import ToolDefinition
+
+            return (ToolDefinition(name="lookup"),)
+
+        def execute(self, request: ToolRequest, context, cancellation: CancellationToken) -> ToolResult:
+            return ToolResult(tool_name=request.tool_name, call_id=request.call_id, status="success", output="found")
+
+    repository = InMemoryAgentLoopTaskRepository()
+    task = _task_for_executor(tmp_path)
+    repository.save(task)
+    executor = AgentLoopExecutor(repository, _LoggedModel(), _LoggedTools())
+
+    result = executor.execute(AgentLoopExecutionRequest(task_id=str(task.id or "")), _Token())
+
+    assert result.status == ExecutionStatus.COMPLETED
+    log_path = log_dir / "agent_loop" / f"{task.id}.jsonl"
+    assert log_path.exists()
+
+    entries = logger_module.read_agent_loop_log_entries(limit=50)
+    messages = [entry["message"] for entry in entries]
+    assert "task_started" in messages
+    assert "model_turn_completed" in messages
+    assert "task_completed" in messages
+
+    model_entry = next(entry for entry in entries if entry["message"] == "model_turn_completed")
+    assert model_entry["source"] == f"agent_loop/{task.id}"
+    assert model_entry["context"]["task_id"] == str(task.id or "")
+    assert model_entry["context"]["completion_tokens_per_second"] is not None
+    assert model_entry["context"]["completion_chars_per_second"] is not None
+
+    tool_entry = next(entry for entry in entries if entry["message"] == "tool_completed")
+    assert tool_entry["context"]["output_chars_per_second"] is not None
 
 
 def test_agent_loop_executor_executes_tools_and_feeds_results_back(tmp_path: Path):

@@ -14,6 +14,7 @@ from apmatia.core.agent_management_runtime import get_agent_manager
 from apmatia.core.model_management_runtime import get_llm_config_manager
 from apmatia.lib.apmatia_core.models import utc_now
 from apmatia.lib.agent_management.agent_prompt import default_agent_prompt
+from apmatia.lib.persistence import logger as persistence_logger
 from apmatia.lib.tool_management.models import ToolCall as RuntimeToolCall
 
 from .executor import AgentLoopExecutor
@@ -56,6 +57,7 @@ except ModuleNotFoundError:
 TOOL_CALL_RE = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
 _TOOL_CALL_START = "<tool_call>"
 _TOOL_CALL_END = "</tool_call>"
+_MAX_AGENT_LOOP_RESPONSE_SIZE = 1024
 
 
 @dataclass(slots=True)
@@ -243,7 +245,7 @@ class YsparrModelExecutor:
         self._fallback_executor = DefaultStaticModelExecutor()
 
     def generate(self, request, cancellation):  # type: ignore[no-untyped-def]
-        llm_config = self._resolve_llm_config(request.task)
+        llm_config = _limit_agent_loop_response_size(self._resolve_llm_config(request.task))
         if llm_config is None:
             return self._fallback_executor.generate(request, cancellation)
 
@@ -356,6 +358,9 @@ class YsparrModelExecutor:
         task_summary_lines.extend(
             [
                 "Keep working across turns until the checklist is fully complete.",
+                "Keep each turn concise and move to the next step quickly.",
+                "Prefer a short, actionable response instead of a long explanation.",
+                "If a workspace write fails because of permission or path errors, do not retry the same write unchanged; explain the blocker and choose a different approach or stop.",
                 "At the end of every turn, include a <loop_status> JSON block with keys: "
                 '"done", "summary", "completed_items", "remaining_items", "next_action", and "executive_analysis".',
                 "Only set done to true when every checklist item is complete.",
@@ -495,6 +500,13 @@ def _build_backend(llm_config=None):
 def _default_generation_parameters(llm_config=None) -> dict[str, Any]:
     max_tokens_value = (llm_config.max_response_size if llm_config is not None else None) or 8192
     return {"max_tokens": int(max_tokens_value)}
+
+
+def _limit_agent_loop_response_size(llm_config):
+    if llm_config is None:
+        return None
+    max_response_size = int(getattr(llm_config, "max_response_size", 0) or _MAX_AGENT_LOOP_RESPONSE_SIZE)
+    return replace(llm_config, max_response_size=min(max_response_size, _MAX_AGENT_LOOP_RESPONSE_SIZE))
 
 
 def extend_system_prompt_with_tools(system_prompt: str, tools: list[Any]) -> str:
@@ -698,8 +710,8 @@ class AgentLoopRuntime:
         tool_executor: ToolExecutor | None = None,
         workspace_root: Path | None = None,
     ) -> None:
-        self._workspace_root = workspace_root or resolve_agent_loop_workspace_root()
-        self._workspace_root.mkdir(parents=True, exist_ok=True)
+        self._workspace_root = _ensure_agent_loop_workspace_root(workspace_root or resolve_agent_loop_workspace_root())
+        persistence_logger.configure_agent_loop_logging()
         self._repository = repository or FileAgentLoopTaskRepository(self._workspace_root)
         self._model_executor = model_executor or YsparrModelExecutor()
         self._tool_executor = tool_executor or ToolManagerToolExecutor()
@@ -929,3 +941,13 @@ def start_agent_loop(*, agent_id: int, prompt: str, model_id: int | None = None)
 
 def get_agent_loop_run(run_id: str) -> dict[str, Any] | None:
     return get_agent_loop_runner().get_loop_run(run_id)
+
+
+def _ensure_agent_loop_workspace_root(root: Path) -> Path:
+    try:
+        root.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise RuntimeError(f"Agent loop workspace root is not writable: {root}") from exc
+    if not os.access(root, os.W_OK | os.X_OK):
+        raise RuntimeError(f"Agent loop workspace root is not writable: {root}")
+    return root

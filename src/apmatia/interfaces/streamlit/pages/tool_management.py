@@ -149,8 +149,9 @@ _GROUP_ORDER = {
     "Dev tools": 5,
     "Wiki management": 6,
     "Tool management": 7,
-    "Workspace modules": 8,
-    "Agent loops": 9,
+    "Workspace files": 8,
+    "Workspace modules": 9,
+    "Agent loops": 10,
 }
 
 _SOURCE_LABELS = {
@@ -190,6 +191,10 @@ _PROVIDER_GROUP_FALLBACKS: dict[str, tuple[str, str, str]] = {
     "builtin.wiki_search": ("library", "wiki_management", "Wiki management"),
     "builtin.wiki_move_node": ("library", "wiki_management", "Wiki management"),
     "builtin.wiki_reorder_node": ("library", "wiki_management", "Wiki management"),
+    "builtin.workspace_list_files": ("library", "workspace_files", "Workspace files"),
+    "builtin.workspace_read_file": ("library", "workspace_files", "Workspace files"),
+    "builtin.workspace_write_file": ("library", "workspace_files", "Workspace files"),
+    "builtin.workspace_delete_file": ("library", "workspace_files", "Workspace files"),
     "builtin.plan_workspace_module": ("library", "tool_management", "Tool management"),
     "builtin.create_workspace_module": ("library", "tool_management", "Tool management"),
     "builtin.list_workspace_module_files": ("library", "tool_management", "Tool management"),

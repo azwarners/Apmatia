@@ -115,6 +115,7 @@ class InMemoryAgentService(AgentService):
 @pytest.fixture
 def workspace_tool_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace" / "modules"))
     (tmp_path / "workspace" / "modules").mkdir(parents=True, exist_ok=True)
     return ToolManager(
         InMemoryToolDefinitionRepository(),
@@ -181,7 +182,8 @@ def test_create_workspace_module_creates_draft_module(workspace_tool_manager: To
     assert result.result["module_dir"].endswith("workspace/modules/productivity")
 
 
-def test_create_workspace_module_fails_when_workspace_root_is_missing(tmp_path: Path):
+def test_create_workspace_module_fails_when_workspace_root_is_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "missing-workspace" / "modules"))
     manager = ToolManager(
         InMemoryToolDefinitionRepository(),
         InMemoryAssignmentRepository(),

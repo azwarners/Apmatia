@@ -5,7 +5,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, Body, HTTPException, Path, Query, Request
 from pydantic import BaseModel, Field
 
-from apmatia.api.internal.apmatia_agent_loops import (
+from apmatia.api.internal.agent_loops import (
     get_loop_task,
     get_loop_task_transcript,
     list_loop_tasks,

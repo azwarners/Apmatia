@@ -8,9 +8,9 @@ Apmatia is moving toward a module-first architecture:
 - feature packages should live in modules
 - new feature work should generally start as a module when it fits the problem
 - bundled modules live in `src/modules/`
-- draft and agent-assisted modules live in `workspace/modules/`
+- draft and agent-assisted modules live in `~/.apmatia/workspace/modules/`
 
-The first bundled module to actively drive new product behavior is `apmatia_ipe`, which now
+The first bundled module to actively drive new product behavior is `ipe`, which now
 demonstrates how module metadata, view schemas, and the Streamlit adapter can work together to
 deliver real UI and data-entry flows without custom page code for each screen.
 

@@ -2,30 +2,30 @@ from __future__ import annotations
 
 from apmatia.core.module_view_runtime import ModuleViewContext
 from apmatia.core.registry import CommandContribution, ViewContribution
-from apmatia.modules.apmatia_ipe.module_views import ApmatiaIpeModuleViewProvider
-from apmatia.modules.apmatia_ipe.services import ApmatiaIpeService
-from apmatia.modules.apmatia_ipe.sqlite_repositories import SQLiteIpeBundle
+from apmatia.modules.ipe.module_views import ApmatiaIpeModuleViewProvider
+from apmatia.modules.ipe.services import ApmatiaIpeService
+from apmatia.modules.ipe.sqlite_repositories import SQLiteIpeBundle
 
 
-def test_apmatia_ipe_module_view_provider_creates_and_lists_ideas(tmp_path):
+def test_ipe_module_view_provider_creates_and_lists_ideas(tmp_path):
     service = ApmatiaIpeService(SQLiteIpeBundle(tmp_path / "ipe.db"))
     provider = ApmatiaIpeModuleViewProvider(service)
     context = ModuleViewContext(user_id=7)
     command = CommandContribution(
-        module_id="apmatia_ipe",
-        action_id="apmatia_ipe.idea",
-        command_id="apmatia_ipe.idea.create",
+        module_id="ipe",
+        action_id="ipe.idea",
+        command_id="ipe.idea.create",
         name="Create idea",
         metadata={
             "object_type": "idea",
             "verb": "create",
-            "collection_view_id": "apmatia_ipe.idea.view",
+            "collection_view_id": "ipe.idea.view",
         },
     )
     view = ViewContribution(
-        module_id="apmatia_ipe",
-        action_id="apmatia_ipe.idea",
-        view_id="apmatia_ipe.idea.view",
+        module_id="ipe",
+        action_id="ipe.idea",
+        view_id="ipe.idea.view",
         name="Ideas View",
         metadata={"object_type": "idea"},
     )

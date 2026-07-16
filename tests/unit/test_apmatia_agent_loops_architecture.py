@@ -6,12 +6,12 @@ from pathlib import Path
 
 FORBIDDEN_IMPORTS = {
     "apmatia.lib.discussions",
-    "apmatia.modules.apmatia_agent_loops.legacy",
+    "apmatia.modules.agent_loops.legacy",
 }
 
 
 def test_agent_loop_module_does_not_import_legacy_or_discussions():
-    module_root = Path("/home/nick/ServerData/repos/apmatia/src/apmatia/modules/apmatia_agent_loops")
+    module_root = Path("/home/nick/ServerData/repos/apmatia/src/apmatia/modules/agent_loops")
     for path in module_root.rglob("*.py"):
         if "legacy" in path.parts:
             continue

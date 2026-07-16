@@ -33,7 +33,7 @@ from apmatia.interfaces.streamlit.module_views.renderers import (
 )
 from apmatia.interfaces.streamlit.components.shell_tabs import render_shell_tabs
 from apmatia.interfaces.streamlit.components.terminal_output import render_terminal_block
-from apmatia.modules.apmatia_agent_loops.prompt_helpers import parse_checklist_text
+from apmatia.modules.agent_loops.prompt_helpers import parse_checklist_text
 
 
 TERMINAL_HEIGHT_PX = 720
@@ -85,7 +85,7 @@ def render() -> None:
         st.info("Select a visible module from the left navigation to open its views.")
         return
 
-    if str(selected_module.get("module_id") or "") == "apmatia_agent_loops":
+    if str(selected_module.get("module_id") or "") == "agent_loops":
         _render_agent_loops_shell(selected_module)
         return
 
@@ -1279,12 +1279,21 @@ def _render_agent_loops_shell(selected_module: dict[str, object]) -> None:
     launch_form_key = f"agent_loops_task_form_open:{selected_contact_id}"
     launch_form_widget_key = f"agent_loops_task_form:{selected_contact_id}"
     selected_task_key = f"agent_loops_selected_task_id:{selected_contact_id}"
+    polling_state_key = f"agent_loops_current_task_polling:{selected_contact_id}"
     selected_task_id = str(st.session_state.get(selected_task_key) or "").strip()
     current_task = _selected_agent_loops_task(task_items, selected_task_id=selected_task_id)
     if current_task is not None:
         current_task_id = str(current_task.get("task_id") or current_task.get("id") or "").strip()
         if current_task_id and selected_task_id != current_task_id:
             st.session_state[selected_task_key] = current_task_id
+
+    current_task_status = str(current_task.get("status") or "") if isinstance(current_task, dict) else ""
+    current_task_status = current_task_status.strip().lower()
+    should_poll_current_task = current_task is not None and current_task_status in {"running", "stopping"}
+    if should_poll_current_task:
+        st.session_state[polling_state_key] = True
+    elif polling_state_key in st.session_state:
+        st.session_state[polling_state_key] = False
 
     selected_tab = render_shell_tabs(
         ("Current Task", "Task History", "Workspace", "Knowledge"),
@@ -1302,11 +1311,6 @@ def _render_agent_loops_shell(selected_module: dict[str, object]) -> None:
             )
         if new_task_clicked:
             st.session_state[launch_form_key] = True
-
-        current_task_status = str(current_task.get("status") or "") if isinstance(current_task, dict) else ""
-        current_task_status = current_task_status.strip().lower()
-        fragment_factory = getattr(st, "fragment", None)
-        should_poll_current_task = current_task is not None and current_task_status in {"running", "stopping"}
 
         def _render_current_task_content() -> dict[str, object]:
             current_items = _filter_agent_loops_tasks(
@@ -1332,10 +1336,33 @@ def _render_agent_loops_shell(selected_module: dict[str, object]) -> None:
                     _render_agent_loops_current_task_output(refreshed_task, roots=roots)
             return {"running": bool(refreshed_task and str(refreshed_task.get("status") or "").strip().lower() in {"running", "stopping"})}
 
-        if should_poll_current_task and getattr(fragment_factory, "__module__", "").startswith("streamlit"):
+        fragment_factory = getattr(st, "fragment", None)
+        should_use_live_fragment = bool(st.session_state.get(polling_state_key)) and getattr(fragment_factory, "__module__", "").startswith("streamlit")
+
+        if should_use_live_fragment:
             @fragment_factory(run_every=0.5)
             def _current_task_fragment() -> dict[str, object]:
-                return _render_current_task_content()
+                current_items = _filter_agent_loops_tasks(
+                    list_module_view_items(str(runs_view.get("view_id") or "")),
+                    contact_kind=contact_kind,
+                    contact_id=contact_id,
+                )
+                refreshed_task = _selected_agent_loops_task(
+                    current_items,
+                    selected_task_id=str(st.session_state.get(selected_task_key) or "").strip(),
+                )
+                if refreshed_task is None:
+                    st.info("No task has been recorded for this contact yet.")
+                    st.session_state[polling_state_key] = False
+                    st.rerun()
+                    return {"running": False}
+                _render_agent_loops_current_task_output(refreshed_task, roots=roots)
+                refreshed_status = str(refreshed_task.get("status") or "").strip().lower()
+                still_running = refreshed_status in {"running", "stopping"}
+                if not still_running:
+                    st.session_state[polling_state_key] = False
+                    st.rerun()
+                return {"running": still_running}
 
             _current_task_fragment()
         else:
@@ -1456,7 +1483,7 @@ def _render_agent_loops_task_history(items: list[dict[str, object]], *, roots: d
                             task_id = str(item.get("task_id") or "").strip()
                             if task_id:
                                 try:
-                                    execute_module_command("apmatia_agent_loops.tasks.stop", task_id=task_id)
+                                    execute_module_command("agent_loops.tasks.stop", task_id=task_id)
                                 except ApiError as error:
                                     st.error(f"Unable to stop task: {error.detail}")
                                 else:
@@ -2015,7 +2042,7 @@ def _filter_agent_loops_files(items: list[dict[str, object]], *, root_path: str)
 
 
 def _selected_contact_roots(contact_kind: str, contact_id: object) -> dict[str, str]:
-    from apmatia.modules.apmatia_agent_loops.state import resolve_contact_roots
+    from apmatia.modules.agent_loops.state import resolve_contact_roots
 
     roots = resolve_contact_roots(contact_kind, _safe_text(contact_id))
     return {

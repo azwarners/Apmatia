@@ -22,7 +22,7 @@ That is the whole game in one line:
 
 If you want a narrative walkthrough of the IPE module we built during this task, see:
 
-- [How We Made The Apmatia IPE Module](./HOW_WE_MADE_APMATIA_IPE_MODULE.md)
+- [How We Made The IPE Module](./HOW_WE_MADE_IPE_MODULE.md)
 
 If you want the module-to-Streamlit rendering story, including the schema-inference layer that now
 drives list and create forms, see:
@@ -34,11 +34,11 @@ The rest of this document is the deeper explanation and reference guide.
 ## Module Types
 
 - Bundled modules live in `src/modules/`
-- Draft or agent-assisted modules live in `workspace/modules/`
+- Draft or agent-assisted modules live in `~/.apmatia/workspace/modules/`
 
 Bundled modules are part of the application. Workspace modules are safe drafts that can be planned, scaffolded, inspected, edited, and validated before promotion.
 
-The workspace root defaults to `~/.apmatia/workspace/modules/` and can be overridden with `APMATIA_WORKSPACE_ROOT`. If the environment variable is unavailable on the host, Apmatia also checks `~/.config/apmatia/config.json` for `workspace.root` before falling back to the legacy home-directory path. In local development, the repo mounts `./workspace` into the container so draft modules persist across restarts.
+The workspace root defaults to `~/.apmatia/workspace/modules/` and can be overridden with `APMATIA_WORKSPACE_ROOT`. If the environment variable is unavailable on the host, Apmatia also checks `~/.config/apmatia/config.json` for `workspace.root` before falling back to the home-directory default.
 
 ## What A Module Contains
 
@@ -181,7 +181,7 @@ When a module exposes a collection view, the Streamlit adapter can now infer:
 - create forms from view schema fields marked for create display
 - empty state, title, and action buttons from the registry-backed view descriptor
 
-The `apmatia_ipe` module is the first bundled example that uses this path to ship real capture UI
+The `ipe` module is the first bundled example that uses this path to ship real capture UI
 without custom page code for the form itself.
 
 That keeps the module easy to reason about and avoids stuffing business rules into the wrong file.
@@ -195,7 +195,7 @@ apmatia module plan productivity
 apmatia module create productivity --name "Productivity"
 apmatia module validate productivity
 apmatia module list
-apmatia module show apmatia_worksim
+apmatia module show worksim
 ```
 
 Workspace-aware examples:

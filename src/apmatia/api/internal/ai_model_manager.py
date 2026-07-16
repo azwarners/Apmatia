@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from apmatia.modules.apmatia_ai_model_manager import AIModelManager, GGUFModelRecord, TaskSizePreference
-from apmatia.modules.apmatia_ai_model_manager.services import format_bytes
+from apmatia.modules.ai_model_manager import AIModelManager, GGUFModelRecord, TaskSizePreference
+from apmatia.modules.ai_model_manager.services import format_bytes
 
 
 def _model_to_dict(model: GGUFModelRecord) -> dict:

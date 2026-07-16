@@ -36,7 +36,7 @@ def render_module_view(
         render_unsupported_view(spec)
         return intents
 
-    if spec.view_id == "apmatia_knowledge.agent_config.view":
+    if spec.view_id == "agent_config.agent_config.view":
         render_agent_config_view(spec, on_intent=emit)
         return intents
 

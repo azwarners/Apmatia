@@ -15,6 +15,11 @@ from apmatia.core.modules import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _apmatia_workspace_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace" / "modules"))
+
+
 def test_workspace_editor_lists_files(tmp_path: Path):
     create_module_scaffold(
         module_slug="productivity",

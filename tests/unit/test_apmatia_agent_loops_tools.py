@@ -7,7 +7,7 @@ from apmatia.lib.agent_management.services import AgentService
 from apmatia.lib.tool_management import ToolCall, ToolManager
 from apmatia.lib.tool_management.models import ToolDefinition
 from apmatia.lib.tool_management.repositories import AgentToolAssignmentRepository, ToolDefinitionRepository
-from apmatia.modules.apmatia_agent_loops.tools import agent_loop_tool_definitions, build_agent_loop_tool_providers
+from apmatia.modules.agent_loops.tools import agent_loop_tool_definitions, build_agent_loop_tool_providers
 
 
 class InMemoryToolDefinitionRepository(ToolDefinitionRepository):

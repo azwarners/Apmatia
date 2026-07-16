@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from apmatia.core.modules import (
     ModuleAlreadyExistsError,
     create_module_scaffold,
@@ -16,6 +18,11 @@ from apmatia.core.modules import (
     validate_module,
 )
 from apmatia.core.registry import get_application_registry
+
+
+@pytest.fixture(autouse=True)
+def _apmatia_workspace_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace" / "modules"))
 
 
 def test_module_workspace_paths_resolve_under_workspace_root(tmp_path: Path):

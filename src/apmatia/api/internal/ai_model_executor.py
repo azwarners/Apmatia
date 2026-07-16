@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
-from apmatia.modules.apmatia_ai_model_executor import (
+from apmatia.modules.ai_model_executor import (
     can_run_model,
     get_execution_status,
     get_runtime_config,

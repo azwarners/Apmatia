@@ -23,7 +23,7 @@ The minimal schema today is intentionally small:
 - optional UI hints such as `label`, `placeholder`, `help_text`, `required`, and `default`
 - optional create-form metadata such as title, description, submit label, and cancel label
 
-This is enough for the first practical UI shape: idea capture in `apmatia_ipe`.
+This is enough for the first practical UI shape: idea capture in `ipe`.
 
 To render a view from the app, select a visible module from the left navigation and open one of its
 views. The page layer now loads the items through the API and passes the resulting view descriptor to

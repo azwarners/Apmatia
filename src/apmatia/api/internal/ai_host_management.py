@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any
 
-from apmatia.modules.apmatia_ai_host_management import (
+from apmatia.modules.ai_host_management import (
     AIHostManagementService,
     delete_ai_host as delete_registered_ai_host,
     inspect_ai_host_resources as inspect_registered_ai_host_resources,

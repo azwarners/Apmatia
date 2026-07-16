@@ -10,15 +10,15 @@ services:
       - "127.0.0.1:8000:8000"
     volumes:
       - .:/app
-      - ${HOME}/.apmatia/workspace:/home/apmatia/.apmatia/workspace
-      - ${HOME}/.apmatia:/home/apmatia/.apmatia
-      - ${HOME}/.config/apmatia:/home/apmatia/.config/apmatia
-      - ${HOME}/.local/share/apmatia:/home/apmatia/.local/share/apmatia
+      - ${HOME}/.apmatia/workspace:${HOME}/.apmatia/workspace
+      - ${HOME}/.apmatia:${HOME}/.apmatia
+      - ${HOME}/.config/apmatia:${HOME}/.config/apmatia
+      - ${HOME}/.local/share/apmatia:${HOME}/.local/share/apmatia
     environment:
-      - HOME=/home/apmatia
-      - APMATIA_HOME=/home/apmatia/.apmatia
-      - APMATIA_DATA_DIR=/home/apmatia/.local/share/apmatia
-      - APMATIA_WORKSPACE_ROOT=/home/apmatia/.apmatia/workspace/modules
+      - HOME=${HOME}
+      - APMATIA_HOME=${HOME}/.apmatia
+      - APMATIA_DATA_DIR=${HOME}/.local/share/apmatia
+      - APMATIA_WORKSPACE_ROOT=${HOME}/.apmatia/workspace/modules
       - APMATIA_SERVER_HOST=0.0.0.0
       - APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true
 
@@ -31,15 +31,15 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     volumes:
       - .:/app
-      - ${HOME}/.apmatia/workspace:/home/apmatia/.apmatia/workspace
-      - ${HOME}/.apmatia:/home/apmatia/.apmatia
-      - ${HOME}/.config/apmatia:/home/apmatia/.config/apmatia
-      - ${HOME}/.local/share/apmatia:/home/apmatia/.local/share/apmatia
+      - ${HOME}/.apmatia/workspace:${HOME}/.apmatia/workspace
+      - ${HOME}/.apmatia:${HOME}/.apmatia
+      - ${HOME}/.config/apmatia:${HOME}/.config/apmatia
+      - ${HOME}/.local/share/apmatia:${HOME}/.local/share/apmatia
     environment:
-      - HOME=/home/apmatia
-      - APMATIA_HOME=/home/apmatia/.apmatia
-      - APMATIA_DATA_DIR=/home/apmatia/.local/share/apmatia
-      - APMATIA_WORKSPACE_ROOT=/home/apmatia/.apmatia/workspace/modules
+      - HOME=${HOME}
+      - APMATIA_HOME=${HOME}/.apmatia
+      - APMATIA_DATA_DIR=${HOME}/.local/share/apmatia
+      - APMATIA_WORKSPACE_ROOT=${HOME}/.apmatia/workspace/modules
       - MODE=streamlit
       - APMATIA_STREAMLIT_HOST=0.0.0.0
       - APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true

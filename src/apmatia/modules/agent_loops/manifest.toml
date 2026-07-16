@@ -1,0 +1,17 @@
+[module]
+module_id = "agent_loops"
+name = "Apmatia Agent Loops"
+version = "0.1.0"
+description = "A long-running workspace for autonomous contact-driven task loops and run history."
+author = "Nick"
+
+[metadata]
+category = "knowledge-work"
+tags = ["agents", "groups", "loops", "tasks", "workspace", "runs"]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []

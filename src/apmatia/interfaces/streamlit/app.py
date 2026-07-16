@@ -3,7 +3,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from apmatia.api.internal.apmatia_ipe import ensure_ipe_coach_agent_for_user
+from apmatia.api.internal.ipe import ensure_ipe_coach_agent_for_user
 from apmatia.interfaces.streamlit.api_client import (
     ApiError,
     create_discussion,
@@ -580,7 +580,7 @@ def _contacts_shell_active() -> bool:
 
 
 def _agent_loops_shell_active() -> bool:
-    return st.session_state.get("selected_page") == "module_view" and st.session_state.get("selected_module_id") == "apmatia_agent_loops"
+    return st.session_state.get("selected_page") == "module_view" and st.session_state.get("selected_module_id") == "agent_loops"
 
 
 def _current_user_id() -> int | None:
@@ -667,7 +667,7 @@ def _render_agent_loops_sidebar() -> str:
         st.sidebar.error(f"Unable to load module views: {error.detail}")
         return st.session_state["selected_page"]
 
-    module = next((item for item in modules if str(item.get("module_id") or "") == "apmatia_agent_loops"), None)
+    module = next((item for item in modules if str(item.get("module_id") or "") == "agent_loops"), None)
     if module is None:
         st.sidebar.info("Apmatia Agent Loops is not available yet.")
         return st.session_state["selected_page"]
@@ -944,7 +944,7 @@ def _activate_agent_loops_contact(contact: dict[str, object]) -> None:
         return
     st.session_state["agent_loops_shell_active"] = True
     st.session_state["agent_loops_selected_contact_id"] = contact_id
-    st.session_state["selected_module_id"] = "apmatia_agent_loops"
+    st.session_state["selected_module_id"] = "agent_loops"
 
 
 def _render_module_sidebar_section(module: dict[str, object]) -> None:
@@ -985,12 +985,12 @@ def _render_module_sidebar_section(module: dict[str, object]) -> None:
 
 
 def _select_module_for_navigation(module_id: str, module_views: list[dict[str, object]]) -> None:
-    if module_id == "apmatia_contacts_and_discussions":
+    if module_id == "contacts_and_discussions":
         st.session_state["selected_page"] = "discussion"
         st.session_state["selected_module_id"] = module_id
-        st.session_state["selected_module_view_id"] = "apmatia_contacts_and_discussions.chat_targets.view"
+        st.session_state["selected_module_view_id"] = "contacts_and_discussions.chat_targets.view"
         st.session_state["contacts_shell_active"] = True
-    elif module_id == "apmatia_agent_loops":
+    elif module_id == "agent_loops":
         st.session_state["selected_page"] = "module_view"
         st.session_state["selected_module_id"] = module_id
         st.session_state["selected_module_view_id"] = None if not module_views else str(module_views[0].get("view_id") or "")

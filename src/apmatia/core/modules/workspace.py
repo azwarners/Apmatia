@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 from apmatia.core.app_config import get_config_value
+from apmatia.core.runtime_paths import get_app_dir
 
 
 def resolve_module_bundle_root(base_dir: Path | None = None) -> Path:
@@ -13,9 +14,6 @@ def resolve_module_bundle_root(base_dir: Path | None = None) -> Path:
 
 
 def resolve_module_workspace_root(base_dir: Path | None = None) -> Path:
-    if base_dir is not None:
-        return base_dir / "workspace" / "modules"
-
     env_override = os.getenv("APMATIA_WORKSPACE_ROOT")
     if env_override:
         return Path(env_override).expanduser()
@@ -24,7 +22,7 @@ def resolve_module_workspace_root(base_dir: Path | None = None) -> Path:
     if config_override:
         return Path(config_override).expanduser()
 
-    return Path.home() / ".apmatia" / "workspace" / "modules"
+    return get_app_dir() / "workspace" / "modules"
 
 
 class WorkspaceRootError(ValueError):

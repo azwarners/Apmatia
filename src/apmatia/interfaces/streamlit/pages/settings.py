@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone as dt_timezone
+from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import streamlit as st
 
 from apmatia.api.http.routes.settings_routes import SettingsPayload
+from apmatia.interfaces.streamlit.components.filesystem_tree import render_filesystem_tree
 from apmatia.interfaces.streamlit.api_client import ApiError, get_settings, save_settings
 
 
@@ -86,6 +88,13 @@ def render() -> None:
             "Default roots are `~/.apmatia/workspace` and `~/.apmatia/knowledge`. "
             "Missing directories are created when settings are saved."
         )
+        st.caption("Use the browser below to inspect the current contents of each root without guessing the path.")
+        with st.expander("Browse current roots", expanded=False):
+            browser_left, browser_right = st.columns(2)
+            with browser_left:
+                render_filesystem_tree(Path(workspace_root).expanduser(), label="Workspace browser", max_depth=2)
+            with browser_right:
+                render_filesystem_tree(Path(knowledge_root).expanduser(), label="Knowledge browser", max_depth=2)
 
         st.subheader("Time Zone")
         timezone = st.selectbox(

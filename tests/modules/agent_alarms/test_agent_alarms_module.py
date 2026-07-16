@@ -199,8 +199,8 @@ def test_same_alarm_does_not_launch_two_loop_runs(tmp_path, monkeypatch):
 
 
 def test_alarm_fired_loop_is_tagged_for_the_agent_contact(tmp_path, monkeypatch):
-    from apmatia.modules.apmatia_agent_loops import service as service_module
-    from apmatia.modules.apmatia_agent_loops.repository import InMemoryAgentLoopTaskRepository
+    from apmatia.modules.agent_loops import service as service_module
+    from apmatia.modules.agent_loops.repository import InMemoryAgentLoopTaskRepository
 
     runtime = service_module.AgentLoopRuntime(repository=InMemoryAgentLoopTaskRepository(), workspace_root=tmp_path)
     runtime._executor.execute = lambda *args, **kwargs: None  # type: ignore[assignment]
@@ -285,7 +285,7 @@ def test_loop_failure_updates_and_disables_alarm(tmp_path, monkeypatch):
 
 def test_agent_alarms_package_uses_only_the_public_agent_loop_boundary():
     module_root = Path("/home/nick/ServerData/repos/apmatia/src/apmatia/modules/agent_alarms")
-    forbidden_import_prefix = "apmatia.modules.apmatia_agent_loops."
+    forbidden_import_prefix = "apmatia.modules.agent_loops."
     forbidden_tokens = {
         "AgentLoopExecutor",
         "LoopTaskRequest",

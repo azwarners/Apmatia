@@ -64,18 +64,18 @@ def test_module_views_page_saves_agent_config_changes(mock_streamlit):
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
-    mock_streamlit.session_state["selected_module_id"] = "apmatia_knowledge"
-    mock_streamlit.session_state["selected_module_view_id"] = "apmatia_knowledge.agent_config.view"
+    mock_streamlit.session_state["selected_module_id"] = "agent_config"
+    mock_streamlit.session_state["selected_module_view_id"] = "agent_config.agent_config.view"
     modules = [
         {
-            "module_id": "apmatia_knowledge",
+            "module_id": "agent_config",
             "name": "Agent Config",
             "hidden": False,
             "views": [
                 {
-                    "module_id": "apmatia_knowledge",
-                    "action_id": "apmatia_knowledge.agent_config",
-                    "view_id": "apmatia_knowledge.agent_config.view",
+                    "module_id": "agent_config",
+                    "action_id": "agent_config.agent_config",
+                    "view_id": "agent_config.agent_config.view",
                     "name": "Agent Config",
                     "description": "Select an agent and configure its roots.",
                     "metadata": {"ui": {"render_mode": "collection"}},
@@ -85,7 +85,7 @@ def test_module_views_page_saves_agent_config_changes(mock_streamlit):
         }
     ]
     spec = CollectionViewDescriptor(
-        view_id="apmatia_knowledge.agent_config.view",
+        view_id="agent_config.agent_config.view",
         title="Agent Config",
         view_actions=(
             ModuleViewActionDescriptor(
@@ -94,7 +94,7 @@ def test_module_views_page_saves_agent_config_changes(mock_streamlit):
                 intent="save",
                 scope="view",
                 style="primary",
-                payload={"command_id": "apmatia_knowledge.agent_config.save"},
+                payload={"command_id": "agent_config.agent_config.save"},
             ),
         ),
         items=(
@@ -109,12 +109,12 @@ def test_module_views_page_saves_agent_config_changes(mock_streamlit):
         ),
     )
     save_intent = ModuleViewIntent(
-        view_id="apmatia_knowledge.agent_config.view",
+        view_id="agent_config.agent_config.view",
         intent="save",
         action_key="save",
         scope="view",
         payload={
-            "command_id": "apmatia_knowledge.agent_config.save",
+            "command_id": "agent_config.agent_config.save",
             "agent_id": "1",
             "workspace_root": "/tmp/workspace",
             "knowledge_root": "/tmp/knowledge",
@@ -137,7 +137,7 @@ def test_module_views_page_saves_agent_config_changes(mock_streamlit):
         module_views_page.render()
 
     mock_execute.assert_called_once_with(
-        "apmatia_knowledge.agent_config.save",
+        "agent_config.agent_config.save",
         agent_id="1",
         workspace_root="/tmp/workspace",
         knowledge_root="/tmp/knowledge",
@@ -151,7 +151,7 @@ def test_render_module_view_emits_agent_config_save_intent(mock_streamlit):
 
     renderers = importlib.reload(renderers)
     spec = CollectionViewDescriptor(
-        view_id="apmatia_knowledge.agent_config.view",
+        view_id="agent_config.agent_config.view",
         title="Agent Config",
         caption="Configure an agent.",
         description="Select an agent and update its roots.",
@@ -168,7 +168,7 @@ def test_render_module_view_emits_agent_config_save_intent(mock_streamlit):
                 intent="save",
                 scope="view",
                 style="primary",
-                payload={"command_id": "apmatia_knowledge.agent_config.save"},
+                payload={"command_id": "agent_config.agent_config.save"},
             ),
         ),
         items=(
@@ -190,7 +190,7 @@ def test_render_module_view_emits_agent_config_save_intent(mock_streamlit):
 
     assert intents
     assert intents[0].intent == "save"
-    assert intents[0].payload["command_id"] == "apmatia_knowledge.agent_config.save"
+    assert intents[0].payload["command_id"] == "agent_config.agent_config.save"
     assert intents[0].payload["agent_id"] == "1"
     assert intents[0].payload["workspace_root"] == "/tmp/workspace"
     assert intents[0].payload["knowledge_root"] == "/tmp/knowledge"
@@ -933,9 +933,10 @@ def test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs(mock_
     mock_streamlit.session_state.clear()
     mock_streamlit.session_state["auth_token"] = None
     mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
-    mock_streamlit.session_state["selected_module_id"] = "apmatia_agent_loops"
-    mock_streamlit.session_state["selected_module_view_id"] = "apmatia_agent_loops.contacts.view"
+    mock_streamlit.session_state["selected_module_id"] = "agent_loops"
+    mock_streamlit.session_state["selected_module_view_id"] = "agent_loops.contacts.view"
     mock_streamlit.session_state["agent_loops_selected_contact_id"] = "agent:1"
+    mock_streamlit.session_state["agent_loops_shell_tab:agent:1"] = "Current Task"
     mock_streamlit.session_state["selected_page"] = "module_views"
     mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
     mock_streamlit.session_state["authenticated_user"] = {"user_id": 7, "username": "testuser"}
@@ -1004,14 +1005,14 @@ def test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs(mock_
 
     modules = [
         {
-            "module_id": "apmatia_agent_loops",
+            "module_id": "agent_loops",
             "name": "Apmatia Agent Loops",
             "hidden": False,
             "views": [
                 {
-                    "module_id": "apmatia_agent_loops",
-                    "action_id": "apmatia_agent_loops.contacts",
-                    "view_id": "apmatia_agent_loops.contacts.view",
+                    "module_id": "agent_loops",
+                    "action_id": "agent_loops.contacts",
+                    "view_id": "agent_loops.contacts.view",
                     "name": "Contacts View",
                     "description": "Browse the agents and groups available for long-running loops.",
                     "metadata": {
@@ -1032,27 +1033,27 @@ def test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs(mock_
                     "effective_hidden": False,
                 },
                 {
-                    "module_id": "apmatia_agent_loops",
-                    "action_id": "apmatia_agent_loops.tasks",
-                    "view_id": "apmatia_agent_loops.tasks.view",
+                    "module_id": "agent_loops",
+                    "action_id": "agent_loops.tasks",
+                    "view_id": "agent_loops.tasks.view",
                     "name": "Task History View",
                     "description": "Review previous long-running tasks for the selected contact.",
                     "metadata": {"object_type": "run", "ui": {"render_mode": "collection"}},
                     "effective_hidden": False,
                 },
                 {
-                    "module_id": "apmatia_agent_loops",
-                    "action_id": "apmatia_agent_loops.workspace",
-                    "view_id": "apmatia_agent_loops.workspace.view",
+                    "module_id": "agent_loops",
+                    "action_id": "agent_loops.workspace",
+                    "view_id": "agent_loops.workspace.view",
                     "name": "Workspace View",
                     "description": "Browse shared working files for the selected contact.",
                     "metadata": {"object_type": "workspace", "ui": {"render_mode": "collection"}},
                     "effective_hidden": False,
                 },
                 {
-                    "module_id": "apmatia_agent_loops",
-                    "action_id": "apmatia_agent_loops.knowledge",
-                    "view_id": "apmatia_agent_loops.knowledge.view",
+                    "module_id": "agent_loops",
+                    "action_id": "agent_loops.knowledge",
+                    "view_id": "agent_loops.knowledge.view",
                     "name": "Knowledge View",
                     "description": "Browse shared knowledge files for the selected contact.",
                     "metadata": {"object_type": "knowledge", "ui": {"render_mode": "collection"}},
@@ -1157,7 +1158,7 @@ def test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs(mock_
             return [
                 {
                     "path": f"{knowledge_root}/facts.md",
-                    "kind": "knowledge",
+                    "kind": "agent_config",
                     "size": 22,
                     "updated_at": "2026-07-08T12:20:00",
                 }
@@ -1171,7 +1172,7 @@ def test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs(mock_
     ):
         module_views_page.render()
 
-    mock_list_items.assert_any_call("apmatia_agent_loops.contacts.view")
+    assert any(str(call.args[0]) == "agent_loops.contacts.view" for call in mock_list_items.call_args_list)
     mock_streamlit.sidebar.title.assert_called_with("Agents & Groups")
     mock_streamlit.radio.assert_called_once()
     mock_streamlit.fragment.assert_called()
@@ -1191,12 +1192,14 @@ def test_module_views_page_starts_agent_loops_task_from_form(mock_streamlit, tmp
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
+    mock_streamlit.session_state.clear()
     monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace"))
     mock_streamlit.session_state["selected_page"] = "module_view"
-    mock_streamlit.session_state["selected_module_id"] = "apmatia_agent_loops"
-    mock_streamlit.session_state["selected_module_view_id"] = "apmatia_agent_loops.tasks.view"
+    mock_streamlit.session_state["selected_module_id"] = "agent_loops"
+    mock_streamlit.session_state["selected_module_view_id"] = "agent_loops.tasks.view"
     mock_streamlit.session_state["agent_loops_shell_sidebar_rendered"] = True
     mock_streamlit.session_state["agent_loops_selected_contact_id"] = "agent:7"
+    mock_streamlit.session_state["agent_loops_shell_tab:agent:7"] = "Current Task"
     mock_streamlit.radio = MagicMock(return_value="Current Task")
     mock_streamlit.button.side_effect = lambda label, **_kwargs: label == "New Task"
     mock_streamlit.text_input.side_effect = lambda label, value="", **_kwargs: "Ship the nightly report" if label == "Task title" else value
@@ -1207,13 +1210,13 @@ def test_module_views_page_starts_agent_loops_task_from_form(mock_streamlit, tmp
 
     modules = [
         {
-            "module_id": "apmatia_agent_loops",
+            "module_id": "agent_loops",
             "name": "Apmatia Agent Loops",
             "hidden": False,
             "views": [
                 {
-                    "module_id": "apmatia_agent_loops",
-                    "view_id": "apmatia_agent_loops.contacts.view",
+                    "module_id": "agent_loops",
+                    "view_id": "agent_loops.contacts.view",
                     "name": "Contacts View",
                     "effective_hidden": False,
                     "metadata": {
@@ -1233,22 +1236,22 @@ def test_module_views_page_starts_agent_loops_task_from_form(mock_streamlit, tmp
                     },
                 },
                 {
-                    "module_id": "apmatia_agent_loops",
-                    "view_id": "apmatia_agent_loops.tasks.view",
+                    "module_id": "agent_loops",
+                    "view_id": "agent_loops.tasks.view",
                     "name": "Task History View",
                     "effective_hidden": False,
                     "metadata": {"object_type": "run", "ui": {"render_mode": "collection"}},
                 },
                 {
-                    "module_id": "apmatia_agent_loops",
-                    "view_id": "apmatia_agent_loops.workspace.view",
+                    "module_id": "agent_loops",
+                    "view_id": "agent_loops.workspace.view",
                     "name": "Workspace View",
                     "effective_hidden": False,
                     "metadata": {"object_type": "workspace", "ui": {"render_mode": "collection"}},
                 },
                 {
-                    "module_id": "apmatia_agent_loops",
-                    "view_id": "apmatia_agent_loops.knowledge.view",
+                    "module_id": "agent_loops",
+                    "view_id": "agent_loops.knowledge.view",
                     "name": "Knowledge View",
                     "effective_hidden": False,
                     "metadata": {"object_type": "knowledge", "ui": {"render_mode": "collection"}},
@@ -1314,7 +1317,7 @@ def test_module_views_page_stops_agent_loops_task_from_history(mock_streamlit):
             "summary": "",
             "updated_at": "2026-07-10T06:00:00",
             "discussion_id": "IDabc123",
-            "workspace_root": "/home/apmatia/.apmatia/workspace/apmatia_agent_loops/workspace/agent-7",
+            "workspace_root": "/home/apmatia/.apmatia/workspace/agent_loops/workspace/agent-7",
             "knowledge_root": "/home/apmatia/.apmatia/workspace/knowledge/agent-7",
             "events": [],
             "checklist": [],
@@ -1328,7 +1331,7 @@ def test_module_views_page_stops_agent_loops_task_from_history(mock_streamlit):
     ):
         module_views_page._render_agent_loops_task_history(task_items, roots={})
 
-    mock_stop.assert_called_once_with("apmatia_agent_loops.tasks.stop", task_id="loop-123")
+    mock_stop.assert_called_once_with("agent_loops.tasks.stop", task_id="loop-123")
     mock_streamlit.success.assert_called_with("Stop requested.")
     mock_streamlit.rerun.assert_called()
 
@@ -1398,7 +1401,7 @@ def test_module_views_page_renders_agent_loops_task_history_as_terminal_stack(mo
             "executive_analysis": "This task is still in progress.",
             "updated_at": "2026-07-10T06:00:00",
             "discussion_id": "disc-stack",
-            "workspace_root": "/home/apmatia/.apmatia/workspace/apmatia_agent_loops/workspace/agent-7",
+            "workspace_root": "/home/apmatia/.apmatia/workspace/agent_loops/workspace/agent-7",
             "knowledge_root": "/home/apmatia/.apmatia/workspace/knowledge/agent-7",
             "events": [
                 {"type": "task_started", "contact_kind": "agent", "contact_id": 7},
@@ -1419,7 +1422,7 @@ def test_module_views_page_renders_agent_loops_task_history_as_terminal_stack(mo
             "executive_analysis": "Archived for reference.",
             "updated_at": "2026-07-09T06:00:00",
             "discussion_id": "disc-old",
-            "workspace_root": "/home/apmatia/.apmatia/workspace/apmatia_agent_loops/workspace/agent-7",
+            "workspace_root": "/home/apmatia/.apmatia/workspace/agent_loops/workspace/agent-7",
             "knowledge_root": "/home/apmatia/.apmatia/workspace/knowledge/agent-7",
             "events": [],
             "checklist": [],

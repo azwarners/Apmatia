@@ -13,5 +13,5 @@ tags = ["alarms", "scheduler", "agent-loops", "automation"]
 python = ">=3.10"
 python_packages = []
 system_packages = []
-modules = ["apmatia_agent_loops"]
+modules = ["agent_loops"]
 tools = []

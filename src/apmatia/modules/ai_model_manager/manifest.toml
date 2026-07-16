@@ -1,0 +1,18 @@
+[module]
+module_id = "ai_model_manager"
+name = "Apmatia AI Model Manager"
+version = "0.1.0"
+description = "Local GGUF model metadata management with size estimates and task routing preferences."
+author = "Nick"
+
+[metadata]
+category = "models"
+tags = ["gguf", "models", "preferences", "scanning", "estimates"]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []
+

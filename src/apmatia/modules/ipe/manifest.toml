@@ -1,0 +1,17 @@
+[module]
+module_id = "ipe"
+name = "Apmatia Integrated Productivity Environment"
+version = "0.1.0"
+description = "An integrated workspace for ideas, tasks, projects, habits, and calendar planning."
+author = "Nick"
+
+[metadata]
+category = "productivity"
+tags = ["ideas", "tasks", "projects", "habits", "calendar", "assistant"]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []

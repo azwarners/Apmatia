@@ -12,7 +12,7 @@ def _registry_with_modules() -> Registry:
     registry = Registry()
     registry.register_module(
         ModuleMetadata(
-            module_id="apmatia_ipe",
+            module_id="ipe",
             name="Apmatia IPE",
             version="0.1.0",
             description="Personal productivity tools.",
@@ -20,7 +20,7 @@ def _registry_with_modules() -> Registry:
     )
     registry.register_module(
         ModuleMetadata(
-            module_id="apmatia_worksim",
+            module_id="worksim",
             name="Apmatia Worksim",
             version="0.1.0",
             description="A workplace simulation module centered on a persistent org chart wiki.",
@@ -28,18 +28,18 @@ def _registry_with_modules() -> Registry:
     )
     registry.register_view(
         ViewContribution(
-            module_id="apmatia_ipe",
-            action_id="apmatia_ipe.task",
-            view_id="apmatia_ipe.task.view",
+            module_id="ipe",
+            action_id="ipe.task",
+            view_id="ipe.task.view",
             name="Tasks View",
             description="Task collection.",
         )
     )
     registry.register_view(
         ViewContribution(
-            module_id="apmatia_ipe",
-            action_id="apmatia_ipe.project",
-            view_id="apmatia_ipe.project.view",
+            module_id="ipe",
+            action_id="ipe.project",
+            view_id="ipe.project.view",
             name="Projects View",
             description="Project collection.",
         )
@@ -49,8 +49,8 @@ def _registry_with_modules() -> Registry:
 
 def test_list_module_catalog_combines_registry_and_hidden_settings():
     values = {
-        ("ui", "hidden_module_ids"): ["apmatia_ipe"],
-        ("ui", "hidden_view_ids"): ["apmatia_ipe.project.view"],
+        ("ui", "hidden_module_ids"): ["ipe"],
+        ("ui", "hidden_view_ids"): ["ipe.project.view"],
     }
 
     def fake_get_config_value(*keys, default=None):
@@ -61,14 +61,14 @@ def test_list_module_catalog_combines_registry_and_hidden_settings():
     ):
         catalog = list_module_catalog()
 
-    assert [module["module_id"] for module in catalog] == ["apmatia_ipe", "apmatia_worksim"]
+    assert [module["module_id"] for module in catalog] == ["ipe", "worksim"]
     ipe_module = catalog[0]
     assert ipe_module["hidden"] is True
     assert ipe_module["view_count"] == 2
     assert ipe_module["visible_view_count"] == 0
     assert [view["view_id"] for view in ipe_module["views"]] == [
-        "apmatia_ipe.project.view",
-        "apmatia_ipe.task.view",
+        "ipe.project.view",
+        "ipe.task.view",
     ]
     assert ipe_module["views"][0]["hidden"] is True
     assert ipe_module["views"][0]["effective_hidden"] is True
@@ -78,7 +78,7 @@ def test_list_module_catalog_combines_registry_and_hidden_settings():
 
 def test_set_module_hidden_persists_sorted_unique_hidden_module_ids():
     values = {
-        ("ui", "hidden_module_ids"): ["apmatia_worksim", "apmatia_worksim"],
+        ("ui", "hidden_module_ids"): ["worksim", "worksim"],
     }
 
     def fake_get_config_value(*keys, default=None):
@@ -88,21 +88,21 @@ def test_set_module_hidden_persists_sorted_unique_hidden_module_ids():
         "apmatia.core.module_management.get_config_value", side_effect=fake_get_config_value
     ), patch("apmatia.core.module_management.set_config_value") as mock_set_config_value, patch(
         "apmatia.core.module_management.get_module_catalog_entry",
-        return_value={"module_id": "apmatia_ipe", "hidden": True},
+        return_value={"module_id": "ipe", "hidden": True},
     ):
-        result = set_module_hidden("apmatia_ipe", hidden=True)
+        result = set_module_hidden("ipe", hidden=True)
 
     mock_set_config_value.assert_called_once_with(
         "ui",
         "hidden_module_ids",
-        value=["apmatia_ipe", "apmatia_worksim"],
+        value=["ipe", "worksim"],
     )
-    assert result == {"module_id": "apmatia_ipe", "hidden": True}
+    assert result == {"module_id": "ipe", "hidden": True}
 
 
 def test_set_view_hidden_removes_view_from_hidden_list_when_showing():
     values = {
-        ("ui", "hidden_view_ids"): ["apmatia_ipe.task.view", "apmatia_ipe.project.view"],
+        ("ui", "hidden_view_ids"): ["ipe.task.view", "ipe.project.view"],
     }
 
     def fake_get_config_value(*keys, default=None):
@@ -112,16 +112,16 @@ def test_set_view_hidden_removes_view_from_hidden_list_when_showing():
         "apmatia.core.module_management.get_config_value", side_effect=fake_get_config_value
     ), patch("apmatia.core.module_management.set_config_value") as mock_set_config_value, patch(
         "apmatia.core.module_management.get_view_catalog_entry",
-        return_value={"view_id": "apmatia_ipe.task.view", "hidden": False},
+        return_value={"view_id": "ipe.task.view", "hidden": False},
     ):
-        result = set_view_hidden("apmatia_ipe.task.view", hidden=False)
+        result = set_view_hidden("ipe.task.view", hidden=False)
 
     mock_set_config_value.assert_called_once_with(
         "ui",
         "hidden_view_ids",
-        value=["apmatia_ipe.project.view"],
+        value=["ipe.project.view"],
     )
-    assert result == {"view_id": "apmatia_ipe.task.view", "hidden": False}
+    assert result == {"view_id": "ipe.task.view", "hidden": False}
 
 
 @pytest.mark.parametrize(

@@ -88,8 +88,6 @@ def _modules_dir(base_dir: Path | None = None) -> Path:
 
 
 def _workspace_modules_dir(base_dir: Path | None = None) -> Path:
-    if base_dir is not None:
-        return base_dir / "workspace" / "modules"
     return resolve_module_workspace_root()
 
 

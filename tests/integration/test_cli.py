@@ -5,7 +5,14 @@ import sys
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+
 from apmatia.interfaces.cli.main import main
+
+
+@pytest.fixture(autouse=True)
+def _apmatia_workspace_root(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace" / "modules"))
 
 
 @patch("apmatia.interfaces.cli.main.prompt_llm")
@@ -136,7 +143,7 @@ def test_cli_module_list_includes_worksim_module(capsys):
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "apmatia_worksim | Apmatia Worksim | 0.1.0" in captured.out
+    assert "worksim | Apmatia Worksim | 0.1.0" in captured.out
 
 
 def test_cli_module_list_json_output_is_valid_json(capsys):
@@ -149,15 +156,15 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert isinstance(payload, list)
     assert [item["module"]["module_id"] for item in payload] == [
         "agent_alarms",
-        "apmatia_agent_loops",
-        "apmatia_ai_host_management",
-        "apmatia_ai_model_executor",
-        "apmatia_ai_model_manager",
-        "apmatia_contacts_and_discussions",
-        "apmatia_ipe",
-        "apmatia_knowledge",
-        "apmatia_source_inspection",
-        "apmatia_worksim",
+        "agent_config",
+        "agent_loops",
+        "ai_host_management",
+        "ai_model_executor",
+        "ai_model_manager",
+        "contacts_and_discussions",
+        "ipe",
+        "source_inspection",
+        "worksim",
     ]
     assert payload[0]["module"]["module_id"] == "agent_alarms"
     assert payload[0]["module"]["name"] == "Agent Alarms"
@@ -172,7 +179,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "python": ">=3.10",
         "python_packages": [],
         "system_packages": [],
-        "modules": ["apmatia_agent_loops"],
+        "modules": ["agent_loops"],
         "tools": [],
     }
     assert payload[0]["actions"] == ["agent_alarms.alarms"]
@@ -186,7 +193,29 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[0]["source"] == "bundled"
     assert payload[0]["is_workspace"] is False
     payload = payload[1:]
-    assert payload[0]["module"]["module_id"] == "apmatia_agent_loops"
+    assert payload[0]["module"]["module_id"] == "agent_config"
+    assert payload[0]["module"]["name"] == "Agent Config"
+    assert payload[0]["module"]["version"] == "0.1.0"
+    assert payload[0]["module"]["description"] == "Configure and inspect agent workspace and knowledge directories."
+    assert payload[0]["module"]["author"] == "Nick"
+    assert payload[0]["module"]["metadata"] == {
+        "category": "agent-config",
+        "tags": ["agent-config", "knowledge", "workspace", "directories"],
+    }
+    assert payload[0]["module"]["dependencies"] == {
+        "python": ">=3.10",
+        "python_packages": [],
+        "system_packages": [],
+        "modules": [],
+        "tools": [],
+    }
+    assert payload[0]["actions"] == ["agent_config.agent_config"]
+    assert payload[0]["commands"] == ["agent_config.agent_config.save"]
+    assert payload[0]["views"] == ["agent_config.agent_config.view"]
+    assert payload[0]["source"] == "bundled"
+    assert payload[0]["is_workspace"] is False
+    payload = payload[1:]
+    assert payload[0]["module"]["module_id"] == "agent_loops"
     assert payload[0]["module"]["name"] == "Apmatia Agent Loops"
     assert payload[0]["module"]["version"] == "0.1.0"
     assert payload[0]["module"]["description"] == "A long-running workspace for autonomous contact-driven task loops and run history."
@@ -203,12 +232,12 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "tools": [],
     }
     assert payload[0]["actions"] == []
-    assert payload[0]["commands"] == ["apmatia_agent_loops.tasks.stop"]
+    assert payload[0]["commands"] == ["agent_loops.tasks.stop"]
     assert payload[0]["views"] == [
-        "apmatia_agent_loops.contacts.view",
-        "apmatia_agent_loops.knowledge.view",
-        "apmatia_agent_loops.tasks.view",
-        "apmatia_agent_loops.workspace.view",
+        "agent_loops.contacts.view",
+        "agent_loops.knowledge.view",
+        "agent_loops.tasks.view",
+        "agent_loops.workspace.view",
     ]
     assert payload[0]["source"] == "bundled"
     assert payload[0]["is_workspace"] is False
@@ -227,23 +256,23 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "tools": [],
     }
     assert payload[1]["actions"] == [
-        "apmatia_ai_host_management.hosts",
-        "apmatia_ai_host_management.resources",
+        "ai_host_management.hosts",
+        "ai_host_management.resources",
     ]
     assert payload[1]["commands"] == [
-        "apmatia_ai_host_management.hosts.create",
-        "apmatia_ai_host_management.hosts.delete",
-        "apmatia_ai_host_management.hosts.disable",
-        "apmatia_ai_host_management.hosts.edit",
-        "apmatia_ai_host_management.hosts.list",
-        "apmatia_ai_host_management.hosts.prepare_ssh_copy_command",
-        "apmatia_ai_host_management.hosts.prepare_ssh_key",
-        "apmatia_ai_host_management.resources.inspect_local",
-        "apmatia_ai_host_management.resources.validate",
+        "ai_host_management.hosts.create",
+        "ai_host_management.hosts.delete",
+        "ai_host_management.hosts.disable",
+        "ai_host_management.hosts.edit",
+        "ai_host_management.hosts.list",
+        "ai_host_management.hosts.prepare_ssh_copy_command",
+        "ai_host_management.hosts.prepare_ssh_key",
+        "ai_host_management.resources.inspect_local",
+        "ai_host_management.resources.validate",
     ]
     assert payload[1]["views"] == [
-        "apmatia_ai_host_management.hosts.view",
-        "apmatia_ai_host_management.resources.view",
+        "ai_host_management.hosts.view",
+        "ai_host_management.resources.view",
     ]
     assert payload[2]["module"]["name"] == "Apmatia AI Model Executor"
     assert payload[2]["module"]["version"] == "0.1.0"
@@ -259,26 +288,26 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "tools": [],
     }
     assert payload[3]["actions"] == [
-        "apmatia_ai_model_manager.models",
-        "apmatia_ai_model_manager.preferences",
+        "ai_model_manager.models",
+        "ai_model_manager.preferences",
     ]
     assert payload[3]["commands"] == [
-        "apmatia_ai_model_manager.models.create",
-        "apmatia_ai_model_manager.models.delete",
-        "apmatia_ai_model_manager.models.edit",
-        "apmatia_ai_model_manager.models.list",
-        "apmatia_ai_model_manager.models.scan",
-        "apmatia_ai_model_manager.models.show",
-        "apmatia_ai_model_manager.preferences.create",
-        "apmatia_ai_model_manager.preferences.delete",
-        "apmatia_ai_model_manager.preferences.edit",
-        "apmatia_ai_model_manager.preferences.list",
+        "ai_model_manager.models.create",
+        "ai_model_manager.models.delete",
+        "ai_model_manager.models.edit",
+        "ai_model_manager.models.list",
+        "ai_model_manager.models.scan",
+        "ai_model_manager.models.show",
+        "ai_model_manager.preferences.create",
+        "ai_model_manager.preferences.delete",
+        "ai_model_manager.preferences.edit",
+        "ai_model_manager.preferences.list",
     ]
     assert payload[3]["views"] == [
-        "apmatia_ai_model_manager.models.view",
-        "apmatia_ai_model_manager.preferences.view",
+        "ai_model_manager.models.view",
+        "ai_model_manager.preferences.view",
     ]
-    assert payload[4]["module"]["module_id"] == "apmatia_contacts_and_discussions"
+    assert payload[4]["module"]["module_id"] == "contacts_and_discussions"
     assert payload[4]["module"]["name"] == "Apmatia Contacts and Discussions"
     assert payload[4]["module"]["version"] == "0.1.0"
     assert payload[4]["module"]["description"] == "A topic-centered discussion system for organizing work, conversations, summaries, and chat targets."
@@ -295,40 +324,40 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "tools": [],
     }
     assert payload[4]["actions"] == [
-        "apmatia_contacts_and_discussions.chat_targets",
-        "apmatia_contacts_and_discussions.discussions",
-        "apmatia_contacts_and_discussions.summaries",
-        "apmatia_contacts_and_discussions.topics",
-        "apmatia_contacts_and_discussions.turns",
+        "contacts_and_discussions.chat_targets",
+        "contacts_and_discussions.discussions",
+        "contacts_and_discussions.summaries",
+        "contacts_and_discussions.topics",
+        "contacts_and_discussions.turns",
     ]
     assert payload[4]["commands"] == [
-        "apmatia_contacts_and_discussions.chat_targets.create",
-        "apmatia_contacts_and_discussions.chat_targets.delete",
-        "apmatia_contacts_and_discussions.chat_targets.edit",
-        "apmatia_contacts_and_discussions.chat_targets.list",
-        "apmatia_contacts_and_discussions.discussions.create",
-        "apmatia_contacts_and_discussions.discussions.delete",
-        "apmatia_contacts_and_discussions.discussions.edit",
-        "apmatia_contacts_and_discussions.discussions.list",
-        "apmatia_contacts_and_discussions.summaries.create",
-        "apmatia_contacts_and_discussions.summaries.delete",
-        "apmatia_contacts_and_discussions.summaries.edit",
-        "apmatia_contacts_and_discussions.summaries.list",
-        "apmatia_contacts_and_discussions.topics.assess_transition",
-        "apmatia_contacts_and_discussions.topics.create",
-        "apmatia_contacts_and_discussions.topics.delete",
-        "apmatia_contacts_and_discussions.topics.edit",
-        "apmatia_contacts_and_discussions.topics.list",
-        "apmatia_contacts_and_discussions.topics.summarize",
-        "apmatia_contacts_and_discussions.turns.create",
-        "apmatia_contacts_and_discussions.turns.delete",
-        "apmatia_contacts_and_discussions.turns.edit",
-        "apmatia_contacts_and_discussions.turns.list",
+        "contacts_and_discussions.chat_targets.create",
+        "contacts_and_discussions.chat_targets.delete",
+        "contacts_and_discussions.chat_targets.edit",
+        "contacts_and_discussions.chat_targets.list",
+        "contacts_and_discussions.discussions.create",
+        "contacts_and_discussions.discussions.delete",
+        "contacts_and_discussions.discussions.edit",
+        "contacts_and_discussions.discussions.list",
+        "contacts_and_discussions.summaries.create",
+        "contacts_and_discussions.summaries.delete",
+        "contacts_and_discussions.summaries.edit",
+        "contacts_and_discussions.summaries.list",
+        "contacts_and_discussions.topics.assess_transition",
+        "contacts_and_discussions.topics.create",
+        "contacts_and_discussions.topics.delete",
+        "contacts_and_discussions.topics.edit",
+        "contacts_and_discussions.topics.list",
+        "contacts_and_discussions.topics.summarize",
+        "contacts_and_discussions.turns.create",
+        "contacts_and_discussions.turns.delete",
+        "contacts_and_discussions.turns.edit",
+        "contacts_and_discussions.turns.list",
     ]
     assert payload[4]["views"] == [
-        "apmatia_contacts_and_discussions.chat_targets.view",
+        "contacts_and_discussions.chat_targets.view",
     ]
-    assert payload[5]["module"]["module_id"] == "apmatia_ipe"
+    assert payload[5]["module"]["module_id"] == "ipe"
     assert payload[5]["module"]["name"] == "Apmatia Integrated Productivity Environment"
     assert payload[5]["module"]["version"] == "0.1.0"
     assert payload[5]["module"]["description"] == "An integrated workspace for ideas, tasks, projects, habits, and calendar planning."
@@ -338,49 +367,49 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "tags": ["ideas", "tasks", "projects", "habits", "calendar", "assistant"],
     }
     assert payload[5]["actions"] == [
-        "apmatia_ipe.calendar_event",
-        "apmatia_ipe.habit",
-        "apmatia_ipe.idea",
-        "apmatia_ipe.project",
-        "apmatia_ipe.task",
+        "ipe.calendar_event",
+        "ipe.habit",
+        "ipe.idea",
+        "ipe.project",
+        "ipe.task",
     ]
     assert payload[5]["commands"] == [
-        "apmatia_ipe.calendar_event.create",
-        "apmatia_ipe.calendar_event.delete",
-        "apmatia_ipe.calendar_event.edit",
-        "apmatia_ipe.calendar_event.list",
-        "apmatia_ipe.habit.create",
-        "apmatia_ipe.habit.delete",
-        "apmatia_ipe.habit.edit",
-        "apmatia_ipe.habit.list",
-        "apmatia_ipe.idea.create",
-        "apmatia_ipe.idea.delete",
-        "apmatia_ipe.idea.edit",
-        "apmatia_ipe.idea.list",
-        "apmatia_ipe.project.create",
-        "apmatia_ipe.project.delete",
-        "apmatia_ipe.project.edit",
-        "apmatia_ipe.project.list",
-        "apmatia_ipe.task.create",
-        "apmatia_ipe.task.delete",
-        "apmatia_ipe.task.edit",
-        "apmatia_ipe.task.list",
+        "ipe.calendar_event.create",
+        "ipe.calendar_event.delete",
+        "ipe.calendar_event.edit",
+        "ipe.calendar_event.list",
+        "ipe.habit.create",
+        "ipe.habit.delete",
+        "ipe.habit.edit",
+        "ipe.habit.list",
+        "ipe.idea.create",
+        "ipe.idea.delete",
+        "ipe.idea.edit",
+        "ipe.idea.list",
+        "ipe.project.create",
+        "ipe.project.delete",
+        "ipe.project.edit",
+        "ipe.project.list",
+        "ipe.task.create",
+        "ipe.task.delete",
+        "ipe.task.edit",
+        "ipe.task.list",
     ]
     assert payload[5]["views"] == [
-        "apmatia_ipe.calendar_event.view",
-        "apmatia_ipe.habit.view",
-        "apmatia_ipe.idea.view",
-        "apmatia_ipe.project.view",
-        "apmatia_ipe.task.view",
+        "ipe.calendar_event.view",
+        "ipe.habit.view",
+        "ipe.idea.view",
+        "ipe.project.view",
+        "ipe.task.view",
     ]
-    assert payload[6]["module"]["module_id"] == "apmatia_knowledge"
-    assert payload[6]["module"]["name"] == "Agent Config"
+    assert payload[6]["module"]["module_id"] == "source_inspection"
+    assert payload[6]["module"]["name"] == "Apmatia Source Inspection"
     assert payload[6]["module"]["version"] == "0.1.0"
-    assert payload[6]["module"]["description"] == "Configure and inspect agent workspace and knowledge directories."
+    assert payload[6]["module"]["description"] == "Developer tools for tree inspection, source reading, and dependency tracing."
     assert payload[6]["module"]["author"] == "Nick"
     assert payload[6]["module"]["metadata"] == {
-        "category": "agent-config",
-        "tags": ["agent-config", "knowledge", "workspace", "directories"],
+        "category": "developer-tools",
+        "tags": ["tree", "source", "imports", "inspection"],
     }
     assert payload[6]["module"]["dependencies"] == {
         "python": ">=3.10",
@@ -389,54 +418,35 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "modules": [],
         "tools": [],
     }
-    assert payload[6]["actions"] == ["apmatia_knowledge.agent_config"]
-    assert payload[6]["commands"] == ["apmatia_knowledge.agent_config.save"]
-    assert payload[6]["views"] == ["apmatia_knowledge.agent_config.view"]
-    assert payload[7]["module"]["module_id"] == "apmatia_source_inspection"
-    assert payload[7]["module"]["name"] == "Apmatia Source Inspection"
+    assert payload[6]["actions"] == []
+    assert payload[6]["commands"] == []
+    assert payload[6]["views"] == []
+    assert payload[7]["module"]["module_id"] == "worksim"
+    assert payload[7]["module"]["name"] == "Apmatia Worksim"
     assert payload[7]["module"]["version"] == "0.1.0"
-    assert payload[7]["module"]["description"] == "Developer tools for tree inspection, source reading, and dependency tracing."
+    assert payload[7]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
     assert payload[7]["module"]["author"] == "Nick"
     assert payload[7]["module"]["metadata"] == {
-        "category": "developer-tools",
-        "tags": ["tree", "source", "imports", "inspection"],
-    }
-    assert payload[7]["module"]["dependencies"] == {
-        "python": ">=3.10",
-        "python_packages": [],
-        "system_packages": [],
-        "modules": [],
-        "tools": [],
-    }
-    assert payload[7]["actions"] == []
-    assert payload[7]["commands"] == []
-    assert payload[7]["views"] == []
-    assert payload[8]["module"]["module_id"] == "apmatia_worksim"
-    assert payload[8]["module"]["name"] == "Apmatia Worksim"
-    assert payload[8]["module"]["version"] == "0.1.0"
-    assert payload[8]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
-    assert payload[8]["module"]["author"] == "Nick"
-    assert payload[8]["module"]["metadata"] == {
         "category": "workspace",
         "tags": ["wiki", "org-chart", "agents", "teams", "simulation"],
     }
-    assert payload[8]["actions"] == ["apmatia_worksim.org_chart_node"]
-    assert payload[8]["commands"] == [
-        "apmatia_worksim.org_chart_node.create",
-        "apmatia_worksim.org_chart_node.delete",
-        "apmatia_worksim.org_chart_node.edit",
-        "apmatia_worksim.org_chart_node.list",
+    assert payload[7]["actions"] == ["worksim.org_chart_node"]
+    assert payload[7]["commands"] == [
+        "worksim.org_chart_node.create",
+        "worksim.org_chart_node.delete",
+        "worksim.org_chart_node.edit",
+        "worksim.org_chart_node.list",
     ]
-    assert payload[8]["views"] == ["apmatia_worksim.org_chart_node.view"]
+    assert payload[7]["views"] == ["worksim.org_chart_node.view"]
 
 
 def test_cli_module_show_displays_worksim_module_details(capsys):
-    exit_code = main(["module", "show", "apmatia_worksim"])
+    exit_code = main(["module", "show", "worksim"])
 
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "Module: apmatia_worksim" in captured.out
+    assert "Module: worksim" in captured.out
     assert "Name: Apmatia Worksim" in captured.out
     assert "Version: 0.1.0" in captured.out
     assert "Description: A workplace simulation module centered on a persistent org chart wiki." in captured.out
@@ -445,19 +455,19 @@ def test_cli_module_show_displays_worksim_module_details(capsys):
     assert "  Category: workspace" in captured.out
     assert "Dependencies:" in captured.out
     assert "  Python:" in captured.out
-    assert "Actions: apmatia_worksim.org_chart_node" in captured.out
-    assert "Commands: apmatia_worksim.org_chart_node.create, apmatia_worksim.org_chart_node.delete, apmatia_worksim.org_chart_node.edit, apmatia_worksim.org_chart_node.list" in captured.out
-    assert "Views: apmatia_worksim.org_chart_node.view" in captured.out
+    assert "Actions: worksim.org_chart_node" in captured.out
+    assert "Commands: worksim.org_chart_node.create, worksim.org_chart_node.delete, worksim.org_chart_node.edit, worksim.org_chart_node.list" in captured.out
+    assert "Views: worksim.org_chart_node.view" in captured.out
 
 
 def test_cli_module_show_json_output_is_valid_json(capsys):
-    exit_code = main(["module", "show", "apmatia_worksim", "--format", "json"])
+    exit_code = main(["module", "show", "worksim", "--format", "json"])
 
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
 
     assert exit_code == 0
-    assert payload["module"]["module_id"] == "apmatia_worksim"
+    assert payload["module"]["module_id"] == "worksim"
     assert payload["module"]["name"] == "Apmatia Worksim"
     assert payload["module"]["version"] == "0.1.0"
     assert payload["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
@@ -475,14 +485,14 @@ def test_cli_module_show_json_output_is_valid_json(capsys):
         "modules": [],
         "tools": [],
     }
-    assert payload["actions"] == ["apmatia_worksim.org_chart_node"]
+    assert payload["actions"] == ["worksim.org_chart_node"]
     assert payload["commands"] == [
-        "apmatia_worksim.org_chart_node.create",
-        "apmatia_worksim.org_chart_node.delete",
-        "apmatia_worksim.org_chart_node.edit",
-        "apmatia_worksim.org_chart_node.list",
+        "worksim.org_chart_node.create",
+        "worksim.org_chart_node.delete",
+        "worksim.org_chart_node.edit",
+        "worksim.org_chart_node.list",
     ]
-    assert payload["views"] == ["apmatia_worksim.org_chart_node.view"]
+    assert payload["views"] == ["worksim.org_chart_node.view"]
 
 
 def test_cli_module_show_missing_module_fails(capsys):

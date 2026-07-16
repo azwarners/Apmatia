@@ -18,7 +18,7 @@ For browser clipboard actions in Streamlit, do not rely on iframe components or 
 
 For the Streamlit app's custom upper-right menu, remember that Streamlit still renders a top header layer even when the toolbar is minimized. That invisible layer can cover or intercept custom controls placed at the top edge. Preserve the CSS safeguards in `src/interfaces/streamlit/app.py` that give `.apm-header-menu` a higher stacking order than `[data-testid="stHeader"]` and disable pointer events on the Streamlit header. When adding items to this menu, change only the menu contents unless the trigger/header stacking behavior is intentionally being revisited.
 
-Module UI work should stay schema-first and adapter-driven. When adding or changing module views, update the registry-backed view metadata and the shared module-view adapter/schema layer rather than writing module-specific Streamlit screens. The `apmatia_ipe` module is the reference example for schema-inferred list and create views.
+Module UI work should stay schema-first and adapter-driven. When adding or changing module views, update the registry-backed view metadata and the shared module-view adapter/schema layer rather than writing module-specific Streamlit screens. The `ipe` module is the reference example for schema-inferred list and create views.
 
 Do not add new Streamlit pages under `src/apmatia/interfaces/streamlit/pages/` for module features. If a feature needs UI, expose it as a module view through the registry-backed module-view layer so the Streamlit shell stays replaceable.
 

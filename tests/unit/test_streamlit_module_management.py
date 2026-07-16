@@ -7,7 +7,7 @@ from unittest.mock import patch
 def test_module_management_page_lists_modules(mock_streamlit):
     modules = [
         {
-            "module_id": "apmatia_ipe",
+            "module_id": "ipe",
             "name": "Apmatia IPE",
             "version": "0.1.0",
             "description": "Personal productivity tools.",
@@ -16,14 +16,14 @@ def test_module_management_page_lists_modules(mock_streamlit):
             "visible_view_count": 1,
             "views": [
                 {
-                    "view_id": "apmatia_ipe.task.view",
+                    "view_id": "ipe.task.view",
                     "name": "Tasks View",
                     "description": "Task collection.",
                     "hidden": False,
                     "effective_hidden": False,
                 },
                 {
-                    "view_id": "apmatia_ipe.project.view",
+                    "view_id": "ipe.project.view",
                     "name": "Projects View",
                     "description": "Project collection.",
                     "hidden": True,
@@ -48,7 +48,7 @@ def test_module_management_page_lists_modules(mock_streamlit):
 def test_module_management_page_toggles_module_visibility(mock_streamlit):
     modules = [
         {
-            "module_id": "apmatia_ipe",
+            "module_id": "ipe",
             "name": "Apmatia IPE",
             "version": "0.1.0",
             "description": "",
@@ -68,14 +68,14 @@ def test_module_management_page_toggles_module_visibility(mock_streamlit):
         module_management_page = importlib.reload(module_management_page)
         module_management_page.render()
 
-    mock_set_module_visibility.assert_called_once_with("apmatia_ipe", hidden=True)
+    mock_set_module_visibility.assert_called_once_with("ipe", hidden=True)
     mock_streamlit.rerun.assert_called_once()
 
 
 def test_module_management_page_toggles_view_visibility(mock_streamlit):
     modules = [
         {
-            "module_id": "apmatia_ipe",
+            "module_id": "ipe",
             "name": "Apmatia IPE",
             "version": "0.1.0",
             "description": "",
@@ -84,7 +84,7 @@ def test_module_management_page_toggles_view_visibility(mock_streamlit):
             "visible_view_count": 1,
             "views": [
                 {
-                    "view_id": "apmatia_ipe.task.view",
+                    "view_id": "ipe.task.view",
                     "name": "Tasks View",
                     "description": "",
                     "hidden": False,
@@ -103,5 +103,5 @@ def test_module_management_page_toggles_view_visibility(mock_streamlit):
         module_management_page = importlib.reload(module_management_page)
         module_management_page.render()
 
-    mock_set_module_view_visibility.assert_called_once_with("apmatia_ipe.task.view", hidden=True)
+    mock_set_module_view_visibility.assert_called_once_with("ipe.task.view", hidden=True)
     mock_streamlit.rerun.assert_called_once()

@@ -1,0 +1,17 @@
+[module]
+module_id = "contacts_and_discussions"
+name = "Apmatia Contacts and Discussions"
+version = "0.1.0"
+description = "A topic-centered discussion system for organizing work, conversations, summaries, and chat targets."
+author = "Nick"
+
+[metadata]
+category = "knowledge-work"
+tags = ["topics", "discussions", "summaries", "chat-targets", "turns", "migration"]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []

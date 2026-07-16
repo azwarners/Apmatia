@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from apmatia.core.agent_management_runtime import get_agent_manager
-from apmatia.core.apmatia_ipe_runtime import get_ipe_service
+from apmatia.core.ipe_runtime import get_ipe_service
 from apmatia.core.runtime_paths import get_app_dir, get_data_dir
 from apmatia.core.memory_management_runtime import get_memory_manager
 from apmatia.core.wiki_management_runtime import get_wiki_manager
@@ -11,9 +11,9 @@ from apmatia.lib.apmatia_administration.tooling import (
     apmatia_administration_tool_definitions,
     build_apmatia_administration_tool_providers,
 )
-from apmatia.modules.apmatia_ipe.tools import build_ipe_tool_providers, ipe_tool_definitions
-from apmatia.modules.apmatia_agent_loops.tools import build_agent_loop_tool_providers, agent_loop_tool_definitions
-from apmatia.modules.apmatia_knowledge.tooling import build_knowledge_tool_providers, knowledge_tool_definitions
+from apmatia.modules.ipe.tools import build_ipe_tool_providers, ipe_tool_definitions
+from apmatia.modules.agent_loops.tools import build_agent_loop_tool_providers, agent_loop_tool_definitions
+from apmatia.modules.agent_config.tooling import build_agent_config_tool_providers, agent_config_tool_definitions
 from apmatia.lib.system_audit.tooling import build_system_audit_tool_providers, system_audit_tool_definitions
 from apmatia.lib.memory_management.tooling import build_memory_tool_providers, memory_tool_definitions
 from apmatia.lib.source_inspection.tooling import build_source_inspection_tool_providers, source_inspection_tool_definitions
@@ -63,7 +63,7 @@ def _ensure_runtime() -> None:
                 *build_ipe_tool_providers(get_ipe_service(), agent_manager),
                 *build_system_audit_tool_providers(agent_manager),
                 *build_memory_tool_providers(get_memory_manager(), agent_manager),
-                *build_knowledge_tool_providers(get_app_dir()),
+                *build_agent_config_tool_providers(get_app_dir()),
                 *build_source_inspection_tool_providers(),
                 *build_wiki_tool_providers(get_wiki_manager(), agent_manager),
                 *build_workspace_module_tool_providers(),
@@ -75,7 +75,7 @@ def _ensure_runtime() -> None:
                 *agent_loop_tool_definitions(),
                 *system_audit_tool_definitions(),
                 *memory_tool_definitions(),
-                *knowledge_tool_definitions(),
+                *agent_config_tool_definitions(),
                 *source_inspection_tool_definitions(),
                 *wiki_tool_definitions(),
                 *workspace_module_tool_definitions(),

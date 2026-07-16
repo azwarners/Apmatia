@@ -7,6 +7,7 @@ from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from apmatia.core.app_config import get_config_value, set_config_value
+from apmatia.core.runtime_paths import get_app_dir
 
 
 DEFAULT_ACCENT_COLOR = "#ff6b6b"
@@ -45,11 +46,11 @@ def get_settings_payload() -> dict:
         llama_server_default_args = _join_args(os.getenv("APMATIA_LLAMA_SERVER_DEFAULT_ARGS") or "")
     workspace_root = _ensure_directory(
         get_config_value("workspace", "root", default=None) or os.getenv("APMATIA_WORKSPACE_ROOT"),
-        default=Path.home() / ".apmatia" / "workspace",
+        default=get_app_dir() / "workspace",
     )
     knowledge_root = _ensure_directory(
         get_config_value("knowledge", "root", default=None) or os.getenv("APMATIA_KNOWLEDGE_ROOT"),
-        default=Path.home() / ".apmatia" / "knowledge",
+        default=get_app_dir() / "knowledge",
     )
     timezone_name = _normalize_timezone_name(
         get_config_value("ui", "timezone", default=None) or os.getenv("APMATIA_TIMEZONE"),
@@ -150,8 +151,8 @@ def save_settings_payload(
     if title_bar_font_size < 12 or title_bar_font_size > 40:
         raise ValueError("Title bar font size must be between 12 and 40.")
 
-    clean_workspace_root = _ensure_directory(workspace_root, default=Path.home() / ".apmatia" / "workspace")
-    clean_knowledge_root = _ensure_directory(knowledge_root, default=Path.home() / ".apmatia" / "knowledge")
+    clean_workspace_root = _ensure_directory(workspace_root, default=get_app_dir() / "workspace")
+    clean_knowledge_root = _ensure_directory(knowledge_root, default=get_app_dir() / "knowledge")
 
     set_config_value("llama_server", "log_dir", value=clean_llama_server_log_dir)
     set_config_value("workspace", "root", value=str(clean_workspace_root))
@@ -174,7 +175,7 @@ def save_settings_payload(
     set_config_value("ui", "terminal_muted_color", value=clean_terminal_muted_color)
 
     if clean_gguf_directories:
-        from apmatia.modules.apmatia_ai_model_manager import AIModelManager
+        from apmatia.modules.ai_model_manager import AIModelManager
 
         manager = AIModelManager()
         for directory in clean_gguf_directories:

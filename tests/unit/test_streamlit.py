@@ -2236,17 +2236,17 @@ def test_main_function_authenticated_routes_to_settings(mock_streamlit):
 
 def test_render_sidebar_shows_visible_module_with_active_subpages(mock_streamlit):
     mock_streamlit.session_state["selected_page"] = "module_view"
-    mock_streamlit.session_state["selected_module_id"] = "apmatia_ipe"
-    mock_streamlit.session_state["selected_module_view_id"] = "apmatia_ipe.task.view"
+    mock_streamlit.session_state["selected_module_id"] = "ipe"
+    mock_streamlit.session_state["selected_module_view_id"] = "ipe.task.view"
 
     modules = [
         {
-            "module_id": "apmatia_ipe",
+            "module_id": "ipe",
             "name": "Apmatia IPE",
             "hidden": False,
             "views": [
-                {"view_id": "apmatia_ipe.task.view", "name": "Tasks View", "effective_hidden": False},
-                {"view_id": "apmatia_ipe.project.view", "name": "Projects View", "effective_hidden": True},
+                {"view_id": "ipe.task.view", "name": "Tasks View", "effective_hidden": False},
+                {"view_id": "ipe.project.view", "name": "Projects View", "effective_hidden": True},
             ],
         },
         {
@@ -2268,13 +2268,13 @@ def test_render_sidebar_shows_visible_module_with_active_subpages(mock_streamlit
     assert selected_page == "module_view"
     mock_streamlit.sidebar.button.assert_any_call(
         "Apmatia IPE",
-        key="nav_module_apmatia_ipe",
+        key="nav_module_ipe",
         use_container_width=True,
         type="primary",
     )
     mock_streamlit.sidebar.button.assert_any_call(
         "Tasks View",
-        key="nav_module_view_apmatia_ipe.task.view",
+        key="nav_module_view_ipe.task.view",
         use_container_width=True,
         type="primary",
     )
@@ -2292,12 +2292,12 @@ def test_render_sidebar_clicking_module_selects_first_visible_view(mock_streamli
     mock_streamlit.sidebar.button.side_effect = sidebar_button
     modules = [
         {
-            "module_id": "apmatia_ipe",
+            "module_id": "ipe",
             "name": "Apmatia IPE",
             "hidden": False,
             "views": [
-                {"view_id": "apmatia_ipe.task.view", "name": "Tasks View", "effective_hidden": False},
-                {"view_id": "apmatia_ipe.project.view", "name": "Projects View", "effective_hidden": False},
+                {"view_id": "ipe.task.view", "name": "Tasks View", "effective_hidden": False},
+                {"view_id": "ipe.project.view", "name": "Projects View", "effective_hidden": False},
             ],
         }
     ]
@@ -2310,26 +2310,26 @@ def test_render_sidebar_clicking_module_selects_first_visible_view(mock_streamli
         app.render_sidebar()
 
     assert mock_streamlit.session_state["selected_page"] == "module_view"
-    assert mock_streamlit.session_state["selected_module_id"] == "apmatia_ipe"
-    assert mock_streamlit.session_state["selected_module_view_id"] == "apmatia_ipe.task.view"
+    assert mock_streamlit.session_state["selected_module_id"] == "ipe"
+    assert mock_streamlit.session_state["selected_module_view_id"] == "ipe.task.view"
     mock_streamlit.rerun.assert_called_once()
 
 
 def test_render_sidebar_shows_agent_loops_contact_roster(mock_streamlit):
     mock_streamlit.session_state["selected_page"] = "module_view"
-    mock_streamlit.session_state["selected_module_id"] = "apmatia_agent_loops"
-    mock_streamlit.session_state["selected_module_view_id"] = "apmatia_agent_loops.tasks.view"
+    mock_streamlit.session_state["selected_module_id"] = "agent_loops"
+    mock_streamlit.session_state["selected_module_view_id"] = "agent_loops.tasks.view"
     mock_streamlit.sidebar.button.return_value = False
 
     modules = [
         {
-            "module_id": "apmatia_agent_loops",
+            "module_id": "agent_loops",
             "name": "Apmatia Agent Loops",
             "hidden": False,
             "views": [
                 {
-                    "module_id": "apmatia_agent_loops",
-                    "view_id": "apmatia_agent_loops.contacts.view",
+                    "module_id": "agent_loops",
+                    "view_id": "agent_loops.contacts.view",
                     "name": "Contacts View",
                     "effective_hidden": False,
                     "metadata": {
@@ -2349,8 +2349,8 @@ def test_render_sidebar_shows_agent_loops_contact_roster(mock_streamlit):
                     },
                 },
                 {
-                    "module_id": "apmatia_agent_loops",
-                    "view_id": "apmatia_agent_loops.tasks.view",
+                    "module_id": "agent_loops",
+                    "view_id": "agent_loops.tasks.view",
                     "name": "Task History View",
                     "effective_hidden": False,
                     "metadata": {"object_type": "run", "ui": {"render_mode": "collection"}},
@@ -2544,6 +2544,9 @@ def test_docker_launchers_bind_processes_to_container_all_interfaces():
     assert 'APMATIA_SERVER_HOST=0.0.0.0' in compose
     assert 'APMATIA_STREAMLIT_HOST=0.0.0.0' in compose
     assert 'APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true' in compose
+    assert 'HOME=${HOME}' in compose
+    assert 'APMATIA_HOME=${HOME}/.apmatia' in compose
+    assert 'APMATIA_WORKSPACE_ROOT=${HOME}/.apmatia/workspace/modules' in compose
 
 
 def test_start_script_mounts_persistent_user_state():
@@ -2558,6 +2561,7 @@ def test_start_script_mounts_persistent_user_state():
     assert '-e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR"' in launcher
     assert '-v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR"' in launcher
     assert '-e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules"' in launcher
+    assert 'APMATIA_CONTAINER_HOME="$HOME"' in launcher
     assert '--user "$(id -u):$(id -g)"' in launcher
 
 
@@ -2573,6 +2577,7 @@ def test_start_script_bootstraps_workspace_modules_on_the_host():
     assert 'ensure_host_permissions "$APMATIA_CONFIG_DIR_HOST" "$APMATIA_CONFIG_DIR_HOST"' in launcher
     assert 'mkdir -p "$APMATIA_WORKSPACE_ROOT_HOST"' in launcher
     assert 'mkdir -p "$APMATIA_HOME_HOST/workspace/modules"' not in launcher
+    assert 'APMATIA_CONTAINER_HOME="/home/apmatia"' not in launcher
 
 
 def test_start_script_uses_saved_llama_server_log_dir_when_env_is_missing():

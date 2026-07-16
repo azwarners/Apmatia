@@ -1,0 +1,17 @@
+[module]
+module_id = "ai_host_management"
+name = "Apmatia AI Host Management"
+version = "0.1.0"
+description = "Track AI-capable hosts and inspect current resource utilization across registered hosts for future model placement."
+author = "Nick"
+
+[metadata]
+category = "infrastructure"
+tags = ["hosts", "resources", "ssh", "local", "inventory"]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []

@@ -176,7 +176,7 @@ def test_get_settings_payload_falls_back_to_llama_server_env(tmp_path):
 
 
 @patch("apmatia.core.settings_service.set_config_value")
-@patch("apmatia.modules.apmatia_ai_model_manager.AIModelManager")
+@patch("apmatia.modules.ai_model_manager.AIModelManager")
 def test_save_settings_payload_auto_scans_gguf_directory(mock_manager_cls, mock_set_config_value, tmp_path):
     gguf_dir = tmp_path / "models"
     gguf_dir.mkdir()
@@ -205,7 +205,7 @@ def test_save_settings_payload_auto_scans_gguf_directory(mock_manager_cls, mock_
 
 
 @patch("apmatia.core.settings_service.set_config_value")
-@patch("apmatia.modules.apmatia_ai_model_manager.AIModelManager")
+@patch("apmatia.modules.ai_model_manager.AIModelManager")
 def test_save_settings_payload_scans_gguf_directory_even_when_auto_scan_disabled(mock_manager_cls, mock_set_config_value, tmp_path):
     gguf_dir = tmp_path / "models"
     gguf_dir.mkdir()

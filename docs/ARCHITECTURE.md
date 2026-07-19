@@ -64,7 +64,7 @@ Top-level libraries in `src/lib/` currently include:
 
   Provides the reusable user, group, membership, and authentication domain. It owns password hashing, membership rules, repository contracts, and SQLite repositories so Apmatia can support authentication and access control without baking those concerns directly into the app layer.
 
-- `ysparr`
+- `ysparr` (and the new Seat-based concurrency infrastructure)
 
   Provides the underlying generative execution engine used by Apmatia to talk to text-generation backends. It supplies modality-specific execution, backend adapters such as KoboldCpp and OpenAI-compatible endpoints, and output persistence for model runs.
 

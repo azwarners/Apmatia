@@ -41,6 +41,8 @@ That gives the project a few important properties:
 - discussion workflows backed by reusable libraries
 - saved LLM configurations for OpenAI-compatible and KoboldCpp backends
 - agent management backed by a dedicated library
+- model runtime concurrency (seats) managed by a persistent work queue and dispatcher
+- model runtime concurrency (seats) managed by a persistent work queue and dispatcher
 - user, group, and session-backed authentication flows
 - soft-delete discussion and folder lifecycle with restore support
 - shared settings for prompting and UI appearance

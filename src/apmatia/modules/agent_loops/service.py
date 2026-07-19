@@ -770,6 +770,15 @@ class AgentLoopRuntime:
         )
         token = EventCancellationToken()
         self._repository.save(task)
+        
+        # Integration: Enqueue as durable work
+        from apmatia.api.internal.ai_model_executor import enqueue_ai_work
+        enqueue_ai_work(
+            payload={"prompt": prompt, "model_id": model_id or agent.default_model_id},
+            priority=0,
+            runtime_id=None # Use default or agent's preferred runtime
+        )
+        
         with self._lock:
             self._tokens[str(task.id or "")] = token
             thread = Thread(

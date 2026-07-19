@@ -12,10 +12,57 @@ from apmatia.modules.ai_model_executor import (
     stop_model,
     update_runtime_config,
 )
+# New imports for AI Infra
+from apmatia.modules.ai_model_executor.models import TextGenerationWorkPayload
+# New imports for AI Infra
+from apmatia.modules.ai_model_executor.models import TextGenerationWorkPayload
 
 
 def list_ai_model_executions(model_id: int | None = None) -> list[dict]:
     return get_execution_status(model_id=model_id)["items"]
+
+
+def get_ai_work_queue_status() -> dict:
+    from apmatia.modules.ai_model_executor.queue import WorkQueue
+    # In a real system, this would use a singleton repository
+    queue = WorkQueue(work_repository=None)
+    items = queue.repo.list_all() if hasattr(queue, 'repo') else []
+    return {
+        "items": [asdict(item) for item in items],
+        "count": len(items)
+    }
+
+
+def enqueue_ai_work(payload: dict, priority: int = 0, runtime_id: str | None = None) -> dict:
+    from apmatia.modules.ai_model_executor.queue import WorkQueue
+    from apmatia.modules.ai_model_executor.models import WorkItem, TextGenerationWorkPayload
+    from apmatia.lib.apmatia_core.models import utc_now
+    
+    # In a full implementation, these would be injected or retrieved from a registry
+    queue = WorkQueue(work_repository=None)
+    work_item = WorkItem(
+        id=str(utc_now().timestamp()),
+        payload=TextGenerationWorkPayload(**payload),
+        priority=priority,
+        runtime_id=runtime_id
+    )
+    queue.enqueue(work_item)
+    return asdict(work_item)
+
+
+def enqueue_ai_work(payload: dict, priority: int = 0, runtime_id: str | None = None) -> dict:
+    from apmatia.modules.ai_model_executor.queue import WorkQueue
+    # This is a simplified wrapper; in full implementation, a singleton queue is used
+    queue = WorkQueue(work_repository=None) # Placeholder for actual repo
+    from apmatia.modules.ai_model_executor.models import WorkItem, TextGenerationWorkPayload
+    work_item = WorkItem(
+        id=str(utc_now().timestamp()),
+        payload=TextGenerationWorkPayload(**payload),
+        priority=priority,
+        runtime_id=runtime_id
+    )
+    queue.enqueue(work_item)
+    return asdict(work_item)
 
 
 def get_ai_model_executor_resources() -> dict:
@@ -36,6 +83,28 @@ def stop_ai_model_execution(model_id: int | None = None, **payload) -> dict:
 
 def get_ai_model_execution_status(model_id: int | None = None) -> dict:
     return get_execution_status(model_id=model_id)
+
+
+def dispatch_ai_work() -> dict:
+    from apmatia.modules.ai_model_executor.dispatcher import Dispatcher
+    from apmatia.modules.ai_model_executor.queue import WorkQueue
+    from apmatia.modules.ai_model_executor.capacity import CapacityManager
+    # Simplified wiring for first slice
+    dispatcher = Dispatcher(WorkQueue(None), CapacityManager(None), None)
+    import asyncio
+    result = asyncio.run(dispatcher.dispatch_once())
+    return asdict(result) if result else {}
+
+
+def dispatch_ai_work() -> dict:
+    from apmatia.modules.ai_model_executor.dispatcher import Dispatcher
+    from apmatia.modules.ai_model_executor.queue import WorkQueue
+    from apmatia.modules.ai_model_executor.capacity import CapacityManager
+    # Simplified wiring for first slice
+    dispatcher = Dispatcher(WorkQueue(None), CapacityManager(None), None)
+    import asyncio
+    result = asyncio.run(dispatcher.dispatch_once())
+    return asdict(result) if result else {}
 
 
 def get_ai_model_executor_runtime_config() -> dict:

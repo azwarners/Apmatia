@@ -48,6 +48,14 @@ def add_ai_model_executor_parser(subparsers: argparse._SubParsersAction[argparse
     status_parser.add_argument("--format", choices=("json", "text"), default="json")
     status_parser.set_defaults(handler=handle_status)
 
+    enqueue_parser = executor_subparsers.add_parser("enqueue", help="Enqueue a work item.")
+    enqueue_parser.add_argument("prompt", help="The prompt for the model.")
+    enqueue_parser.add_argument("--priority", type=int, default=0)
+    enqueue_parser.add_argument("--runtime-id", default=None)
+    enqueue_parser.set_defaults(handler=handle_enqueue)
+
+    dispatch_parser = executor_subparsers.add_parser("dispatch", help="Dispatch the next work item.")
+    dispatch_parser.set_defaults(handler=handle_dispatch)
 
 def handle_resources(args: argparse.Namespace) -> int:
     resources = _api_client().get_ai_model_executor_resources()
@@ -117,6 +125,32 @@ def handle_status(args: argparse.Namespace) -> int:
 
 def _clean_payload(payload: dict[str, object | None]) -> dict[str, object]:
     return {key: value for key, value in payload.items() if value is not None}
+
+
+def handle_enqueue(args: argparse.Namespace) -> int:
+    payload = {"prompt": args.prompt}
+    result = _api_client().enqueue_ai_work(payload=payload, priority=args.priority, runtime_id=args.runtime_id)
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def handle_dispatch(args: argparse.Namespace) -> int:
+    result = _api_client().dispatch_ai_work()
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def handle_enqueue(args: argparse.Namespace) -> int:
+    payload = {"prompt": args.prompt}
+    result = _api_client().enqueue_ai_work(payload=payload, priority=args.priority, runtime_id=args.runtime_id)
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def handle_dispatch(args: argparse.Namespace) -> int:
+    result = _api_client().dispatch_ai_work()
+    print(json.dumps(result, indent=2))
+    return 0
 
 
 def _error_message(error: Exception) -> str:

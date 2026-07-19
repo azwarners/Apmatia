@@ -10,6 +10,8 @@ from apmatia.api.internal.ai_model_executor import (
     list_ai_model_executions,
     start_ai_model_execution,
     stop_ai_model_execution,
+    enqueue_ai_work,
+    dispatch_ai_work,
 )
 
 from .shared import require_session
@@ -29,6 +31,12 @@ class ModelExecutionStopPayload(BaseModel):
     host_id: str = "local"
     runtime_id: str | None = None
     execution_id: int | None = None
+
+
+class AIWorkEnqueuePayload(BaseModel):
+    payload: dict
+    priority: int = 0
+    runtime_id: str | None = None
 
 
 @router.get("/ai-model-executor/resources", response_model=dict)
@@ -71,3 +79,15 @@ def post_start_model(request: Request, model_id: int = Path(..., description="GG
 def post_stop_model(request: Request, model_id: int = Path(..., description="GGUF model ID"), payload: ModelExecutionStopPayload = Body(...)):
     require_session(request)
     return stop_ai_model_execution(model_id, **payload.model_dump(exclude_none=True))
+
+
+@router.post("/ai-model-executor/enqueue", response_model=dict)
+def post_enqueue_work(request: Request, payload: AIWorkEnqueuePayload = Body(...)):
+    require_session(request)
+    return enqueue_ai_work(**payload.model_dump())
+
+
+@router.post("/ai-model-executor/dispatch", response_model=dict)
+def post_dispatch_work(request: Request):
+    require_session(request)
+    return dispatch_ai_work()

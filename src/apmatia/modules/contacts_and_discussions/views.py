@@ -64,6 +64,7 @@ VIEW_DESCRIPTORS: tuple[ViewContribution, ...] = (
                                 "label": "Turn policy",
                                 "field_type": "select",
                                 "options": ("manual", "auto", "round_robin", "coordinator_only"),
+                                "default": "round_robin",
                                 "help_text": "How turns should be scheduled for group-style chat.",
                             },
                             {

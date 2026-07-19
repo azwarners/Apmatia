@@ -29,7 +29,7 @@ class LoopTaskStartPayload(BaseModel):
     agent_id: int | None = None
     chat_mode: str = "single"
     allow_tools: bool = True
-    max_iterations: int = 5
+    max_iterations: int = 10
 
 
 @router.get("/tasks", response_model=list[dict])

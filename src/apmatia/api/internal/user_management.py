@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from apmatia.lib.user_management.models import GroupRole, UserId
+from apmatia.lib.user_management.models import GroupMemberKind, GroupRole, UserId
 from apmatia.core.user_management_runtime import get_group_manager, get_user_manager
 
 
@@ -34,16 +34,27 @@ def list_users():
     return get_user_manager().list_users()
 
 
-def create_group(name: str, created_by_user_id: UserId, description: str = ""):
+def create_group(name: str, created_by_user_id: UserId, description: str = "", workspace_root: str = ""):
     return get_group_manager().create_group(
         name=name,
         created_by_user_id=created_by_user_id,
         description=description,
+        workspace_root=workspace_root,
     )
 
 
-def edit_group(group_id: int, name: str | None = None, description: str | None = None):
-    return get_group_manager().edit_group(group_id=group_id, name=name, description=description)
+def edit_group(
+    group_id: int,
+    name: str | None = None,
+    description: str | None = None,
+    workspace_root: str | None = None,
+):
+    return get_group_manager().edit_group(
+        group_id=group_id,
+        name=name,
+        description=description,
+        workspace_root=workspace_root,
+    )
 
 
 def delete_group(group_id: int) -> bool:
@@ -54,8 +65,21 @@ def list_groups():
     return get_group_manager().list_groups()
 
 
-def add_member(group_id: int, user_id: UserId, role: GroupRole = GroupRole.MEMBER):
-    return get_group_manager().add_member(group_id=group_id, user_id=user_id, role=role)
+def add_member(
+    group_id: int,
+    user_id: UserId | None = None,
+    role: GroupRole = GroupRole.MEMBER,
+    *,
+    agent_id: int | None = None,
+    member_kind: GroupMemberKind | str = GroupMemberKind.USER,
+):
+    return get_group_manager().add_member(
+        group_id=group_id,
+        user_id=user_id,
+        role=role,
+        agent_id=agent_id,
+        member_kind=member_kind,
+    )
 
 
 def set_membership_enabled(membership_id: int, enabled: bool):

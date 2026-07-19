@@ -219,6 +219,7 @@ def _serialize_object(object_type: str, item: Any) -> dict[str, Any]:
             "started_on": None if item.started_on is None else item.started_on.isoformat(),
             "target_on": None if item.target_on is None else item.target_on.isoformat(),
             "tags": list(item.tags),
+            "workspace_root": item.workspace_root,
         }
     if object_type == "habit":
         assert isinstance(item, Habit)

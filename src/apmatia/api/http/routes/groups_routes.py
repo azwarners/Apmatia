@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+from typing import Literal
+
 from apmatia.api.internal.group_access import is_group_owner, visible_groups
 from apmatia.api.internal.user_management import (
     GroupRole,
@@ -19,22 +21,33 @@ router = APIRouter()
 
 class CreateGroupPayload(BaseModel):
     name: str
-    created_by_user_id: int
     description: str = ""
+    workspace_root: str = ""
 
 
 class AddMemberPayload(BaseModel):
-    user_id: int
+    member_kind: Literal["user", "agent"] = "user"
+    user_id: int | None = None
+    agent_id: int | None = None
     role: GroupRole = GroupRole.MEMBER
 
 
 class EditGroupPayload(BaseModel):
     name: str | None = None
     description: str | None = None
+    workspace_root: str | None = None
 
 
 class SetMembershipEnabledPayload(BaseModel):
     enabled: bool
+
+
+def _member_kind_value(member_kind: object) -> str:
+    if hasattr(member_kind, "value"):
+        candidate = getattr(member_kind, "value")
+        if candidate is not None:
+            return str(candidate)
+    return str(member_kind)
 
 
 @router.post("/groups")
@@ -45,6 +58,7 @@ def api_create_group(request: Request, payload: CreateGroupPayload):
             name=payload.name,
             created_by_user_id=session.user_id,
             description=payload.description,
+            workspace_root=payload.workspace_root,
         )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
@@ -60,7 +74,12 @@ def api_edit_group(request: Request, group_id: int, payload: EditGroupPayload):
     if not is_group_owner(group_memberships, session.user_id):
         raise HTTPException(status_code=403, detail="Group owner access required.")
     try:
-        group = edit_group(group_id=group_id, name=payload.name, description=payload.description)
+        group = edit_group(
+            group_id=group_id,
+            name=payload.name,
+            description=payload.description,
+            workspace_root=payload.workspace_root,
+        )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except NotImplementedError as error:
@@ -114,8 +133,19 @@ def api_add_member(request: Request, group_id: int, payload: AddMemberPayload):
     session = require_session(request)
     if not is_group_owner(list_group_members(group_id), session.user_id):
         raise HTTPException(status_code=403, detail="Group owner access required.")
+    member_kind = _member_kind_value(payload.member_kind)
+    if member_kind == "agent" and payload.agent_id is None:
+        raise HTTPException(status_code=400, detail="agent_id is required for agent memberships.")
+    if member_kind == "user" and payload.user_id is None:
+        raise HTTPException(status_code=400, detail="user_id is required for user memberships.")
     try:
-        membership = add_member(group_id=group_id, user_id=payload.user_id, role=payload.role)
+        membership = add_member(
+            group_id=group_id,
+            user_id=payload.user_id,
+            role=payload.role,
+            agent_id=payload.agent_id,
+            member_kind=member_kind,
+        )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except NotImplementedError as error:

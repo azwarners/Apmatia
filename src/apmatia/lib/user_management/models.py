@@ -23,6 +23,11 @@ class GroupRole(str, Enum):
     MEMBER = "member"
 
 
+class GroupMemberKind(str, Enum):
+    USER = "user"
+    AGENT = "agent"
+
+
 @dataclass(slots=True)
 class User:
     id: UserId | None
@@ -42,15 +47,17 @@ class Group:
     created_by_user_id: UserId | None = None
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
+    workspace_root: str = ""
 
 
 @dataclass(slots=True)
 class GroupMembership:
     id: MembershipId | None
     group_id: GroupId
-    user_id: UserId
+    user_id: UserId | None = None
+    agent_id: int | None = None
+    member_kind: GroupMemberKind = GroupMemberKind.USER
     role: GroupRole = GroupRole.MEMBER
     is_enabled: bool = True
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
-

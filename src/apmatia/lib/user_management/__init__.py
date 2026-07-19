@@ -3,6 +3,7 @@
 from .models import (
     Group,
     GroupId,
+    GroupMemberKind,
     GroupMembership,
     GroupRole,
     MembershipId,
@@ -38,6 +39,7 @@ __all__ = [
     "AccessController",
     "Group",
     "GroupId",
+    "GroupMemberKind",
     "GroupManager",
     "GroupMembership",
     "GroupMembershipRepository",

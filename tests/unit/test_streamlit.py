@@ -852,15 +852,17 @@ def test_user_management_page_loads_and_manages_groups(mock_streamlit):
     """User management uses the API client for users, groups, and membership updates."""
     mock_streamlit.session_state["authenticated_user"] = {"user_id": 1, "username": "nick"}
     mock_streamlit.session_state["user_management_selected_group_id"] = 10
-    mock_streamlit.form_submit_button.side_effect = [True, False, False, False]
+    mock_streamlit.form_submit_button.side_effect = [True, False, False, False, False]
     mock_streamlit.text_input.side_effect = ["newuser", "newpass", "nick", "", "team"]
     mock_streamlit.text_area.return_value = "Team description"
     mock_streamlit.checkbox.return_value = True
     mock_streamlit.button.return_value = False
 
     def selectbox_side_effect(label, options, index=0, **_kwargs):
-        if label == "User" and len(options) > 1:
-            return options[1]
+        if label == "Member type":
+            return "agent"
+        if label == "Agent" and options:
+            return options[0]
         if label == "Role":
             return "member"
         return options[index]
@@ -871,6 +873,7 @@ def test_user_management_page_loads_and_manages_groups(mock_streamlit):
         {"id": 1, "username": "nick", "is_enabled": True},
         {"id": 2, "username": "alice", "is_enabled": False},
     ]
+    agents = [{"id": 77, "name": "Planner"}]
     groups = [
         {"id": 10, "name": "team", "description": "Team description", "created_by_user_id": 1},
         {"id": 11, "name": "other", "description": "", "created_by_user_id": 2},
@@ -878,10 +881,13 @@ def test_user_management_page_loads_and_manages_groups(mock_streamlit):
     memberships = [
         {"id": 100, "group_id": 10, "user_id": 1, "role": "owner", "is_enabled": True},
         {"id": 101, "group_id": 10, "user_id": 2, "role": "member", "is_enabled": True},
+        {"id": 102, "group_id": 10, "agent_id": 77, "member_kind": "agent", "role": "member", "is_enabled": True},
     ]
 
     with patch("apmatia.interfaces.streamlit.api_client.list_users", return_value=users), patch(
         "apmatia.interfaces.streamlit.api_client.list_groups", return_value=groups
+    ), patch(
+        "apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents
     ), patch(
         "apmatia.interfaces.streamlit.api_client.create_user"
     ) as mock_create_user, patch(
@@ -919,6 +925,69 @@ def test_user_management_page_loads_and_manages_groups(mock_streamlit):
     mock_streamlit.title.assert_called_with("User Management")
     mock_streamlit.caption.assert_any_call(
         "Create users, edit your account, and manage the groups you own through the local API."
+    )
+
+
+def test_user_management_page_allows_adding_agent_members(mock_streamlit):
+    """Group member selection should switch to agents and submit an agent payload."""
+    mock_streamlit.session_state["authenticated_user"] = {"user_id": 1, "username": "nick"}
+    mock_streamlit.session_state["user_management_selected_group_id"] = 10
+    mock_streamlit.form_submit_button.side_effect = [False, False, False, True]
+    mock_streamlit.text_input.return_value = ""
+    mock_streamlit.text_area.return_value = ""
+    mock_streamlit.checkbox.return_value = True
+    mock_streamlit.button.return_value = False
+
+    def selectbox_side_effect(label, options, index=0, **_kwargs):
+        if label == "Member type":
+            return "agent"
+        if label == "Agent":
+            return options[0]
+        if label == "Role":
+            return "member"
+        return options[index]
+
+    mock_streamlit.selectbox.side_effect = selectbox_side_effect
+
+    users = [{"id": 1, "username": "nick", "is_enabled": True}]
+    agents = [{"id": 77, "name": "Planner"}]
+    groups = [{"id": 10, "name": "team", "description": "Team description", "created_by_user_id": 1}]
+    memberships = [{"id": 100, "group_id": 10, "user_id": 1, "role": "owner", "is_enabled": True}]
+
+    with patch("apmatia.interfaces.streamlit.api_client.list_users", return_value=users), patch(
+        "apmatia.interfaces.streamlit.api_client.list_groups", return_value=groups
+    ), patch(
+        "apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents
+    ), patch(
+        "apmatia.interfaces.streamlit.api_client.create_user"
+    ), patch(
+        "apmatia.interfaces.streamlit.api_client.update_user"
+    ), patch(
+        "apmatia.interfaces.streamlit.api_client.delete_user"
+    ), patch(
+        "apmatia.interfaces.streamlit.api_client.create_group"
+    ), patch(
+        "apmatia.interfaces.streamlit.api_client.update_group"
+    ), patch(
+        "apmatia.interfaces.streamlit.api_client.delete_group"
+    ), patch(
+        "apmatia.interfaces.streamlit.api_client.list_group_members",
+        return_value=memberships,
+    ), patch(
+        "apmatia.interfaces.streamlit.api_client.add_group_member"
+    ) as mock_add_group_member, patch(
+        "apmatia.interfaces.streamlit.api_client.set_group_membership_enabled"
+    ):
+        import apmatia.interfaces.streamlit.pages.user_management as user_management_page
+
+        user_management_page = importlib.reload(user_management_page)
+        user_management_page.render()
+
+    mock_add_group_member.assert_called_once_with(
+        10,
+        member_kind="agent",
+        role="member",
+        agent_id=77,
     )
 
 
@@ -1518,8 +1587,35 @@ def test_discussion_delete_last_discussion_does_not_open_replacement(mock_stream
     mock_open.assert_not_called()
 
 
-def test_contacts_shell_reuses_existing_discussion_after_refresh(mock_streamlit):
-    """Refreshing the contacts shell should reopen the existing discussion instead of creating a duplicate."""
+def test_contacts_shell_creates_fresh_discussion_for_agent_contact(mock_streamlit):
+    """Selecting an agent contact should create a fresh contacts discussion."""
+    mock_streamlit.session_state.clear()
+
+    import apmatia.interfaces.streamlit.app as streamlit_app
+
+    streamlit_app = importlib.reload(streamlit_app)
+    contact = {"contact_id": "agent:7", "contact_type": "agent", "label": "Planner"}
+
+    with patch.object(streamlit_app, "discussion_tree", create=True) as mock_tree, patch.object(
+        streamlit_app, "open_discussion"
+    ) as mock_open, patch.object(streamlit_app, "create_discussion", return_value={"discussion": {"discussion_id": "IDnew123"}}) as mock_create:
+        streamlit_app._activate_contacts_contact(contact)
+
+    assert mock_streamlit.session_state["contacts_shell_active"] is True
+    assert mock_streamlit.session_state["contacts_active_discussion_id"] == "IDnew123"
+    assert mock_streamlit.session_state["contacts_contact_discussion_ids"]["agent:7"] == "IDnew123"
+    mock_tree.assert_called_once()
+    mock_create.assert_called_once_with(
+        title="Planner",
+        chat_mode="round_robin",
+        agent_id=7,
+        participant_agent_ids=[7],
+    )
+    mock_open.assert_called_once_with("IDnew123")
+
+
+def test_contacts_shell_reopens_existing_discussion_for_agent_contact(mock_streamlit):
+    """Refreshing an agent contact should reopen the prior discussion instead of creating a new one."""
     mock_streamlit.session_state.clear()
 
     import apmatia.interfaces.streamlit.app as streamlit_app
@@ -1529,22 +1625,86 @@ def test_contacts_shell_reuses_existing_discussion_after_refresh(mock_streamlit)
     tree = {
         "discussions": [
             {
-                "discussion_id": "IDabc123",
+                "discussion_id": "IDagentexisting",
                 "title": "Planner",
                 "participant_agent_ids": [7],
+                "updated_at": "2026-07-17T12:00:00+00:00",
             }
         ]
     }
 
-    with patch.object(streamlit_app, "discussion_tree", return_value=tree), patch.object(
-        streamlit_app, "open_discussion"
+    with patch.object(streamlit_app, "discussion_tree", return_value=tree) as mock_tree, patch.object(
+        streamlit_app,
+        "open_discussion",
     ) as mock_open, patch.object(streamlit_app, "create_discussion") as mock_create:
         streamlit_app._activate_contacts_contact(contact)
 
+    assert mock_streamlit.session_state["contacts_active_discussion_id"] == "IDagentexisting"
+    assert mock_streamlit.session_state["contacts_contact_discussion_ids"]["agent:7"] == "IDagentexisting"
+    mock_tree.assert_called_once()
+    mock_open.assert_called_once_with("IDagentexisting")
+    mock_create.assert_not_called()
+
+
+def test_contacts_shell_creates_fresh_discussion_for_group_contact(mock_streamlit):
+    """Selecting a group contact should create a fresh contacts discussion."""
+    mock_streamlit.session_state.clear()
+
+    import apmatia.interfaces.streamlit.app as streamlit_app
+
+    streamlit_app = importlib.reload(streamlit_app)
+    contact = {"contact_id": "group:9", "contact_type": "group", "label": "DevTeam"}
+
+    with patch.object(streamlit_app, "discussion_tree", create=True) as mock_tree, patch.object(
+        streamlit_app, "open_discussion"
+    ) as mock_open, patch.object(
+        streamlit_app,
+        "create_discussion",
+        return_value={"discussion": {"discussion_id": "IDgroupnew123"}},
+    ) as mock_create:
+        streamlit_app._activate_contacts_contact(contact)
+
     assert mock_streamlit.session_state["contacts_shell_active"] is True
-    assert mock_streamlit.session_state["contacts_active_discussion_id"] == "IDabc123"
-    assert mock_streamlit.session_state["contacts_contact_discussion_ids"]["agent:7"] == "IDabc123"
-    mock_open.assert_called_once_with("IDabc123")
+    assert mock_streamlit.session_state["contacts_active_discussion_id"] == "IDgroupnew123"
+    assert mock_streamlit.session_state["contacts_contact_discussion_ids"]["group:9"] == "IDgroupnew123"
+    mock_tree.assert_called_once()
+    mock_create.assert_called_once_with(
+        title="DevTeam",
+        chat_mode="round_robin",
+        group_id=9,
+    )
+    mock_open.assert_called_once_with("IDgroupnew123")
+
+
+def test_contacts_shell_reopens_existing_discussion_for_group_contact(mock_streamlit):
+    """Refreshing a group contact should reopen the prior discussion instead of creating a new one."""
+    mock_streamlit.session_state.clear()
+
+    import apmatia.interfaces.streamlit.app as streamlit_app
+
+    streamlit_app = importlib.reload(streamlit_app)
+    contact = {"contact_id": "group:9", "contact_type": "group", "label": "DevTeam"}
+    tree = {
+        "discussions": [
+            {
+                "discussion_id": "IDgroupexisting",
+                "title": "DevTeam",
+                "group_id": 9,
+                "updated_at": "2026-07-17T12:00:00+00:00",
+            }
+        ]
+    }
+
+    with patch.object(streamlit_app, "discussion_tree", return_value=tree) as mock_tree, patch.object(
+        streamlit_app,
+        "open_discussion",
+    ) as mock_open, patch.object(streamlit_app, "create_discussion") as mock_create:
+        streamlit_app._activate_contacts_contact(contact)
+
+    assert mock_streamlit.session_state["contacts_active_discussion_id"] == "IDgroupexisting"
+    assert mock_streamlit.session_state["contacts_contact_discussion_ids"]["group:9"] == "IDgroupexisting"
+    mock_tree.assert_called_once()
+    mock_open.assert_called_once_with("IDgroupexisting")
     mock_create.assert_not_called()
 
 
@@ -1687,6 +1847,37 @@ def test_discussion_message_delete_action_sets_target_and_reruns(mock_streamlit)
         "index": 0,
         "text": "Hello",
     }
+    mock_streamlit.rerun.assert_called_once()
+
+
+def test_discussion_bulk_delete_panel_calls_batch_api(mock_streamlit):
+    """The bulk delete panel should forward the selected indices to the API."""
+    mock_streamlit.checkbox.side_effect = lambda label, value=False, **_kwargs: label.startswith("0:") or label.startswith("2:")
+    mock_streamlit.button.side_effect = lambda label, *args, **kwargs: label == "Delete selected messages"
+
+    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
+
+    discussion_page = importlib.reload(discussion_page)
+    snapshot = {
+        "discussion_id": "IDabc123",
+        "messages": [
+            {"role": "User", "text": "Hello"},
+            {"role": "Assistant", "text": "First reply", "speaker_name": "Planner"},
+            {"role": "Assistant", "text": "Second reply", "speaker_name": "Planner"},
+        ],
+        "is_streaming": False,
+    }
+
+    with patch.object(discussion_page, "delete_discussion_messages") as mock_delete:
+        discussion_page._render_bulk_message_delete_controls(
+            snapshot,
+            username="nick",
+            agent_name="Planner",
+        )
+
+    mock_delete.assert_called_once_with("IDabc123", [0, 2])
+    assert mock_streamlit.checkbox.call_count == 3
+    mock_streamlit.success.assert_called_with("Selected messages deleted.")
     mock_streamlit.rerun.assert_called_once()
 
 
@@ -2071,6 +2262,77 @@ def test_discussion_page_keeps_stop_mode_while_streaming(mock_streamlit):
     assert mock_streamlit.rerun.call_count >= 1
 
 
+def test_discussion_page_streaming_fragment_shows_new_messages_while_generating(mock_streamlit):
+    """Streaming rerenders the latest transcript so in-flight messages stay readable."""
+    agents = [{"id": 7, "name": "Planner"}]
+    llm_configs = [
+        {"id": 301, "user_alias": "Default", "backend": "openai_compatible", "model_url": "http://localhost:5001"},
+    ]
+    tree = {
+        "current_discussion_id": "IDabc123",
+        "discussions": [{"discussion_id": "IDabc123", "title": "Current", "participant_agent_ids": [7]}],
+    }
+    initial_snapshot = {
+        "discussion_id": "IDabc123",
+        "messages": [{"role": "User", "text": "Hello"}],
+        "last_error": None,
+        "is_streaming": True,
+        "activity": {
+            "stage": "generating",
+            "agent_name": "DevTeam",
+            "speaker_name": "DevTeam",
+        },
+    }
+    updated_snapshot = {
+        "discussion_id": "IDabc123",
+        "messages": [
+            {"role": "User", "text": "Hello"},
+            {"role": "Assistant", "text": "Draft answer", "speaker_name": "Planner"},
+        ],
+        "last_error": None,
+        "is_streaming": True,
+        "activity": {
+            "stage": "generating",
+            "agent_name": "DevTeam",
+            "speaker_name": "DevTeam",
+        },
+    }
+    mock_streamlit.selectbox.return_value = agents[0]
+    mock_streamlit.form_submit_button.return_value = False
+    mock_streamlit.button.return_value = False
+    mock_streamlit.fragment.__module__ = "streamlit.testing"
+    mock_streamlit.fragment.side_effect = lambda run_every=0.5: (lambda func: func)
+    rendered_cards = []
+
+    def fake_render_message_card(*args, **kwargs):
+        rendered_cards.append(kwargs["card_key"])
+
+    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
+
+    discussion_page = importlib.reload(discussion_page)
+    with patch.object(discussion_page, "list_agents", return_value=agents), patch.object(
+        discussion_page,
+        "list_llm_configs",
+        return_value=llm_configs,
+    ), patch.object(
+        discussion_page,
+        "discussion_tree",
+        return_value=tree,
+    ), patch.object(
+        discussion_page,
+        "discussion_state",
+        side_effect=[initial_snapshot, updated_snapshot],
+    ), patch.object(
+        discussion_page,
+        "render_message_card",
+        side_effect=fake_render_message_card,
+    ):
+        discussion_page.render()
+
+    assert rendered_cards == ["discussion-IDabc123-0", "discussion-IDabc123-1"]
+    assert not any("responding" in str(call.args[0]).lower() for call in mock_streamlit.caption.call_args_list)
+
+
 def test_discussion_history_collapses_older_messages_and_skips_active_message(mock_streamlit):
     """The static transcript should keep only recent messages visible while streaming."""
     import apmatia.interfaces.streamlit.pages.discussion as discussion_page
@@ -2160,11 +2422,88 @@ def test_discussion_streaming_view_renders_only_the_active_message(mock_streamli
             snapshot,
             username="nick",
             agent_name="Planner",
+            start_index=1,
         )
 
     assert returned_snapshot is snapshot
     assert rendered == ["discussion-IDabc123-1"]
     mock_live_activity.assert_not_called()
+
+
+def test_discussion_compact_messages_render_only_the_requested_tail(mock_streamlit):
+    """The contacts-style transcript renderer should only redraw the live tail."""
+    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
+
+    discussion_page = importlib.reload(discussion_page)
+    snapshot = {
+        "discussion_id": "IDabc123",
+        "messages": [
+            {"role": "User", "text": "Message 0"},
+            {"role": "Assistant", "text": "Message 1", "speaker_name": "Planner"},
+            {"role": "Assistant", "text": "Message 2", "speaker_name": "Planner"},
+        ],
+    }
+    rendered = []
+
+    def fake_render_message_card(*args, **kwargs):
+        rendered.append(kwargs["card_key"])
+
+    with patch.object(discussion_page, "render_message_card", side_effect=fake_render_message_card):
+        discussion_page._render_compact_messages(
+            snapshot,
+            username="nick",
+            agent_name="Planner",
+            start_index=1,
+        )
+
+    assert rendered == ["contacts-IDabc123-1", "contacts-IDabc123-2"]
+
+
+def test_contacts_sidebar_filters_to_selected_group_members_and_highlights_current_speaker(mock_streamlit):
+    """Group contacts should only show their members, with the active speaker highlighted."""
+    mock_streamlit.session_state["contacts_shell_active"] = True
+    mock_streamlit.session_state["contacts_active_contact_id"] = "group:9"
+    mock_streamlit.session_state["contacts_active_contact_label"] = "DevTeam"
+    mock_streamlit.session_state["contacts_active_contact_type"] = "group"
+    mock_streamlit.session_state["contacts_active_discussion_id"] = "IDgroupchat"
+
+    import apmatia.interfaces.streamlit.app as app
+
+    app = importlib.reload(app)
+    contacts = [
+        {"contact_id": "agent:1", "contact_type": "agent", "label": "Ada the Architect"},
+        {"contact_id": "agent:2", "contact_type": "agent", "label": "Beatrice the Coder"},
+        {"contact_id": "agent:3", "contact_type": "agent", "label": "Chloe the Tester"},
+        {"contact_id": "group:9", "contact_type": "group", "label": "DevTeam"},
+    ]
+    group_members = [
+        {"member_kind": "agent", "agent_id": 2, "is_enabled": True},
+        {"member_kind": "user", "user_id": 77, "is_enabled": True},
+    ]
+
+    with patch.object(app, "_contact_roster", return_value=contacts), patch.object(
+        app,
+        "list_group_members",
+        return_value=group_members,
+    ), patch.object(
+        app,
+        "discussion_state",
+        return_value={
+            "discussion_id": "IDgroupchat",
+            "activity": {"stage": "generating", "speaker_name": "Beatrice the Coder"},
+        },
+    ):
+        app._render_contacts_sidebar()
+
+    button_calls = mock_streamlit.sidebar.button.call_args_list
+    assert any(call.args and call.args[0] == "DevTeam" and call.kwargs.get("type") == "primary" for call in button_calls)
+    assert any(
+        call.args and call.args[0] == "Beatrice the Coder" and call.kwargs.get("type") == "primary"
+        for call in button_calls
+    )
+    assert not any(call.args and call.args[0] == "Ada the Architect" for call in button_calls)
+    assert not any(call.args and call.args[0] == "Chloe the Tester" for call in button_calls)
+    mock_streamlit.sidebar.caption.assert_any_call("Showing members of DevTeam.")
 
 
 def test_main_function_authenticated_routes_to_settings(mock_streamlit):

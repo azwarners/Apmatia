@@ -7,15 +7,17 @@ from apmatia.api.internal.ipe import ensure_ipe_coach_agent_for_user
 from apmatia.interfaces.streamlit.api_client import (
     ApiError,
     create_discussion,
-    discussion_tree,
+    discussion_state,
     get_auth_session,
     get_settings,
     list_agents,
     list_groups,
+    list_group_members,
     list_module_view_items,
     list_modules as list_module_catalog,
     logout,
     open_discussion,
+    discussion_tree,
 )
 from apmatia.interfaces.streamlit.module_views.adapter import adapt_module_view
 from apmatia.interfaces.streamlit.module_views.renderers import render_navigation_pane
@@ -628,6 +630,31 @@ def _render_contacts_sidebar():
     st.sidebar.title("Contacts")
 
     active_contact_id = str(st.session_state.get("contacts_active_contact_id") or "")
+    active_contact_type = str(st.session_state.get("contacts_active_contact_type") or "")
+    contacts = _filter_contacts_for_active_group(
+        contacts,
+        active_contact_type=active_contact_type,
+        active_contact_id=active_contact_id,
+    )
+    if active_contact_type == "group" and active_contact_id:
+        st.sidebar.caption(f"Showing members of {str(st.session_state.get('contacts_active_contact_label') or 'this group')}.")
+
+    current_speaker_contact_id = None
+    try:
+        snapshot = discussion_state()
+    except ApiError:
+        snapshot = None
+    if isinstance(snapshot, dict):
+        activity = snapshot.get("activity") if isinstance(snapshot.get("activity"), dict) else None
+        speaker_name = str(activity.get("speaker_name") or "").strip().lower() if isinstance(activity, dict) else ""
+        if speaker_name:
+            for contact in contacts:
+                if str(contact.get("contact_type") or "") != "agent":
+                    continue
+                if str(contact.get("label") or "").strip().lower() == speaker_name:
+                    current_speaker_contact_id = str(contact.get("contact_id") or "")
+                    break
+
     if contacts and (not active_contact_id or active_contact_id not in {str(contact.get("contact_id") or "") for contact in contacts}):
         _activate_contacts_contact(contacts[0])
         st.rerun()
@@ -638,7 +665,12 @@ def _render_contacts_sidebar():
         for contact in contacts:
             contact_id = str(contact.get("contact_id") or "")
             contact_label = str(contact.get("label") or contact_id or "Contact")
-            button_type = "primary" if active_contact_id and contact_id == active_contact_id else "secondary"
+            button_type = (
+                "primary"
+                if (active_contact_id and contact_id == active_contact_id)
+                or (current_speaker_contact_id and contact_id == current_speaker_contact_id)
+                else "secondary"
+            )
             if st.sidebar.button(
                 contact_label,
                 key=f"contacts_nav_{contact_id or contact_label}",
@@ -792,6 +824,60 @@ def _contact_roster() -> list[dict[str, object]]:
     )
 
 
+def _group_member_agent_ids(group_id: int) -> set[int]:
+    try:
+        memberships = list_group_members(group_id)
+    except ApiError:
+        return set()
+
+    member_ids: set[int] = set()
+    for membership in memberships:
+        if not isinstance(membership, dict):
+            continue
+        if not bool(membership.get("is_enabled", False)):
+            continue
+        if str(membership.get("member_kind") or "user").strip().lower() != "agent":
+            continue
+        try:
+            agent_id = int(membership.get("agent_id"))
+        except (TypeError, ValueError):
+            continue
+        member_ids.add(agent_id)
+    return member_ids
+
+
+def _filter_contacts_for_active_group(
+    contacts: list[dict[str, object]],
+    *,
+    active_contact_type: str,
+    active_contact_id: str,
+) -> list[dict[str, object]]:
+    if active_contact_type != "group":
+        return contacts
+
+    try:
+        group_id = int(active_contact_id.split(":", 1)[1])
+    except (IndexError, ValueError):
+        return contacts
+
+    member_agent_ids = _group_member_agent_ids(group_id)
+    if not member_agent_ids:
+        return [contact for contact in contacts if str(contact.get("contact_id") or "") == active_contact_id]
+
+    filtered_contacts: list[dict[str, object]] = []
+    for contact in contacts:
+        contact_id = str(contact.get("contact_id") or "").strip()
+        if contact_id == active_contact_id:
+            filtered_contacts.append(contact)
+            continue
+        if str(contact.get("contact_type") or "") != "agent":
+            continue
+        agent_id = _contacts_agent_id(contact)
+        if agent_id is not None and agent_id in member_agent_ids:
+            filtered_contacts.append(contact)
+    return filtered_contacts or contacts
+
+
 def _activate_contacts_contact(contact: dict[str, object]) -> None:
     contact_id = str(contact.get("contact_id") or "").strip()
     if not contact_id:
@@ -816,67 +902,16 @@ def _activate_contacts_contact(contact: dict[str, object]) -> None:
         st.session_state["contacts_contact_discussion_ids"] = contact_discussion_ids
 
     discussion_id = str(contact_discussion_ids.get(contact_id) or "").strip() or None
-    reused_discussion = discussion_id is not None
-    if discussion_id is None:
-        discussion_id = _find_existing_contact_discussion(
-            contact_type=contact_type,
-            contact_id=numeric_contact_id,
-        )
-        reused_discussion = discussion_id is not None
     if discussion_id is None:
         discussion_id = _open_or_create_contact_discussion(
             contact_type=contact_type,
             contact_id=numeric_contact_id,
             label=str(contact.get("label") or contact_id),
         )
-        reused_discussion = False
-    elif reused_discussion:
-        try:
-            open_discussion(discussion_id)
-        except ApiError:
-            pass
     if discussion_id:
         contact_discussion_ids[contact_id] = discussion_id
         st.session_state["contacts_contact_discussion_ids"] = contact_discussion_ids
         st.session_state["contacts_active_discussion_id"] = discussion_id
-
-
-def _find_existing_contact_discussion(*, contact_type: str, contact_id: int | None) -> str | None:
-    if contact_id is None:
-        return None
-
-    try:
-        tree = discussion_tree()
-    except ApiError:
-        return None
-
-    discussions = tree.get("discussions", [])
-    if not isinstance(discussions, list):
-        return None
-
-    for discussion in discussions:
-        if not isinstance(discussion, dict):
-            continue
-        if contact_type == "group":
-            if _safe_int(discussion.get("group_id"), default=None) == contact_id:
-                discussion_id = str(discussion.get("discussion_id") or "").strip()
-                return discussion_id or None
-            continue
-
-        participant_agent_ids = discussion.get("participant_agent_ids") or []
-        try:
-            participant_ids = {
-                int(candidate)
-                for candidate in participant_agent_ids
-                if candidate is not None
-            }
-        except (TypeError, ValueError):
-            continue
-        if contact_id in participant_ids:
-            discussion_id = str(discussion.get("discussion_id") or "").strip()
-            return discussion_id or None
-
-    return None
 
 
 def _contacts_agent_id(contact: dict[str, object]) -> int | None:
@@ -891,11 +926,76 @@ def _contacts_agent_id(contact: dict[str, object]) -> int | None:
         return None
 
 
+def _discussion_matches_contact(
+    discussion: dict[str, object],
+    *,
+    contact_type: str,
+    contact_id: int,
+) -> bool:
+    if contact_type == "group":
+        return int(discussion.get("group_id") or 0) == contact_id
+
+    if contact_type != "agent":
+        return False
+
+    participant_agent_ids = discussion.get("participant_agent_ids") or []
+    try:
+        return contact_id in {int(candidate) for candidate in participant_agent_ids if candidate is not None}
+    except (TypeError, ValueError):
+        return False
+
+
+def _find_existing_contact_discussion_id(*, contact_type: str, contact_id: int | None) -> str | None:
+    if contact_id is None:
+        return None
+
+    try:
+        tree = discussion_tree()
+    except ApiError:
+        return None
+
+    discussions = tree.get("discussions")
+    if not isinstance(discussions, list):
+        return None
+
+    matching_discussions = [
+        discussion
+        for discussion in discussions
+        if isinstance(discussion, dict) and _discussion_matches_contact(
+            discussion,
+            contact_type=contact_type,
+            contact_id=contact_id,
+        )
+    ]
+    if not matching_discussions:
+        return None
+
+    def _discussion_sort_key(discussion: dict[str, object]) -> tuple[str, str]:
+        return (
+            str(discussion.get("updated_at") or ""),
+            str(discussion.get("created_at") or ""),
+        )
+
+    matching_discussions.sort(key=_discussion_sort_key, reverse=True)
+    return str(matching_discussions[0].get("discussion_id") or "").strip() or None
+
+
 def _open_or_create_contact_discussion(*, contact_type: str, contact_id: int | None, label: str) -> str | None:
     if contact_id is None:
         return None
 
-    create_payload: dict[str, object] = {"title": label, "chat_mode": "single"}
+    existing_discussion_id = _find_existing_contact_discussion_id(
+        contact_type=contact_type,
+        contact_id=contact_id,
+    )
+    if existing_discussion_id is not None:
+        try:
+            open_discussion(existing_discussion_id)
+        except ApiError:
+            pass
+        return existing_discussion_id
+
+    create_payload: dict[str, object] = {"title": label, "chat_mode": "round_robin"}
     if contact_type == "agent":
         create_payload["agent_id"] = contact_id
         create_payload["participant_agent_ids"] = [contact_id]

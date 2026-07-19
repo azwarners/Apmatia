@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from .models import Group, GroupId, GroupMembership, GroupRole, MembershipId, User, UserId
+from .models import (
+    Group,
+    GroupId,
+    GroupMemberKind,
+    GroupMembership,
+    GroupRole,
+    MembershipId,
+    User,
+    UserId,
+)
 
 
 class UserService(Protocol):
@@ -38,7 +47,13 @@ class UserService(Protocol):
 
 
 class GroupService(Protocol):
-    def create_group(self, name: str, created_by_user_id: UserId, description: str = "") -> Group:
+    def create_group(
+        self,
+        name: str,
+        created_by_user_id: UserId,
+        description: str = "",
+        workspace_root: str = "",
+    ) -> Group:
         """Create and return a group record."""
         raise NotImplementedError
 
@@ -47,6 +62,7 @@ class GroupService(Protocol):
         group_id: GroupId,
         name: str | None = None,
         description: str | None = None,
+        workspace_root: str | None = None,
     ) -> Group:
         """Edit a group and return the updated record."""
         raise NotImplementedError
@@ -59,8 +75,16 @@ class GroupService(Protocol):
         """List all groups."""
         raise NotImplementedError
 
-    def add_member(self, group_id: GroupId, user_id: UserId, role: GroupRole = GroupRole.MEMBER) -> GroupMembership:
-        """Add a user to a group and return the membership."""
+    def add_member(
+        self,
+        group_id: GroupId,
+        user_id: UserId | None = None,
+        role: GroupRole = GroupRole.MEMBER,
+        *,
+        agent_id: int | None = None,
+        member_kind: GroupMemberKind = GroupMemberKind.USER,
+    ) -> GroupMembership:
+        """Add a user or agent to a group and return the membership."""
         raise NotImplementedError
 
     def set_membership_enabled(self, membership_id: MembershipId, enabled: bool) -> GroupMembership:

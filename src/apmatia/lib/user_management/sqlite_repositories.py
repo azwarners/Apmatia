@@ -12,6 +12,7 @@ except ModuleNotFoundError:
 from .models import (
     Group,
     GroupMembership,
+    GroupMemberKind,
     GroupRole,
     MembershipId,
     PasswordScheme,
@@ -19,6 +20,14 @@ from .models import (
     utc_now,
 )
 from .repositories import GroupMembershipRepository, GroupRepository, UserRepository
+
+
+def _member_kind_value(member_kind: object) -> str:
+    if hasattr(member_kind, "value"):
+        candidate = getattr(member_kind, "value")
+        if candidate is not None:
+            return str(candidate)
+    return str(member_kind)
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,6 +117,7 @@ class SQLiteGroupRepository(GroupRepository):
             "name": group.name,
             "description": group.description,
             "created_by_user_id": group.created_by_user_id,
+            "workspace_root": group.workspace_root,
             "created_at": group.created_at.isoformat(),
             "updated_at": group.updated_at.isoformat(),
         }
@@ -136,6 +146,7 @@ class SQLiteGroupRepository(GroupRepository):
                 "name": group.name,
                 "description": group.description,
                 "created_by_user_id": group.created_by_user_id,
+                "workspace_root": group.workspace_root,
                 "created_at": group.created_at.isoformat(),
                 "updated_at": group.updated_at.isoformat(),
             },
@@ -157,6 +168,7 @@ class SQLiteGroupRepository(GroupRepository):
             name=str(row["name"]),
             description=str(row.get("description", "")),
             created_by_user_id=int(created_by_user_id) if created_by_user_id is not None else None,
+            workspace_root=str(row.get("workspace_root", "")),
             created_at=_parse_dt(row.get("created_at")),
             updated_at=_parse_dt(row.get("updated_at")),
         )
@@ -173,6 +185,8 @@ class SQLiteGroupMembershipRepository(GroupMembershipRepository):
         payload = {
             "group_id": membership.group_id,
             "user_id": membership.user_id,
+            "agent_id": membership.agent_id,
+            "member_kind": _member_kind_value(getattr(membership, "member_kind", GroupMemberKind.USER)),
             "role": membership.role.value,
             "is_enabled": membership.is_enabled,
             "created_at": membership.created_at.isoformat(),
@@ -186,8 +200,28 @@ class SQLiteGroupMembershipRepository(GroupMembershipRepository):
             return None
         return self._row_to_membership(row)
 
-    def find(self, group_id: int, user_id: int) -> GroupMembership | None:
-        row = self._store.get(self._tables.memberships, group_id=group_id, user_id=user_id)
+    def find(
+        self,
+        group_id: int,
+        user_id: int | None = None,
+        *,
+        agent_id: int | None = None,
+        member_kind: GroupMemberKind = GroupMemberKind.USER,
+    ) -> GroupMembership | None:
+        criteria: dict[str, object] = {"group_id": group_id, "member_kind": member_kind.value}
+        if member_kind == GroupMemberKind.AGENT:
+            if agent_id is None:
+                return None
+            criteria["agent_id"] = agent_id
+        else:
+            if user_id is None:
+                return None
+            criteria["user_id"] = user_id
+
+        row = self._store.get(self._tables.memberships, **criteria)
+        if row is None and "member_kind" in criteria:
+            fallback_criteria = {key: value for key, value in criteria.items() if key != "member_kind"}
+            row = self._store.get(self._tables.memberships, **fallback_criteria)
         if row is None:
             return None
         return self._row_to_membership(row)
@@ -202,6 +236,8 @@ class SQLiteGroupMembershipRepository(GroupMembershipRepository):
             data={
                 "group_id": membership.group_id,
                 "user_id": membership.user_id,
+                "agent_id": membership.agent_id,
+                "member_kind": membership.member_kind.value,
                 "role": membership.role.value,
                 "is_enabled": membership.is_enabled,
                 "created_at": membership.created_at.isoformat(),
@@ -219,10 +255,15 @@ class SQLiteGroupMembershipRepository(GroupMembershipRepository):
 
     @staticmethod
     def _row_to_membership(row: dict) -> GroupMembership:
+        kind = GroupMemberKind(_member_kind_value(row.get("member_kind", GroupMemberKind.USER.value)))
+        user_id = row.get("user_id")
+        agent_id = row.get("agent_id")
         return GroupMembership(
             id=int(row["id"]),
             group_id=int(row["group_id"]),
-            user_id=int(row["user_id"]),
+            user_id=int(user_id) if user_id is not None else None,
+            agent_id=int(agent_id) if agent_id is not None else None,
+            member_kind=kind,
             role=GroupRole(str(row.get("role", GroupRole.MEMBER.value))),
             is_enabled=bool(row.get("is_enabled", True)),
             created_at=_parse_dt(row.get("created_at")),

@@ -7,6 +7,7 @@ from typing import Any, Iterable
 from apmatia.lib.agent_management.models import Agent
 from apmatia.lib.agent_management.services import AgentService
 from apmatia.lib.apmatia_core.models import utc_now
+from apmatia.core.workspaces import resolve_project_workspace_root
 
 from .models import CalendarEvent, CapturedIdea, Habit, IpeProject, IpeTask
 from .sqlite_repositories import SQLiteIpeBundle
@@ -49,8 +50,12 @@ class ApmatiaIpeService:
         project = idea.convert_to_project(**overrides)
         self._inherit_owner(project, idea)
         project_id = self.projects.create(project)
+        created = replace(project, id=project_id)
+        if not str(created.workspace_root).strip():
+            created = replace(created, workspace_root=str(resolve_project_workspace_root(created)))
+            self.projects.update(created)
         self.ideas.delete(idea_id)
-        return replace(project, id=project_id)
+        return created
 
     def convert_idea_to_habit(self, idea_id: int, **overrides: Any) -> Habit:
         idea = self._require_idea(idea_id)
@@ -73,8 +78,12 @@ class ApmatiaIpeService:
         project = task.convert_to_project(**overrides)
         self._inherit_owner(project, task)
         project_id = self.projects.create(project)
+        created = replace(project, id=project_id)
+        if not str(created.workspace_root).strip():
+            created = replace(created, workspace_root=str(resolve_project_workspace_root(created)))
+            self.projects.update(created)
         self.tasks.delete(task_id)
-        return replace(project, id=project_id)
+        return created
 
     def list_overdue_habits(
         self,
@@ -365,6 +374,7 @@ def _project_summary(project: IpeProject) -> dict[str, Any]:
         "source_task_id": project.source_task_id,
         "source_idea_id": project.source_idea_id,
         "tags": list(project.tags),
+        "workspace_root": project.workspace_root,
     }
 
 

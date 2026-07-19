@@ -1,4 +1,4 @@
-from apmatia.lib.user_management.models import GroupRole
+from apmatia.lib.user_management.models import GroupMemberKind, GroupRole
 from apmatia.lib.user_management.module import AccessController, GroupManager, UserManager
 from apmatia.lib.user_management.sqlite_repositories import SQLiteUserManagementBundle
 
@@ -46,6 +46,7 @@ def test_group_and_membership_flow(tmp_path):
     group = groups.create_group("team", created_by_user_id=owner.id or 0, description="core team")
     assert group.id is not None
     assert group.name == "team"
+    assert group.workspace_root.endswith(f"groups/group-{group.id}")
 
     owner_memberships = groups.list_group_members(group.id or 0)
     assert len(owner_memberships) == 1
@@ -55,10 +56,19 @@ def test_group_and_membership_flow(tmp_path):
     new_membership = groups.add_member(group.id or 0, member.id or 0, role=GroupRole.MEMBER)
     assert new_membership.id is not None
     assert new_membership.user_id == member.id
+    assert new_membership.agent_id is None
+    assert new_membership.member_kind == GroupMemberKind.USER
+
+    agent_membership = groups.add_member(group.id or 0, agent_id=77, member_kind=GroupMemberKind.AGENT)
+    assert agent_membership.id is not None
+    assert agent_membership.user_id is None
+    assert agent_membership.agent_id == 77
+    assert agent_membership.member_kind == GroupMemberKind.AGENT
 
     updated_group = groups.edit_group(group.id or 0, name="team-renamed", description="updated team")
     assert updated_group.name == "team-renamed"
     assert updated_group.description == "updated team"
+    assert updated_group.workspace_root.endswith(f"groups/group-{group.id}")
 
     assert acl.can_read_group(group.id or 0, member.id or 0) is True
     assert acl.can_write_group(group.id or 0, member.id or 0) is True

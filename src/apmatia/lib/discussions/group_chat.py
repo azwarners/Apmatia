@@ -39,10 +39,10 @@ class GroupChatPlan:
 
 
 def normalize_group_chat_mode(value: object | None) -> GroupChatMode:
-    candidate = "single" if value is None else str(value).strip().lower()
+    candidate = "round_robin" if value is None else str(value).strip().lower()
     if candidate in GROUP_CHAT_MODES:
         return candidate  # type: ignore[return-value]
-    return "single"
+    return "round_robin"
 
 
 def unique_participants(

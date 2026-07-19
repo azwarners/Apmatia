@@ -602,8 +602,8 @@ def test_module_views_page_creates_participant_for_agent_target(mock_streamlit):
     ), patch.object(
         module_views_page, "execute_module_command", return_value={"status": "created"}
     ) as mock_execute, patch.object(
-        module_views_page, "discussion_tree", return_value={"current_discussion_id": None, "discussions": []}
-    ), patch.object(
+        module_views_page, "discussion_tree", create=True
+    ) as mock_tree, patch.object(
         module_views_page, "create_discussion", return_value={"discussion": {"discussion_id": "IDnew123"}}
     ) as mock_create_discussion, patch.object(
         module_views_page, "open_discussion"
@@ -622,10 +622,11 @@ def test_module_views_page_creates_participant_for_agent_target(mock_streamlit):
     )
     mock_create_discussion.assert_called_once_with(
         title="Karen Smith",
-        chat_mode="single",
+        chat_mode="round_robin",
         agent_id=7,
         participant_agent_ids=[7],
     )
+    mock_tree.assert_not_called()
     mock_open_discussion.assert_called_once_with("IDnew123")
     assert mock_streamlit.session_state["selected_page"] == "discussion"
     assert mock_streamlit.session_state["discussion_selected_agent_id"] == 7
@@ -633,7 +634,7 @@ def test_module_views_page_creates_participant_for_agent_target(mock_streamlit):
     mock_streamlit.rerun.assert_called()
 
 
-def test_module_views_page_opens_existing_group_discussion_from_participant_view(mock_streamlit):
+def test_module_views_page_creates_fresh_group_discussion_from_participant_view(mock_streamlit):
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
@@ -672,13 +673,6 @@ def test_module_views_page_opens_existing_group_discussion_from_participant_view
             ),
         ),
     )
-    tree = {
-        "current_discussion_id": "IDgroup123",
-        "discussions": [
-            {"discussion_id": "IDgroup123", "title": "Research Team", "group_id": 9, "participant_agent_ids": []},
-        ],
-    }
-
     with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
         module_views_page, "list_module_view_items", return_value=[]
     ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
@@ -694,18 +688,23 @@ def test_module_views_page_opens_existing_group_discussion_from_participant_view
     ), patch.object(
         module_views_page, "execute_module_command", return_value={"status": "created"}
     ), patch.object(
-        module_views_page, "discussion_tree", return_value=tree
-    ), patch.object(
+        module_views_page, "discussion_tree", create=True
+    ) as mock_tree, patch.object(
         module_views_page, "open_discussion"
     ) as mock_open_discussion, patch.object(
-        module_views_page, "create_discussion"
+        module_views_page, "create_discussion", return_value={"discussion": {"discussion_id": "IDgroupnew123"}}
     ) as mock_create_discussion:
         mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
         mock_streamlit.form_submit_button.side_effect = [True, False]
         module_views_page.render()
 
-    mock_create_discussion.assert_not_called()
-    mock_open_discussion.assert_called_once_with("IDgroup123")
+    mock_tree.assert_not_called()
+    mock_create_discussion.assert_called_once_with(
+        title="Research Team",
+        chat_mode="round_robin",
+        group_id=9,
+    )
+    mock_open_discussion.assert_called_once_with("IDgroupnew123")
     assert mock_streamlit.session_state["selected_page"] == "discussion"
     assert mock_streamlit.session_state["discussion_selected_agent_id"] is None
 
@@ -1292,7 +1291,7 @@ def test_module_views_page_starts_agent_loops_task_from_form(mock_streamlit, tmp
         prompt="Write the summary\nUpdate the report",
         checklist=[{"label": "1. Draft"}, {"label": "2. Review"}],
         allow_tools=True,
-        max_iterations=5,
+        max_iterations=10,
         agent_id=7,
         participant_agent_ids=[7],
     )

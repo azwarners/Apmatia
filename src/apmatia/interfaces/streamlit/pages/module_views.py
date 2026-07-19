@@ -13,7 +13,6 @@ from apmatia.interfaces.streamlit.api_client import (
     ApiError,
     create_discussion,
     create_group,
-    discussion_tree,
     execute_module_command,
     list_agents,
     list_groups,
@@ -872,7 +871,7 @@ def _render_participant_target_form(
                 options=("manual", "auto", "round_robin", "coordinator_only"),
                 index=_option_index(
                     ["manual", "auto", "round_robin", "coordinator_only"],
-                    str((initial_values or {}).get("turn_policy") or "manual"),
+                    str((initial_values or {}).get("turn_policy") or "round_robin"),
                 ),
                 help="Group chats use a turn policy to decide how turns are scheduled.",
             )
@@ -1047,28 +1046,10 @@ def _activate_discussion_for_participant_target(payload: dict[str, object]) -> s
     except (TypeError, ValueError):
         return None
 
-    try:
-        tree = discussion_tree()
-    except ApiError as error:
-        st.warning(f"Target saved, but the discussion thread could not be opened: {error.detail}")
-        return None
-
-    discussion = _matching_discussion_for_target(tree.get("discussions", []), target_kind, target_id)
-    if discussion is not None:
-        discussion_id = str(discussion.get("discussion_id") or "").strip()
-        if discussion_id:
-            try:
-                open_discussion(discussion_id)
-            except ApiError as error:
-                st.warning(f"Target saved, but the discussion thread could not be opened: {error.detail}")
-                return None
-            st.session_state["discussion_selected_agent_id"] = target_id if target_kind == "agent" else None
-            return discussion_id
-
     discussion_title = chat_target.split(" - ", 1)[-1].strip() or f"{target_kind.title()} {target_id}"
     create_payload: dict[str, object] = {
         "title": discussion_title,
-        "chat_mode": "single",
+        "chat_mode": "round_robin",
     }
     if target_kind == "agent":
         create_payload["agent_id"] = target_id
@@ -1096,33 +1077,6 @@ def _activate_discussion_for_participant_target(payload: dict[str, object]) -> s
         st.warning(f"Target saved, but the discussion thread could not be opened: {error.detail}")
         return None
     return discussion_id
-
-
-def _matching_discussion_for_target(
-    discussions: Iterable[object],
-    target_kind: str,
-    target_id: int,
-) -> dict[str, object] | None:
-    for discussion in discussions:
-        if not isinstance(discussion, dict):
-            continue
-        if target_kind == "group":
-            if _safe_int(discussion.get("group_id"), default=None) == target_id:
-                return discussion
-            continue
-
-        participant_agent_ids = discussion.get("participant_agent_ids") or []
-        try:
-            normalized_participants = {
-                int(candidate)
-                for candidate in participant_agent_ids
-                if candidate is not None
-            }
-        except (TypeError, ValueError):
-            normalized_participants = set()
-        if target_id in normalized_participants:
-            return discussion
-    return None
 
 
 def _safe_int(value: object | None, *, default: int | None) -> int | None:
@@ -1976,7 +1930,7 @@ def _render_agent_loops_task_form(
             height=120,
         )
         allow_tools = st.checkbox("Allow tools", value=True)
-        max_iterations = st.number_input("Max iterations", min_value=1, max_value=100, value=5, step=1)
+        max_iterations = st.number_input("Max iterations", min_value=1, max_value=100, value=10, step=1)
         participant_agent_ids: list[int] = []
         if contact_kind == "group":
             participant_ids = st.multiselect(

@@ -10,6 +10,7 @@ import streamlit as st
 from apmatia.interfaces.streamlit.api_client import (
     ApiError,
     delete_discussion_message,
+    delete_discussion_messages,
     create_discussion,
     delete_discussion,
     discussion_state,
@@ -551,6 +552,7 @@ def _render_messages(
     agent_name: str,
     agent_lookup: dict[int, dict[str, object]] | None = None,
     model_lookup: dict[int, dict[str, object]] | None = None,
+    start_index: int = 0,
 ) -> None:
     agent_lookup = agent_lookup or {}
     model_lookup = model_lookup or {}
@@ -565,7 +567,7 @@ def _render_messages(
         snapshot.get("llama_server_status") if isinstance(snapshot.get("llama_server_status"), dict) else None
     )
     activity_message_index = _activity_message_index(messages, activity)
-    for index, message in enumerate(messages):
+    for index, message in enumerate(messages[start_index:], start=start_index):
         is_active_message = activity_message_index is not None and index == activity_message_index
         _render_message_card(
             discussion_id,
@@ -668,6 +670,7 @@ def _render_streaming_message_view(
     agent_name: str,
     agent_lookup: dict[int, dict[str, object]] | None = None,
     model_lookup: dict[int, dict[str, object]] | None = None,
+    start_index: int = 0,
 ) -> dict[str, object]:
     agent_lookup = agent_lookup or {}
     model_lookup = model_lookup or {}
@@ -679,19 +682,24 @@ def _render_streaming_message_view(
     )
     activity_message_index = _activity_message_index(messages, activity)
 
-    if activity_message_index is not None and activity_message_index < len(messages):
-        _render_message_card(
-            discussion_id,
-            activity_message_index,
-            messages[activity_message_index],
-            username=username,
-            agent_name=agent_name,
-            agent_lookup=agent_lookup,
-            model_lookup=model_lookup,
-            activity=activity,
-            llama_server_status=llama_server_status,
-            is_active_message=bool(snapshot.get("is_streaming")),
-        )
+    if start_index < 0:
+        start_index = 0
+
+    if start_index < len(messages):
+        for index, message in enumerate(messages[start_index:], start=start_index):
+            is_active_message = activity_message_index is not None and index == activity_message_index
+            _render_message_card(
+                discussion_id,
+                index,
+                message,
+                username=username,
+                agent_name=agent_name,
+                agent_lookup=agent_lookup,
+                model_lookup=model_lookup,
+                activity=activity,
+                llama_server_status=llama_server_status,
+                is_active_message=bool(snapshot.get("is_streaming")) and is_active_message,
+            )
     elif bool(snapshot.get("is_streaming")) and isinstance(activity, dict):
         _render_live_activity_card(
             discussion_id,
@@ -711,6 +719,7 @@ def _render_streaming_messages(
     agent_lookup: dict[int, dict[str, object]] | None = None,
     model_lookup: dict[int, dict[str, object]] | None = None,
     include_history: bool = False,
+    start_index: int = 0,
 ) -> dict[str, object]:
     snapshot = discussion_state()
     if include_history:
@@ -720,6 +729,7 @@ def _render_streaming_messages(
             agent_name=agent_name,
             agent_lookup=agent_lookup,
             model_lookup=model_lookup,
+            start_index=start_index,
         )
     else:
         _render_streaming_message_view(
@@ -728,6 +738,7 @@ def _render_streaming_messages(
             agent_name=agent_name,
             agent_lookup=agent_lookup,
             model_lookup=model_lookup,
+            start_index=start_index,
         )
     return snapshot
 
@@ -773,13 +784,17 @@ def _render_compact_messages(
     username: str,
     agent_name: str,
     exclude_message_index: int | None = None,
+    start_index: int = 0,
 ) -> None:
     messages = snapshot.get("messages", [])
     if not messages:
         st.info("No messages yet.")
         return
 
-    for index, message in enumerate(messages):
+    if start_index < 0:
+        start_index = 0
+
+    for index, message in enumerate(messages[start_index:], start=start_index):
         if exclude_message_index is not None and index == exclude_message_index:
             continue
         _render_compact_message(
@@ -789,6 +804,105 @@ def _render_compact_messages(
             username=username,
             agent_name=agent_name,
         )
+
+
+def _bulk_message_label(
+    *,
+    index: int,
+    message: dict[str, object],
+    username: str,
+    agent_name: str,
+) -> str:
+    role = str(message.get("role", "Assistant"))
+    speaker_name = message.get("speaker_name") if isinstance(message.get("speaker_name"), str) else None
+    title = _message_title(
+        role,
+        username=username,
+        agent_name=agent_name,
+        speaker_name=speaker_name,
+    )
+    text = " ".join(str(message.get("text", "")).split())
+    if not text:
+        text = "(empty)"
+    elif len(text) > 80:
+        text = f"{text[:77].rstrip()}..."
+    return f"{index}: {title} - {text}"
+
+
+def _render_bulk_message_delete_controls(
+    snapshot: dict[str, object],
+    *,
+    username: str,
+    agent_name: str,
+) -> None:
+    messages = snapshot.get("messages", [])
+    if not messages:
+        return
+
+    discussion_id = str(snapshot.get("discussion_id", "")).strip()
+    if not discussion_id:
+        return
+
+    with st.container(border=True):
+        st.subheader("Bulk delete messages")
+        st.caption("Check the messages you want to remove from the transcript.")
+
+        def _selection_key(index: int) -> str:
+            return f"discussion-bulk-delete-{discussion_id}-{index}"
+
+        select_all_col, clear_all_col, _ = st.columns([1, 1, 6])
+        with select_all_col:
+            if st.button("Select all", width="content"):
+                for index in range(len(messages)):
+                    st.session_state[_selection_key(index)] = True
+                st.rerun()
+        with clear_all_col:
+            if st.button("Clear all", width="content"):
+                for index in range(len(messages)):
+                    st.session_state[_selection_key(index)] = False
+                st.rerun()
+
+        selected_message_indices: list[int] = []
+        for index, message in enumerate(messages):
+            checked = bool(
+                st.checkbox(
+                    _bulk_message_label(
+                        index=index,
+                        message=message,
+                        username=username,
+                        agent_name=agent_name,
+                    ),
+                    value=bool(st.session_state.get(_selection_key(index), False)),
+                    key=_selection_key(index),
+                    help="Check this message to include it in the bulk delete.",
+                )
+            )
+            if checked:
+                selected_message_indices.append(index)
+
+        delete_disabled = not selected_message_indices
+        if selected_message_indices:
+            st.caption(f"{len(selected_message_indices)} message(s) selected.")
+        delete_button_col, _ = st.columns([1, 6])
+        with delete_button_col:
+            if st.button(
+                "Delete selected messages",
+                width="content",
+                disabled=delete_disabled,
+                type="primary",
+            ):
+                try:
+                    delete_discussion_messages(
+                        discussion_id,
+                        [int(index) for index in selected_message_indices],
+                    )
+                except ApiError as error:
+                    st.error(f"Unable to delete messages: {error.detail}")
+                else:
+                    for index in range(len(messages)):
+                        st.session_state.pop(_selection_key(index), None)
+                    st.success("Selected messages deleted.")
+                    st.rerun()
 
 
 def _render_contacts_shell() -> None:
@@ -825,56 +939,68 @@ def _render_contacts_shell() -> None:
 
     username = _authenticated_username()
     agent_name = contact_label
+    if not bool(snapshot.get("is_streaming")):
+        _render_bulk_message_delete_controls(snapshot, username=username, agent_name=agent_name)
 
     initial_is_streaming = bool(snapshot.get("is_streaming"))
     if initial_is_streaming:
         activity = snapshot.get("activity") if isinstance(snapshot.get("activity"), dict) else None
         activity_message_index = _activity_message_index(snapshot.get("messages", []), activity)
-        _render_compact_messages(
-            snapshot,
-            username=username,
-            agent_name=agent_name,
-            exclude_message_index=activity_message_index,
-        )
+        tail_start_key = f"contacts-stream-tail-start-{active_discussion_id}"
+        tail_start_index = st.session_state.get(tail_start_key)
+        if not isinstance(tail_start_index, int):
+            tail_start_index = activity_message_index if activity_message_index is not None else len(snapshot.get("messages", []))
+            st.session_state[tail_start_key] = tail_start_index
         fragment_factory = getattr(st, "fragment", None)
         if getattr(fragment_factory, "__module__", "").startswith("streamlit"):
+            _render_compact_messages(
+                snapshot,
+                username=username,
+                agent_name=agent_name,
+                exclude_message_index=activity_message_index,
+            )
             @fragment_factory(run_every=0.5)
             def _contacts_fragment() -> dict[str, object]:
                 if not is_current_page_generation(page_generation):
                     st.empty()
                     return {"is_streaming": False, "messages": []}
                 current_snapshot = discussion_state()
-                current_activity = current_snapshot.get("activity") if isinstance(current_snapshot.get("activity"), dict) else None
+                current_activity = (
+                    current_snapshot.get("activity") if isinstance(current_snapshot.get("activity"), dict) else None
+                )
                 current_activity_message_index = _activity_message_index(
                     current_snapshot.get("messages", []),
                     current_activity,
                 )
-                if current_activity_message_index is not None and current_activity_message_index < len(current_snapshot.get("messages", [])):
-                    _render_compact_message(
-                        snapshot=current_snapshot,
-                        message=current_snapshot["messages"][current_activity_message_index],
-                        index=current_activity_message_index,
-                        username=username,
-                        agent_name=agent_name,
-                    )
-                else:
-                    _render_compact_messages(current_snapshot, username=username, agent_name=agent_name)
-                st.caption(f"{contact_label} is responding.")
+                _render_compact_messages(
+                    current_snapshot,
+                    username=username,
+                    agent_name=agent_name,
+                    start_index=tail_start_index,
+                )
+                if bool(current_snapshot.get("is_streaming")) and current_activity_message_index is None:
+                    st.caption(f"{contact_label} is responding.")
                 if not current_snapshot.get("is_streaming"):
+                    st.session_state.pop(tail_start_key, None)
                     st.rerun()
                 return current_snapshot
 
             snapshot = _contacts_fragment()
         else:
-            _render_compact_messages(snapshot, username=username, agent_name=agent_name)
+            _render_compact_messages(
+                snapshot,
+                username=username,
+                agent_name=agent_name,
+                start_index=tail_start_index,
+            )
     else:
+        st.session_state.pop(f"contacts-stream-tail-start-{active_discussion_id}", None)
         _render_compact_messages(snapshot, username=username, agent_name=agent_name)
 
     if snapshot.get("last_error"):
         st.error(f"Last error: {snapshot['last_error']}")
 
     if bool(snapshot.get("is_streaming")):
-        st.caption(f"{contact_label} is responding.")
         return
 
     st.divider()
@@ -1102,7 +1228,7 @@ def render() -> None:
         "messages": [],
         "last_error": None,
         "is_streaming": False,
-        "chat_mode": "single",
+        "chat_mode": "round_robin",
         "chat_pause_seconds": None,
         "chat_is_paused": False,
         "chat_turn_index": 0,
@@ -1116,7 +1242,7 @@ def render() -> None:
             return
 
     if selected_discussion_id is not None:
-        current_chat_mode = str(selected_discussion.get("chat_mode") or snapshot.get("chat_mode") or "single")
+        current_chat_mode = str(selected_discussion.get("chat_mode") or snapshot.get("chat_mode") or "round_robin")
         current_pause_seconds = selected_discussion.get("chat_pause_seconds")
         current_coordinator_agent_id = selected_discussion.get("chat_coordinator_agent_id")
         current_participant_ids = [
@@ -1284,23 +1410,28 @@ def render() -> None:
     if selected_discussion_id is None:
         st.info("No discussions for this agent yet. Start a new discussion to begin.")
         return
+    if not bool(snapshot.get("is_streaming")):
+        _render_bulk_message_delete_controls(snapshot, username=username, agent_name=agent_name)
+    tail_start_key = f"discussion-stream-tail-start-{selected_discussion_id}"
     initial_is_streaming = bool(snapshot.get("is_streaming"))
     is_chat_paused = bool(snapshot.get("chat_is_paused"))
     if initial_is_streaming:
+        activity = snapshot.get("activity") if isinstance(snapshot.get("activity"), dict) else None
+        activity_message_index = _activity_message_index(snapshot.get("messages", []), activity)
+        tail_start_index = st.session_state.get(tail_start_key)
+        if not isinstance(tail_start_index, int):
+            tail_start_index = activity_message_index if activity_message_index is not None else len(snapshot.get("messages", []))
+            st.session_state[tail_start_key] = tail_start_index
+        _render_message_history(
+            snapshot,
+            username=username,
+            agent_name=agent_name,
+            agent_lookup=agent_lookup,
+            model_lookup=model_lookup,
+            active_message_index=activity_message_index,
+        )
         fragment_factory = getattr(st, "fragment", None)
         if getattr(fragment_factory, "__module__", "").startswith("streamlit"):
-            activity_message_index = _activity_message_index(
-                snapshot.get("messages", []),
-                snapshot.get("activity") if isinstance(snapshot.get("activity"), dict) else None,
-            )
-            _render_message_history(
-                snapshot,
-                username=username,
-                agent_name=agent_name,
-                agent_lookup=agent_lookup,
-                model_lookup=model_lookup,
-                active_message_index=activity_message_index,
-            )
             @fragment_factory(run_every=0.5)
             def _streaming_fragment() -> dict[str, object]:
                 if not is_current_page_generation(page_generation):
@@ -1312,8 +1443,10 @@ def render() -> None:
                     agent_lookup=agent_lookup,
                     model_lookup=model_lookup,
                     include_history=False,
+                    start_index=tail_start_index,
                 )
                 if not (current_snapshot.get("is_streaming") and not current_snapshot.get("chat_is_paused")):
+                    st.session_state.pop(tail_start_key, None)
                     st.rerun()
                 return current_snapshot
 
@@ -1327,13 +1460,8 @@ def render() -> None:
                 include_history=True,
             )
     else:
-        _render_messages(
-            snapshot,
-            username=username,
-            agent_name=agent_name,
-            agent_lookup=agent_lookup,
-            model_lookup=model_lookup,
-        )
+        st.session_state.pop(tail_start_key, None)
+        _render_messages(snapshot, username=username, agent_name=agent_name, agent_lookup=agent_lookup, model_lookup=model_lookup)
 
     if snapshot.get("last_error"):
         st.error(f"Last error: {snapshot['last_error']}")
@@ -1352,13 +1480,6 @@ def render() -> None:
             live_speaker_name = str(speaker_name)
     status_agent_name = live_speaker_name or agent_name
     if is_streaming and not is_chat_paused:
-        activity_text = _activity_status_text(
-            live_activity,
-            agent_lookup=agent_lookup,
-            model_lookup=model_lookup,
-            llama_server_status=live_llama_status,
-        )
-        st.caption(activity_text or f"{status_agent_name} is still responding.")
         if st.button("Stop", use_container_width=False):
             try:
                 stop_discussion()

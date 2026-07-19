@@ -19,6 +19,7 @@ except ModuleNotFoundError:
 from apmatia.core.agent_management_runtime import get_agent_manager
 from apmatia.core.app_config import get_config_value
 from apmatia.core.model_management_runtime import get_llm_config_manager
+from apmatia.core.user_management_runtime import get_group_manager
 from apmatia.core.wiki_management_runtime import get_wiki_manager
 from apmatia.core.tool_management_runtime import get_tool_manager
 from apmatia.lib.agent_management.agent_prompt import compile_agent_system_prompt, default_agent_prompt
@@ -126,7 +127,7 @@ class Discussion(ApmatiaObject):
     focused_wiki_id: str | None = None
     participant_agent_ids: list[int] | None = None
     agent_mode: str = "discussion"
-    chat_mode: str = "single"
+    chat_mode: str = "round_robin"
     chat_pause_seconds: float | None = None
     chat_is_paused: bool = False
     chat_turn_index: int = 0
@@ -368,7 +369,7 @@ class DiscussionState:
             focused_wiki_id=None if row.get("focused_wiki_id") is None else str(row.get("focused_wiki_id")),
             participant_agent_ids=list(row.get("participant_agent_ids") or []),
             agent_mode=_normalize_agent_mode(row.get("agent_mode")),
-            chat_mode=str(row.get("chat_mode") or "single"),
+            chat_mode=str(row.get("chat_mode") or "round_robin"),
             chat_pause_seconds=row.get("chat_pause_seconds"),
             chat_is_paused=bool(row.get("chat_is_paused", False)),
             chat_turn_index=safe_int(row.get("chat_turn_index"), default=0) or 0,
@@ -921,7 +922,7 @@ class DiscussionState:
         folder_id: int | None = None,
         focused_wiki_id: str | None = None,
         participant_agent_ids: list[int] | None = None,
-        chat_mode: str = "single",
+        chat_mode: str = "round_robin",
         chat_pause_seconds: float | None = None,
         chat_is_paused: bool = False,
         chat_turn_index: int = 0,
@@ -1045,7 +1046,25 @@ class DiscussionState:
                 )
                 seen.add(participant_id)
 
-        for raw_agent_id in discussion.participant_agent_ids:
+        source_agent_ids = list(discussion.participant_agent_ids)
+        if not source_agent_ids and discussion.group_id is not None:
+            try:
+                memberships = get_group_manager().list_group_members(int(discussion.group_id))
+            except Exception:
+                memberships = []
+            for membership in memberships:
+                agent_id = safe_int(getattr(membership, "agent_id", None), default=None)
+                if agent_id is None:
+                    continue
+                member_kind = getattr(membership, "member_kind", None)
+                member_kind_value = getattr(member_kind, "value", member_kind)
+                if str(member_kind_value).strip().lower() != "agent":
+                    continue
+                if not bool(getattr(membership, "is_enabled", True)):
+                    continue
+                source_agent_ids.append(agent_id)
+
+        for raw_agent_id in source_agent_ids:
             agent_id = safe_int(raw_agent_id, default=None)
             if agent_id is None or agent_id in seen:
                 continue
@@ -1106,6 +1125,11 @@ class DiscussionState:
         roster = ", ".join(participant_names)
         if roster:
             instructions.append(f"Participants in this discussion: {roster}.")
+        instructions.append(
+            "Identity rules: you are only the current speaker for this turn and you must not "
+            "claim to be any other participant. Preserve each participant's name and role exactly "
+            "as written in the transcript."
+        )
         instructions.append(f"Current speaker for this turn: {turn_name}.")
         instructions.append(
             f"Operating mode: {turn_mode}. Speak naturally as {turn_name} and avoid saying you have nothing to add unless the transcript truly leaves no relevant response. If you would otherwise say that, give one concrete observation, question, or next step instead."
@@ -1169,6 +1193,7 @@ class DiscussionState:
                 prompt,
                 metadata={"attachments": current_attachments} if current_attachments else None,
             )
+            existing_content = self._discussion_path(discussion_id).read_text(encoding="utf-8")
 
         interrupted = False
         for turn in plan.turns:
@@ -1773,7 +1798,7 @@ class DiscussionState:
         focused_wiki_id: str | None = None,
         agent_id: int | None = None,
         participant_agent_ids: list[int] | None = None,
-        chat_mode: str = "single",
+        chat_mode: str = "round_robin",
         chat_pause_seconds: float | None = None,
         chat_coordinator_agent_id: int | None = None,
     ) -> dict:
@@ -2141,8 +2166,39 @@ class DiscussionState:
 
         del messages[message_index]
         path.write_text(self._format_messages(messages), encoding="utf-8")
-        self._update_discussion(discussion_id, {"last_error": None})
+        self._update_discussion(discussion_id, {"last_error": None, "chat_turn_index": 0})
         return {"discussion_id": discussion_id, "message_index": message_index}
+
+    def delete_messages(
+        self,
+        *,
+        owner_user_id: int,
+        discussion_id: str,
+        message_indices: list[int],
+    ) -> dict:
+        discussion = self._get_discussion(discussion_id)
+        if not discussion or discussion.owner_user_id != owner_user_id:
+            raise ValueError("Discussion not found.")
+
+        cleaned_indices = sorted({int(index) for index in message_indices})
+        if not cleaned_indices:
+            raise ValueError("Select at least one message to delete.")
+        if cleaned_indices[0] < 0:
+            raise ValueError("Message not found.")
+
+        path = self._discussion_path(discussion_id)
+        content = path.read_text(encoding="utf-8") if path.exists() else ""
+        messages = self._parse_messages(content)
+
+        if cleaned_indices[-1] >= len(messages):
+            raise ValueError("Message not found.")
+
+        for message_index in sorted(cleaned_indices, reverse=True):
+            del messages[message_index]
+
+        path.write_text(self._format_messages(messages), encoding="utf-8")
+        self._update_discussion(discussion_id, {"last_error": None, "chat_turn_index": 0})
+        return {"discussion_id": discussion_id, "message_indices": cleaned_indices}
 
     def stop_prompt(self, user_id: int, member_group_ids: set[int]) -> str:
         current = self._get_or_create_current_discussion(user_id, member_group_ids)

@@ -30,12 +30,15 @@ def serialize_user(user: object | dict) -> dict:
 
 def serialize_group(group: object | dict) -> dict:
     if isinstance(group, dict):
-        return group
+        payload = dict(group)
+        payload.setdefault("workspace_root", "")
+        return payload
     return {
         "id": group.id,
         "name": group.name,
         "description": group.description,
         "created_by_user_id": group.created_by_user_id,
+        "workspace_root": getattr(group, "workspace_root", ""),
         "created_at": group.created_at.isoformat(),
         "updated_at": group.updated_at.isoformat(),
     }
@@ -44,10 +47,13 @@ def serialize_group(group: object | dict) -> dict:
 def serialize_membership(membership: object | dict) -> dict:
     if isinstance(membership, dict):
         return membership
+    member_kind = getattr(membership, "member_kind", None)
     return {
         "id": membership.id,
         "group_id": membership.group_id,
         "user_id": membership.user_id,
+        "agent_id": getattr(membership, "agent_id", None),
+        "member_kind": member_kind.value if member_kind is not None else "user",
         "role": membership.role.value,
         "is_enabled": membership.is_enabled,
         "created_at": membership.created_at.isoformat(),
@@ -71,7 +77,7 @@ def serialize_discussion(discussion: object | dict) -> dict:
             "folder_id": folder_id,
             "focused_wiki_id": getattr(discussion, "focused_wiki_id", None),
             "participant_agent_ids": list(getattr(discussion, "participant_agent_ids", []) or []),
-            "chat_mode": str(getattr(discussion, "chat_mode", "single")),
+            "chat_mode": str(getattr(discussion, "chat_mode", "round_robin")),
             "chat_pause_seconds": getattr(discussion, "chat_pause_seconds", None),
             "chat_is_paused": bool(getattr(discussion, "chat_is_paused", False)),
             "chat_turn_index": _safe_int(getattr(discussion, "chat_turn_index", 0), default=0),
@@ -100,7 +106,7 @@ def serialize_discussion(discussion: object | dict) -> dict:
         "folder_id": folder_id,
         "focused_wiki_id": discussion.get("focused_wiki_id"),
         "participant_agent_ids": list(discussion.get("participant_agent_ids") or []),
-        "chat_mode": str(discussion.get("chat_mode", "single")),
+        "chat_mode": str(discussion.get("chat_mode", "round_robin")),
         "chat_pause_seconds": discussion.get("chat_pause_seconds"),
         "chat_is_paused": bool(discussion.get("chat_is_paused", False)),
         "chat_turn_index": _safe_int(discussion.get("chat_turn_index"), default=0),

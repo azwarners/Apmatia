@@ -3,6 +3,14 @@ from __future__ import annotations
 from apmatia.lib.user_management.models import GroupRole
 
 
+def _normalized_enum_value(value: object) -> str:
+    if hasattr(value, "value"):
+        candidate = getattr(value, "value")
+        if candidate is not None:
+            return str(candidate)
+    return str(value)
+
+
 def enabled_group_ids(memberships: list[dict | object]) -> set[int]:
     ids: set[int] = set()
     for membership in memberships:
@@ -19,10 +27,17 @@ def is_group_member(memberships: list[dict | object], group_id: int) -> bool:
 
 def is_group_owner(memberships: list[dict | object], user_id: int) -> bool:
     for membership in memberships:
+        member_kind = (
+            membership["member_kind"]
+            if isinstance(membership, dict) and "member_kind" in membership
+            else getattr(membership, "member_kind", None)
+        )
+        if member_kind is not None and _normalized_enum_value(member_kind) != "user":
+            continue
         m_user_id = membership["user_id"] if isinstance(membership, dict) else membership.user_id
         m_role = membership["role"] if isinstance(membership, dict) else membership.role.value
         is_enabled = membership.get("is_enabled", True) if isinstance(membership, dict) else membership.is_enabled
-        if int(m_user_id) == int(user_id) and str(m_role) == GroupRole.OWNER.value and bool(is_enabled):
+        if m_user_id is not None and int(m_user_id) == int(user_id) and str(m_role) == GroupRole.OWNER.value and bool(is_enabled):
             return True
     return False
 

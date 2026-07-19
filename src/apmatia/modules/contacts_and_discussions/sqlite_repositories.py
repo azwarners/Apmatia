@@ -336,7 +336,7 @@ def _row_to_participant(row: dict[str, Any]) -> DiscussionParticipant:
         group_id=row.get("group_id"),
         role=str(row.get("role", "agent")),
         selected_model_id=_parse_int(row.get("selected_model_id")),
-        turn_policy=str(row.get("turn_policy", "manual")),
+        turn_policy=str(row.get("turn_policy", "round_robin")),
         temperature_override=_parse_float(row.get("temperature_override")),
         tool_restrictions=_parse_json_list(row.get("tool_restrictions")),
         metadata=_parse_json_dict(row.get("metadata")),

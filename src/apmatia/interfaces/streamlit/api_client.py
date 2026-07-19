@@ -597,6 +597,14 @@ def delete_discussion_message(discussion_id: str, message_index: int) -> dict[st
     return _request("DELETE", f"/discussions/{discussion_id}/messages/{message_index}")
 
 
+def delete_discussion_messages(discussion_id: str, message_indices: list[int]) -> dict[str, Any]:
+    return _request(
+        "DELETE",
+        f"/discussions/{discussion_id}/messages",
+        json={"message_indices": message_indices},
+    )
+
+
 def list_wikis(**params: Any) -> list[dict[str, Any]]:
     query = urlencode(
         {key: value for key, value in params.items() if value is not None and value != ""},

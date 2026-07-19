@@ -17,7 +17,7 @@ def start_loop_task(
     agent_id: int | None = None,
     chat_mode: str = "single",
     allow_tools: bool = True,
-    max_iterations: int = 5,
+    max_iterations: int = 10,
     member_group_ids: set[int] | None = None,
 ) -> dict[str, Any]:
     request = LoopTaskRequest(

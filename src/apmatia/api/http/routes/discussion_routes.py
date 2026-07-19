@@ -3,6 +3,8 @@ from pydantic import BaseModel, Field
 from apmatia.api.internal import discussions
 from apmatia.api.internal.group_access import is_group_member
 from apmatia.api.internal.user_management import list_user_groups
+from collections.abc import Mapping, Sequence
+from dataclasses import is_dataclass, asdict
 
 from .shared import (
     member_group_ids,
@@ -13,6 +15,52 @@ from .shared import (
 )
 
 router = APIRouter()
+
+
+def _json_safe(value, *, _seen: set[int] | None = None):
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+
+    if _seen is None:
+        _seen = set()
+
+    value_id = id(value)
+    if value_id in _seen:
+        return "<recursive>"
+
+    if is_dataclass(value):
+        _seen.add(value_id)
+        return _json_safe(asdict(value), _seen=_seen)
+
+    if isinstance(value, Mapping):
+        _seen.add(value_id)
+        return {
+            str(key): _json_safe(item, _seen=_seen)
+            for key, item in value.items()
+        }
+
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        _seen.add(value_id)
+        return [_json_safe(item, _seen=_seen) for item in value]
+
+    if hasattr(value, "model_dump"):
+        _seen.add(value_id)
+        return _json_safe(value.model_dump(), _seen=_seen)
+
+    if hasattr(value, "dict"):
+        _seen.add(value_id)
+        try:
+            return _json_safe(value.dict(), _seen=_seen)
+        except TypeError:
+            pass
+
+    if hasattr(value, "isoformat"):
+        try:
+            return value.isoformat()
+        except TypeError:
+            pass
+
+    return str(value)
 
 
 class PromptAttachmentPayload(BaseModel):
@@ -48,7 +96,7 @@ class CreateDiscussionPayload(BaseModel):
     focused_wiki_id: str | None = None
     agent_id: int | None = None
     participant_agent_ids: list[int] | None = None
-    chat_mode: str = "single"
+    chat_mode: str = "round_robin"
     chat_pause_seconds: float | None = None
     chat_coordinator_agent_id: int | None = None
 
@@ -80,12 +128,16 @@ class UpdateMessagePayload(BaseModel):
     text: str
 
 
+class DeleteMessagesPayload(BaseModel):
+    message_indices: list[int]
+
+
 @router.get("/discussion/state")
 def discussion_snapshot(request: Request):
     session = require_session(request)
     group_ids = member_group_ids(session.user_id)
     snapshot = discussions.snapshot(user_id=session.user_id, member_group_ids=group_ids)
-    return {
+    return _json_safe({
         "discussion_id": snapshot.discussion_id,
         "is_streaming": snapshot.is_streaming,
         "last_error": snapshot.last_error,
@@ -100,7 +152,7 @@ def discussion_snapshot(request: Request):
         "messages": snapshot.messages,
         "activity": snapshot.activity,
         "llama_server_status": snapshot.llama_server_status,
-    }
+    })
 
 
 @router.post("/discussion/prompt")
@@ -203,6 +255,20 @@ def delete_discussion_message(request: Request, discussion_id: str, message_inde
             owner_user_id=session.user_id,
             discussion_id=discussion_id,
             message_index=message_index,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {"status": "deleted", "result": result}
+
+
+@router.delete("/discussions/{discussion_id}/messages")
+def delete_discussion_messages(request: Request, discussion_id: str, payload: DeleteMessagesPayload):
+    session = require_session(request)
+    try:
+        result = discussions.delete_messages(
+            owner_user_id=session.user_id,
+            discussion_id=discussion_id,
+            message_indices=payload.message_indices,
         )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error

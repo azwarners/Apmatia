@@ -2,7 +2,25 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from .models import Group, GroupId, GroupMembership, MembershipId, User, UserId
+from .models import (
+    Group,
+    GroupId,
+    GroupMemberKind,
+    GroupMembership,
+    MembershipId,
+    PasswordScheme,
+    User,
+    UserId,
+)
+
+
+def _member_kind_value(member_kind: object) -> str:
+    if hasattr(member_kind, "value"):
+        candidate = getattr(member_kind, "value")
+        if candidate is not None:
+            return str(candidate)
+    return str(member_kind)
+
 
 class UserRepository:
     def __init__(self, store: SQLiteStore, tables: UserManagementTables):
@@ -154,6 +172,8 @@ class GroupMembershipRepository:
         payload = {
             "group_id": membership.group_id,
             "user_id": membership.user_id,
+            "agent_id": getattr(membership, "agent_id", None),
+            "member_kind": _member_kind_value(getattr(membership, "member_kind", GroupMemberKind.USER)),
             "role": membership.role.value,
             "is_enabled": membership.is_enabled,
             "created_at": membership.created_at.isoformat(),
@@ -168,9 +188,29 @@ class GroupMembershipRepository:
             return None
         return self._row_to_membership(row)
 
-    def find(self, group_id: GroupId, user_id: UserId) -> GroupMembership | None:
-        """Return membership for a specific group/user pair, or None."""
-        row = self._store.get(self._tables.memberships, group_id=group_id, user_id=user_id)
+    def find(
+        self,
+        group_id: GroupId,
+        user_id: UserId | None = None,
+        *,
+        agent_id: int | None = None,
+        member_kind: GroupMemberKind = GroupMemberKind.USER,
+    ) -> GroupMembership | None:
+        """Return membership for a specific group/member pair, or None."""
+        criteria: dict[str, object] = {"group_id": group_id, "member_kind": member_kind.value}
+        if member_kind == GroupMemberKind.AGENT:
+            if agent_id is None:
+                return None
+            criteria["agent_id"] = agent_id
+        else:
+            if user_id is None:
+                return None
+            criteria["user_id"] = user_id
+
+        row = self._store.get(self._tables.memberships, **criteria)
+        if row is None and "member_kind" in criteria:
+            fallback_criteria = {key: value for key, value in criteria.items() if key != "member_kind"}
+            row = self._store.get(self._tables.memberships, **fallback_criteria)
         if row is None:
             return None
         return self._row_to_membership(row)
@@ -186,6 +226,8 @@ class GroupMembershipRepository:
             data={
                 "group_id": membership.group_id,
                 "user_id": membership.user_id,
+                "agent_id": membership.agent_id,
+                "member_kind": membership.member_kind.value,
                 "role": membership.role.value,
                 "is_enabled": membership.is_enabled,
                 "created_at": membership.created_at.isoformat(),
@@ -205,10 +247,15 @@ class GroupMembershipRepository:
 
     @staticmethod
     def _row_to_membership(row: dict) -> GroupMembership:
+        kind = GroupMemberKind(_member_kind_value(row.get("member_kind", GroupMemberKind.USER.value)))
+        user_id = row.get("user_id")
+        agent_id = row.get("agent_id")
         return GroupMembership(
             id=int(row["id"]),
             group_id=int(row["group_id"]),
-            user_id=int(row["user_id"]),
+            user_id=int(user_id) if user_id is not None else None,
+            agent_id=int(agent_id) if agent_id is not None else None,
+            member_kind=kind,
             role=GroupRole(str(row.get("role", GroupRole.MEMBER.value))),
             is_enabled=bool(row.get("is_enabled", True)),
             created_at=_parse_dt(row.get("created_at")),

@@ -35,6 +35,7 @@ class CapturedIdea(ApmatiaIpeObject):
         started_on: date | None = None,
         target_on: date | None = None,
         tags: tuple[str, ...] | None = None,
+        workspace_root: str = "",
     ) -> IpeProject:
         project = IpeProject(
             id=project_id,
@@ -44,6 +45,7 @@ class CapturedIdea(ApmatiaIpeObject):
             target_on=target_on,
             tags=tags if tags is not None else self.tags,
             source_idea_id=self.id,
+            workspace_root=workspace_root,
         )
         self._mark_converted("project", project.id)
         return project
@@ -149,6 +151,7 @@ class IpeTask(ApmatiaIpeObject):
         started_on: date | None = None,
         target_on: date | None = None,
         tags: tuple[str, ...] | None = None,
+        workspace_root: str = "",
     ) -> IpeProject:
         return IpeProject(
             id=project_id,
@@ -159,6 +162,7 @@ class IpeTask(ApmatiaIpeObject):
             source_task_id=self.id,
             source_idea_id=self.source_idea_id,
             tags=tags if tags is not None else self.tags,
+            workspace_root=workspace_root,
         )
 
 
@@ -170,6 +174,7 @@ class IpeProject(ApmatiaIpeObject):
     target_on: date | None = None
     source_task_id: str | int | None = None
     tags: tuple[str, ...] = field(default_factory=tuple)
+    workspace_root: str = ""
 
 
 @dataclass(slots=True)

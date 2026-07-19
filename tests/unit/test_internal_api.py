@@ -148,9 +148,40 @@ def test_group_edit_route_updates_group(
 
     assert response.status_code == 200
     assert response.json()["group"]["name"] == "team-renamed"
-    mock_edit_group.assert_called_once_with(group_id=10, name="team-renamed", description="updated")
+    mock_edit_group.assert_called_once_with(
+        group_id=10,
+        name="team-renamed",
+        description="updated",
+        workspace_root=None,
+    )
     mock_is_group_owner.assert_called_once()
     mock_list_group_members.assert_called_once_with(10)
+
+
+@patch("apmatia.api.http.routes.groups_routes.require_session")
+@patch("apmatia.api.http.routes.groups_routes.create_group")
+def test_group_create_route_uses_authenticated_session(mock_create_group, mock_require_session):
+    mock_require_session.return_value = SimpleNamespace(user_id=1, username="nick")
+    mock_create_group.return_value = SimpleNamespace(
+        id=11,
+        name="team",
+        description="core team",
+        created_by_user_id=1,
+        created_at=SimpleNamespace(isoformat=lambda: "2026-01-01T00:00:00+00:00"),
+        updated_at=SimpleNamespace(isoformat=lambda: "2026-01-01T00:00:00+00:00"),
+    )
+    client = TestClient(app)
+
+    response = client.post("/api/groups", json={"name": "team", "description": "core team"})
+
+    assert response.status_code == 200
+    assert response.json()["group"]["name"] == "team"
+    mock_create_group.assert_called_once_with(
+        name="team",
+        created_by_user_id=1,
+        description="core team",
+        workspace_root="",
+    )
 
 
 @patch("apmatia.api.internal.discussions.discussion_state")
@@ -177,3 +208,34 @@ def test_internal_start_prompt_forwards_attachments(mock_discussion_state):
         agent_id=3,
         attachments=attachments,
     )
+
+
+@patch("apmatia.api.http.routes.discussion_routes.member_group_ids", return_value=set())
+@patch("apmatia.api.http.routes.discussion_routes.require_session")
+@patch("apmatia.api.http.routes.discussion_routes.discussions.snapshot")
+def test_discussion_state_route_sanitizes_recursive_payload(mock_snapshot, mock_require_session, _mock_member_group_ids):
+    recursive = {}
+    recursive["self"] = recursive
+    mock_snapshot.return_value = SimpleNamespace(
+        discussion_id="IDabc123",
+        is_streaming=False,
+        last_error=None,
+        agent_mode="discussion",
+        chat_mode="round_robin",
+        chat_pause_seconds=None,
+        chat_is_paused=False,
+        chat_turn_index=0,
+        chat_coordinator_agent_id=None,
+        system_prompt="",
+        content="",
+        messages=[],
+        activity=recursive,
+        llama_server_status=None,
+    )
+    mock_require_session.return_value = SimpleNamespace(user_id=1, username="nick")
+    client = TestClient(app)
+
+    response = client.get("/api/discussion/state")
+
+    assert response.status_code == 200
+    assert response.json()["activity"]["self"] == "<recursive>"

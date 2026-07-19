@@ -77,6 +77,49 @@ def test_discussion_group_scope_blocks_non_members(tmp_path, monkeypatch):
         raise AssertionError("Expected non-member to be blocked from opening group discussion.")
 
 
+def test_create_discussion_defaults_group_chat_mode_to_round_robin(tmp_path, monkeypatch):
+    monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
+    monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
+    discussions = importlib.import_module("apmatia.lib.discussions")
+    importlib.reload(discussions)
+
+    state = discussions.DiscussionState()
+    created = state.create_discussion(owner_user_id=101, title="Default Group Chat", group_id=55)
+
+    assert created["chat_mode"] == "round_robin"
+
+
+def test_group_chat_participants_are_derived_from_group_members(tmp_path, monkeypatch):
+    monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
+    monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
+    discussions = importlib.import_module("apmatia.lib.discussions")
+    importlib.reload(discussions)
+
+    group_manager = Mock()
+    group_manager.list_group_members.return_value = [
+        SimpleNamespace(agent_id=7, member_kind=SimpleNamespace(value="agent"), is_enabled=True),
+        SimpleNamespace(agent_id=8, member_kind=SimpleNamespace(value="agent"), is_enabled=True),
+        SimpleNamespace(user_id=9, member_kind=SimpleNamespace(value="user"), is_enabled=True),
+        SimpleNamespace(agent_id=10, member_kind=SimpleNamespace(value="agent"), is_enabled=False),
+    ]
+    agent_manager = Mock()
+    agent_manager.get_agent.side_effect = lambda agent_id: {
+        7: SimpleNamespace(id=7, name="Alpha", prompt_id=None, active_model_id=1, default_model_id=1),
+        8: SimpleNamespace(id=8, name="Beta", prompt_id=None, active_model_id=1, default_model_id=1),
+    }.get(agent_id)
+    monkeypatch.setattr(discussions, "get_group_manager", lambda: group_manager)
+    monkeypatch.setattr(discussions, "get_agent_manager", lambda: agent_manager)
+
+    state = discussions.DiscussionState()
+    created = state.create_discussion(owner_user_id=101, title="Group Chat", group_id=55)
+    discussion = state._get_discussion(created["discussion_id"])
+    assert discussion is not None
+
+    participants = state._resolve_group_chat_participants(discussion)
+
+    assert [participant.agent_id for participant in participants] == [7, 8]
+
+
 def test_update_folder_prevents_descendant_cycles(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
@@ -454,6 +497,99 @@ def test_round_robin_group_chat_streams_named_agent_turns(tmp_path, monkeypatch)
     assert "Agent (Beta): Beta reply" in transcript
 
 
+def test_group_chat_first_turn_sees_the_user_prompt_immediately(tmp_path, monkeypatch):
+    monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
+    monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
+    discussions = importlib.import_module("apmatia.lib.discussions")
+    importlib.reload(discussions)
+
+    state = discussions.DiscussionState()
+    created = state.create_discussion(
+        owner_user_id=101,
+        title="Group Chat",
+        participant_agent_ids=[7, 8],
+        chat_mode="round_robin",
+    )
+    discussion = state._get_discussion(created["discussion_id"])
+    assert discussion is not None
+
+    seen_existing_contents: list[str] = []
+    fake_writer = SimpleNamespace(
+        visible_char_count=0,
+        append=Mock(),
+        append_metadata=Mock(),
+    )
+
+    monkeypatch.setattr(
+        discussions,
+        "build_group_chat_plan",
+        lambda **_kwargs: SimpleNamespace(
+            turns=[SimpleNamespace(speaker_agent_id=7, speaker_name="Alpha")],
+            mode="round_robin",
+            pause_seconds=None,
+            continue_automatically=False,
+            coordinator_agent_id=None,
+            next_turn_index=1,
+        ),
+    )
+    monkeypatch.setattr(
+        state,
+        "_resolve_group_chat_participants",
+        lambda _discussion, anchor_agent_id=None: [SimpleNamespace(agent_id=7, name="Alpha")],
+    )
+    monkeypatch.setattr(
+        state,
+        "_get_agent",
+        lambda agent_id: SimpleNamespace(
+            id=agent_id,
+            name="Alpha",
+            prompt_id=None,
+            active_model_id=1,
+            default_model_id=1,
+        ),
+    )
+    monkeypatch.setattr(state, "_resolve_agent_system_prompt", lambda _agent_id: "")
+    monkeypatch.setattr(
+        state,
+        "_resolve_agent_llm_config",
+        lambda _agent_id: SimpleNamespace(id=1, backend="openai_compatible", model_name="group"),
+    )
+    monkeypatch.setattr(state, "_list_tools_available_to_agent", lambda _agent_id: [])
+    monkeypatch.setattr(state, "_set_activity", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(state, "_new_assistant_stream_writer", lambda *_args, **_kwargs: fake_writer)
+    monkeypatch.setattr(
+        discussions,
+        "build_chat_messages",
+        lambda existing_content, system_prompt, current_prompt, **_kwargs: (
+            seen_existing_contents.append(existing_content)
+            or [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": current_prompt},
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        state,
+        "_stream_assistant_iteration",
+        lambda **_kwargs: ("Alpha reply", "Alpha reply", {}),
+    )
+
+    state._run_group_chat_turns(
+        discussion_id=str(created["discussion_id"]),
+        prompt="Hello group",
+        discussion=discussion,
+        agent_id=7,
+        stop_event=None,
+        current_attachments=None,
+    )
+
+    assert seen_existing_contents
+    assert "User: Hello group" in seen_existing_contents[0]
+    transcript = state._discussion_path(str(created["discussion_id"])).read_text(encoding="utf-8")
+    assert "User: Hello group" in transcript
+    fake_writer.append.assert_called_once_with("Alpha reply")
+
+
 def test_discussion_object_id_matches_discussion_id(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
@@ -678,6 +814,59 @@ def test_delete_message_removes_selected_transcript_entry(tmp_path, monkeypatch)
     assert transcript_path.read_text(encoding="utf-8") == "Assistant: Hi!\n"
 
 
+def test_delete_messages_removes_selected_transcript_entries(tmp_path, monkeypatch):
+    monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
+    monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
+    discussions = importlib.import_module("apmatia.lib.discussions")
+    importlib.reload(discussions)
+
+    state = discussions.DiscussionState()
+    snapshot = state.snapshot(user_id=101, member_group_ids=set())
+    transcript_path = state._discussion_path(snapshot.discussion_id)
+    transcript_path.write_text(
+        "User: Hello there\n\nAssistant: First\n\nAssistant: Second\n",
+        encoding="utf-8",
+    )
+
+    state.delete_messages(
+        owner_user_id=101,
+        discussion_id=snapshot.discussion_id,
+        message_indices=[2, 0],
+    )
+
+    assert transcript_path.read_text(encoding="utf-8") == "Assistant: First\n"
+
+
+def test_delete_messages_resets_turn_index(tmp_path, monkeypatch):
+    monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
+    monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
+    discussions = importlib.import_module("apmatia.lib.discussions")
+    importlib.reload(discussions)
+
+    state = discussions.DiscussionState()
+    snapshot = state.snapshot(user_id=101, member_group_ids=set())
+    state.update_discussion(
+        owner_user_id=101,
+        discussion_id=snapshot.discussion_id,
+        chat_turn_index=2,
+    )
+    transcript_path = state._discussion_path(snapshot.discussion_id)
+    transcript_path.write_text(
+        "User: Hello there\n\nAssistant: Hi!\n",
+        encoding="utf-8",
+    )
+
+    state.delete_messages(
+        owner_user_id=101,
+        discussion_id=snapshot.discussion_id,
+        message_indices=[0, 1],
+    )
+
+    refreshed = state.snapshot(user_id=101, member_group_ids=set())
+    assert refreshed.chat_turn_index == 0
+    assert transcript_path.read_text(encoding="utf-8") == ""
+
+
 def test_start_prompt_prefers_active_model_id(tmp_path, monkeypatch):
     monkeypatch.setenv("APMATIA_HOME", str(tmp_path))
     monkeypatch.setenv("APMATIA_DATA_DIR", str(tmp_path / "data"))
@@ -784,7 +973,12 @@ def test_start_prompt_uses_agent_system_prompt(tmp_path, monkeypatch):
     monkeypatch.setattr(discussions, "prompt_llm", fake_prompt_llm)
 
     state = discussions.DiscussionState()
-    created = state.create_discussion(owner_user_id=101, title="Prompt Test", focused_wiki_id="wiki-123")
+    created = state.create_discussion(
+        owner_user_id=101,
+        title="Prompt Test",
+        focused_wiki_id="wiki-123",
+        chat_mode="single",
+    )
     state._run_prompt(created["discussion_id"], "Hello", agent_id=7)
 
     assert captured["request_metadata"]["chat_messages"][0]["role"] == "system"
@@ -852,7 +1046,11 @@ def test_run_prompt_executes_tool_calls_and_stores_final_answer(tmp_path, monkey
     monkeypatch.setattr(discussions, "prompt_llm", fake_prompt_llm)
 
     state = discussions.DiscussionState()
-    created = state.create_discussion(owner_user_id=101, title="Tool Prompt Test")
+    created = state.create_discussion(
+        owner_user_id=101,
+        title="Tool Prompt Test",
+        chat_mode="single",
+    )
     state._run_prompt(created["discussion_id"], "Say hello", agent_id=7)
 
     transcript = state._discussion_path(created["discussion_id"]).read_text(encoding="utf-8")

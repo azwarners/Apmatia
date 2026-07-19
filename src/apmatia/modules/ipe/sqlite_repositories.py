@@ -221,6 +221,7 @@ def _project_payload(project: IpeProject) -> dict[str, Any]:
             "target_on": project.target_on.isoformat() if project.target_on else None,
             "source_task_id": project.source_task_id,
             "tags": list(project.tags),
+            "workspace_root": project.workspace_root,
         }
     )
     return payload
@@ -317,6 +318,7 @@ def _row_to_project(row: dict[str, Any]) -> IpeProject:
         target_on=_parse_date_or_none(row.get("target_on")),
         source_task_id=_parse_id_value(row.get("source_task_id")),
         tags=_parse_string_tuple(row.get("tags")),
+        workspace_root=str(row.get("workspace_root", "")),
     )
 
 

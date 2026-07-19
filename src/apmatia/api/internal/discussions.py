@@ -90,6 +90,14 @@ def delete_message(*, owner_user_id: int, discussion_id: str, message_index: int
     )
 
 
+def delete_messages(*, owner_user_id: int, discussion_id: str, message_indices: list[int]) -> dict:
+    return discussion_state.delete_messages(
+        owner_user_id=owner_user_id,
+        discussion_id=discussion_id,
+        message_indices=message_indices,
+    )
+
+
 def list_trash(*, owner_user_id: int) -> dict:
     return discussion_state.list_trash(owner_user_id=owner_user_id)
 
@@ -103,7 +111,7 @@ def create_discussion(
     focused_wiki_id: str | None = None,
     agent_id: int | None = None,
     participant_agent_ids: list[int] | None = None,
-    chat_mode: str = "single",
+    chat_mode: str = "round_robin",
     chat_pause_seconds: float | None = None,
     chat_coordinator_agent_id: int | None = None,
 ) -> dict:

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
+from apmatia.core.workspaces import resolve_agent_workspace_root
 from apmatia.lib.apmatia_core.models import utc_now
 
 from .agent_prompt import AgentPrompt, compile_agent_system_prompt, default_agent_prompt
@@ -91,7 +92,11 @@ class AgentManager(AgentService):
             metadata=kwargs.get("metadata", {}),
         )
         agent_id = self._agent_repo.create(agent)
-        return replace(agent, id=agent_id)
+        created = replace(agent, id=agent_id)
+        if not str(created.workspace_root).strip():
+            created = replace(created, workspace_root=str(resolve_agent_workspace_root(created)))
+            self._agent_repo.update(created)
+        return created
 
     def clone_agent(self, source_agent_id: int, name: str, **kwargs) -> Agent:
         """Clone an existing agent into a new agent record."""
@@ -134,12 +139,16 @@ class AgentManager(AgentService):
             tool_ids=list(tool_ids or []),
             default_model_id=kwargs.get("default_model_id", source_agent.default_model_id),
             active_model_id=kwargs.get("active_model_id", source_agent.active_model_id),
-            workspace_root=str(kwargs.get("workspace_root", source_agent.workspace_root)),
+            workspace_root=str(kwargs.get("workspace_root", "")),
             knowledge_root=str(kwargs.get("knowledge_root", source_agent.knowledge_root)),
             metadata=dict(metadata or {}),
         )
         agent_id = self._agent_repo.create(cloned)
-        return replace(cloned, id=agent_id)
+        created = replace(cloned, id=agent_id)
+        if not str(created.workspace_root).strip():
+            created = replace(created, workspace_root=str(resolve_agent_workspace_root(created)))
+            self._agent_repo.update(created)
+        return created
 
     def update_agent(self, agent_id: int, **updates) -> Agent:
         """Update an existing agent."""
@@ -166,6 +175,8 @@ class AgentManager(AgentService):
             metadata=updates.get("metadata", agent.metadata),
             updated_at=utc_now(),
         )
+        if not str(updated.workspace_root).strip():
+            updated = replace(updated, workspace_root=str(resolve_agent_workspace_root(updated)))
 
         self._agent_repo.update(updated)
         return updated

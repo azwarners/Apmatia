@@ -110,6 +110,21 @@ def test_ipe_service_converts_idea_to_task_and_deletes_source(tmp_path):
     assert bundle.tasks.get(1) is not None
 
 
+def test_ipe_service_assigns_workspace_root_to_projects(tmp_path):
+    bundle = SQLiteIpeBundle(tmp_path / "ipe.sqlite")
+    service = ApmatiaIpeService(bundle)
+
+    idea = CapturedIdea(id="idea-1", owner_user_id=7, title="Launch roadmap", body="Sketch the launch plan.")
+    bundle.ideas.create(idea)
+
+    project = service.convert_idea_to_project(1)
+
+    assert project.workspace_root.endswith("projects/project-1")
+    loaded_project = bundle.projects.get(1)
+    assert loaded_project is not None
+    assert loaded_project.workspace_root == project.workspace_root
+
+
 def test_ipe_service_finds_overdue_habits_and_next_appointment(tmp_path):
     bundle = SQLiteIpeBundle(tmp_path / "ipe.sqlite")
     service = ApmatiaIpeService(bundle)

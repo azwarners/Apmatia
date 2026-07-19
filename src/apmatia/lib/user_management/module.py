@@ -5,7 +5,8 @@ import hmac
 import secrets
 from dataclasses import replace
 
-from .models import Group, GroupMembership, GroupRole, User, UserId, utc_now
+from apmatia.core.workspaces import resolve_group_workspace_root
+from .models import Group, GroupMemberKind, GroupMembership, GroupRole, User, UserId, utc_now
 from .repositories import GroupMembershipRepository, GroupRepository, UserRepository
 from .services import AccessControlService, GroupService, UserService
 
@@ -30,6 +31,16 @@ def _verify_password(password: str, stored: str) -> bool:
 
     computed = hashlib.sha512((salt + password).encode("utf-8")).hexdigest()
     return hmac.compare_digest(stored_digest, computed)
+
+
+def _normalize_member_kind(member_kind: GroupMemberKind | str | object) -> GroupMemberKind:
+    if isinstance(member_kind, GroupMemberKind):
+        return member_kind
+    if hasattr(member_kind, "value"):
+        candidate = getattr(member_kind, "value")
+        if candidate is not None:
+            return GroupMemberKind(str(candidate))
+    return GroupMemberKind(str(member_kind))
 
 
 class UserManager(UserService):
@@ -138,7 +149,13 @@ class GroupManager(GroupService):
         self._group_repo = group_repo
         self._membership_repo = membership_repo
 
-    def create_group(self, name: str, created_by_user_id: UserId, description: str = "") -> Group:
+    def create_group(
+        self,
+        name: str,
+        created_by_user_id: UserId,
+        description: str = "",
+        workspace_root: str = "",
+    ) -> Group:
         clean_name = name.strip()
         if not clean_name:
             raise ValueError("Group name cannot be empty.")
@@ -151,11 +168,15 @@ class GroupManager(GroupService):
             name=clean_name,
             description=description.strip(),
             created_by_user_id=created_by_user_id,
+            workspace_root=str(workspace_root or ""),
             created_at=now,
             updated_at=now,
         )
         group_id = self._group_repo.create(group)
         created = replace(group, id=group_id)
+        if not str(created.workspace_root).strip():
+            created = replace(created, workspace_root=str(resolve_group_workspace_root(created)))
+            self._group_repo.update(created)
 
         owner_membership = GroupMembership(
             id=None,
@@ -173,6 +194,7 @@ class GroupManager(GroupService):
         group_id: int,
         name: str | None = None,
         description: str | None = None,
+        workspace_root: str | None = None,
     ) -> Group:
         group = self._group_repo.get_by_id(group_id)
         if group is None:
@@ -193,8 +215,11 @@ class GroupManager(GroupService):
             group,
             name=next_name,
             description=next_description,
+            workspace_root=group.workspace_root if workspace_root is None else workspace_root,
             updated_at=utc_now(),
         )
+        if not str(updated.workspace_root).strip():
+            updated = replace(updated, workspace_root=str(resolve_group_workspace_root(updated)))
         self._group_repo.update(updated)
         return updated
 
@@ -204,12 +229,40 @@ class GroupManager(GroupService):
     def list_groups(self) -> list[Group]:
         return self._group_repo.list_all()
 
-    def add_member(self, group_id: int, user_id: UserId, role: GroupRole = GroupRole.MEMBER) -> GroupMembership:
+    def add_member(
+        self,
+        group_id: int,
+        user_id: UserId | None = None,
+        role: GroupRole = GroupRole.MEMBER,
+        *,
+        agent_id: int | None = None,
+        member_kind: GroupMemberKind | str = GroupMemberKind.USER,
+    ) -> GroupMembership:
         group = self._group_repo.get_by_id(group_id)
         if group is None:
             raise ValueError(f"Group not found: {group_id}")
 
-        existing = self._membership_repo.find(group_id=group_id, user_id=user_id)
+        normalized_member_kind = _normalize_member_kind(member_kind)
+
+        if normalized_member_kind == GroupMemberKind.AGENT:
+            if agent_id is None:
+                raise ValueError("Agent ID is required for agent memberships.")
+            if role == GroupRole.OWNER:
+                raise ValueError("Agent memberships cannot be group owners.")
+            existing = self._membership_repo.find(
+                group_id=group_id,
+                agent_id=agent_id,
+                member_kind=GroupMemberKind.AGENT,
+            )
+        else:
+            if user_id is None:
+                raise ValueError("User ID is required for user memberships.")
+            existing = self._membership_repo.find(
+                group_id=group_id,
+                user_id=user_id,
+                member_kind=GroupMemberKind.USER,
+            )
+
         now = utc_now()
         if existing is not None:
             updated = replace(existing, role=role, is_enabled=True, updated_at=now)
@@ -220,6 +273,8 @@ class GroupManager(GroupService):
             id=None,
             group_id=group_id,
             user_id=user_id,
+            agent_id=agent_id,
+            member_kind=normalized_member_kind,
             role=role,
             is_enabled=True,
             created_at=now,

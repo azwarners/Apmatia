@@ -89,6 +89,7 @@ class TestAgentManager:
         assert agent.tool_ids == []
         assert agent.default_model_id is None
         assert agent.active_model_id is None
+        assert agent.workspace_root.endswith("agents/agent-1")
         assert agent.metadata == {}
         assert agent.id is not None
 
@@ -141,6 +142,7 @@ class TestAgentManager:
         assert cloned.tool_ids == [300, 400]
         assert cloned.default_model_id == 50
         assert cloned.active_model_id == 60
+        assert cloned.workspace_root.endswith(f"agents/agent-{cloned.id}")
         assert cloned.metadata == {"version": "1.0"}
 
     def test_create_agent_empty_name(self, agent_manager):

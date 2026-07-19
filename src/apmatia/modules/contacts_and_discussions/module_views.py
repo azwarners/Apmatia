@@ -116,7 +116,7 @@ class ApmatiaTopicManagementModuleViewProvider:
                 group_id=_optional_text(target_value) if target_kind == "group" else None,
                 role=str(payload.get("role") or "agent"),
                 selected_model_id=_optional_int(payload.get("selected_model_id")),
-                turn_policy=str(payload.get("turn_policy") or "manual"),
+                turn_policy=str(payload.get("turn_policy") or "round_robin"),
                 temperature_override=payload.get("temperature_override"),
                 tool_restrictions=_parse_tags(payload.get("tool_restrictions")),
                 metadata=_parse_mapping(payload.get("metadata")),

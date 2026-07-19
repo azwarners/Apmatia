@@ -12,6 +12,7 @@ from apmatia.interfaces.streamlit.api_client import (
     create_user,
     delete_group,
     delete_user,
+    list_agents,
     list_group_members,
     list_groups,
     list_users,
@@ -37,6 +38,10 @@ def _current_user_id() -> int | None:
 
 def _user_label(user: dict[str, object]) -> str:
     return f"{user.get('username') or 'Unnamed user'} (ID {user.get('id')})"
+
+
+def _agent_label(agent: dict[str, object]) -> str:
+    return f"{agent.get('name') or 'Unnamed agent'} (ID {agent.get('id')})"
 
 
 def _group_label(group: dict[str, object]) -> str:
@@ -91,6 +96,17 @@ def _current_user(users: Iterable[dict[str, object]]) -> dict[str, object] | Non
     return None
 
 
+def _agent_by_id(agents: Iterable[dict[str, object]], agent_id: int | None) -> dict[str, object] | None:
+    if agent_id is None:
+        return None
+    for agent in agents:
+        if not isinstance(agent, dict):
+            continue
+        if _safe_int(agent.get("id")) == agent_id:
+            return agent
+    return None
+
+
 def render() -> None:
     """Render the user and group management page."""
     try:
@@ -99,6 +115,10 @@ def render() -> None:
     except ApiError as error:
         st.error(f"Unable to load user management data: {error.detail}")
         return
+    try:
+        agents = list_agents()
+    except ApiError:
+        agents = []
 
     current_user_id = _current_user_id()
 
@@ -259,13 +279,35 @@ def render() -> None:
                     st.info("No members are listed for this group yet.")
                 else:
                     for membership in members:
+                        member_kind = str(
+                            membership.get("member_kind") or ("agent" if membership.get("agent_id") is not None else "user")
+                        )
+                        member_user_id = _safe_int(membership.get("user_id"))
+                        member_agent_id = _safe_int(membership.get("agent_id"))
+                        member_agent = _agent_by_id(agents, member_agent_id)
                         with st.container(border=True):
-                            st.write(
-                                "User {user_id} · role {role}".format(
-                                    user_id=membership.get("user_id"),
-                                    role=membership.get("role"),
+                            if member_kind == "agent":
+                                st.write(
+                                    "Agent {agent} · role {role}".format(
+                                        agent=_agent_label(member_agent) if member_agent else f"Agent ID {member_agent_id}",
+                                        role=membership.get("role"),
+                                    )
                                 )
-                            )
+                            else:
+                                member_user = next(
+                                    (
+                                        user
+                                        for user in users
+                                        if isinstance(user, dict) and _safe_int(user.get("id")) == member_user_id
+                                    ),
+                                    None,
+                                )
+                                st.write(
+                                    "User {user} · role {role}".format(
+                                        user=_user_label(member_user) if member_user is not None else f"User ID {member_user_id}",
+                                        role=membership.get("role"),
+                                    )
+                                )
                             st.caption(
                                 "Membership ID {id} · enabled {enabled}".format(
                                     id=membership.get("id"),
@@ -292,30 +334,60 @@ def render() -> None:
                                             st.success("Membership updated.")
                                             st.rerun()
 
-                if _group_is_owned_by_current_user(selected_group, current_user_id) and users:
+                if _group_is_owned_by_current_user(selected_group, current_user_id):
                     st.divider()
-                    with st.form(f"apmatia_group_add_member_form_{selected_group.get('id')}"):
-                        member_user_options = [user.get("id") for user in users if user.get("id") is not None]
-                        member_user_labels = {
+                    member_kind = st.selectbox(
+                        "Member type",
+                        options=["user", "agent"],
+                        index=0,
+                        key=f"member_kind_{selected_group.get('id')}",
+                    )
+                    if member_kind == "agent":
+                        member_options = [agent.get("id") for agent in agents if agent.get("id") is not None]
+                        member_labels = {
+                            _safe_int(agent.get("id")): _agent_label(agent)
+                            for agent in agents
+                            if agent.get("id") is not None
+                        }
+                        role_options = ["member"]
+                    else:
+                        member_options = [user.get("id") for user in users if user.get("id") is not None]
+                        member_labels = {
                             _safe_int(user.get("id")): _user_label(user)
                             for user in users
                             if user.get("id") is not None
                         }
-                        chosen_user_id = st.selectbox(
-                            "User",
-                            options=member_user_options,
-                            index=0 if member_user_options else 0,
-                            format_func=lambda value: member_user_labels.get(_safe_int(value), f"User {value}"),
-                        )
-                        role = st.selectbox("Role", options=["member", "owner"], index=0)
-                        submitted = st.form_submit_button("Add member")
+                        role_options = ["member", "owner"]
+
+                    if not member_options:
+                        st.info(f"No {member_kind}s are available to add yet.")
+                        submitted = False
+                    else:
+                        with st.form(f"apmatia_group_add_member_form_{selected_group.get('id')}_{member_kind}"):
+                            chosen_member_id = st.selectbox(
+                                "Agent" if member_kind == "agent" else "User",
+                                options=member_options,
+                                index=0 if member_options else 0,
+                                key=f"member_choice_{selected_group.get('id')}_{member_kind}",
+                                format_func=lambda value: member_labels.get(
+                                    _safe_int(value), f"{'Agent' if member_kind == 'agent' else 'User'} {value}"
+                                ),
+                            )
+                            role = st.selectbox(
+                                "Role",
+                                options=role_options,
+                                index=0,
+                                key=f"member_role_{selected_group.get('id')}_{member_kind}",
+                            )
+                            submitted = st.form_submit_button("Add member")
                     if submitted:
                         try:
-                            add_group_member(
-                                int(selected_group["id"]),
-                                user_id=int(chosen_user_id),
-                                role=role,
-                            )
+                            payload: dict[str, object] = {"member_kind": member_kind, "role": role}
+                            if member_kind == "agent":
+                                payload["agent_id"] = int(chosen_member_id)
+                            else:
+                                payload["user_id"] = int(chosen_member_id)
+                            add_group_member(int(selected_group["id"]), **payload)
                         except ApiError as error:
                             st.error(f"Unable to add member: {error.detail}")
                         else:

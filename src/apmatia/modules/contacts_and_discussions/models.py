@@ -100,7 +100,7 @@ class DiscussionParticipant(ApmatiaObject):
     group_id: str | int | None = None
     role: str = "agent"
     selected_model_id: int | None = None
-    turn_policy: str = "manual"
+    turn_policy: str = "round_robin"
     temperature_override: float | None = None
     tool_restrictions: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -112,7 +112,7 @@ class DiscussionParticipant(ApmatiaObject):
         self.group_id = self.group_id if self.group_id in (None, "") else str(self.group_id)
         self.role = _normalize_status(self.role, PARTICIPANT_ROLES, default="agent")
         self.selected_model_id = _normalize_int(self.selected_model_id)
-        self.turn_policy = _normalize_status(self.turn_policy, PARTICIPANT_TURN_POLICIES, default="manual")
+        self.turn_policy = _normalize_status(self.turn_policy, PARTICIPANT_TURN_POLICIES, default="round_robin")
         self.temperature_override = _normalize_float(self.temperature_override)
         self.tool_restrictions = _normalize_text_list(self.tool_restrictions)
         self.metadata = dict(self.metadata or {})

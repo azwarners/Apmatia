@@ -13,6 +13,7 @@ from apmatia.core.modules import (
     WorkspaceRootNotFoundError,
     WorkspaceRootPermissionError,
 )
+from apmatia.core.workspaces import resolve_agent_workspace_root
 from apmatia.lib.agent_management.services import AgentService
 from apmatia.lib.tool_management.registry import ToolProvider
 
@@ -232,12 +233,7 @@ def build_workspace_file_tool_providers(
 
 
 def _resolve_agent_workspace_root(agent: Any, *, base_dir: Path | None) -> Path:
-    explicit_root = str(getattr(agent, "workspace_root", "") or "").strip()
-    if explicit_root:
-        return Path(explicit_root).expanduser().resolve()
-    if base_dir is not None:
-        return Path(base_dir).expanduser().resolve() / "workspace" / "agents" / f"agent-{int(agent.id)}"
-    return get_app_dir() / "workspace" / "agents" / f"agent-{int(agent.id)}"
+    return resolve_agent_workspace_root(agent, base_dir=base_dir)
 
 
 def _ensure_workspace_root(root: Path) -> Path:

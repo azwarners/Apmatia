@@ -136,7 +136,7 @@ PARTICIPANT_VIEW_SPEC = TopicCollectionViewSpec(
             "group_id": {"label": "Group"},
             "role": {"field_type": "select", "options": ["agent", "coordinator", "reviewer", "observer"], "default": "agent"},
             "selected_model_id": {"label": "Model alias"},
-            "turn_policy": {"field_type": "select", "options": ["manual", "auto", "round_robin", "coordinator_only"], "default": "manual"},
+            "turn_policy": {"field_type": "select", "options": ["manual", "auto", "round_robin", "coordinator_only"], "default": "round_robin"},
             "temperature_override": {"label": "Temperature override", "field_type": "number", "min_value": 0.0, "max_value": 2.0, "step": 0.1},
             "tool_restrictions": {"field_type": "text", "placeholder": "wiki.read, memory.write"},
             "metadata": {"hidden": True},

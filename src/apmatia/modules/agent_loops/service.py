@@ -72,7 +72,7 @@ class LoopTaskRequest:
     agent_id: int | None = None
     chat_mode: str = "single"
     allow_tools: bool = True
-    max_iterations: int = 5
+    max_iterations: int = 10
     member_group_ids: set[int] | None = None
     max_tool_calls: int = 10
     timeout_seconds: float | None = None

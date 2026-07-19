@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 from apmatia.core.group_access import enabled_group_ids, is_group_member, is_group_owner, visible_groups
-from apmatia.lib.user_management.models import GroupRole
+from apmatia.lib.user_management.models import GroupMemberKind, GroupRole
 
 
 def test_enabled_group_ids_and_group_member_support_dicts_and_objects():
@@ -26,12 +26,26 @@ def test_is_group_owner_requires_owner_role_and_enabled_membership():
             is_enabled=True,
         ),
         {"user_id": 13, "role": GroupRole.MEMBER.value, "is_enabled": True},
+        SimpleNamespace(
+            user_id=14,
+            member_kind=GroupMemberKind.USER,
+            role=SimpleNamespace(value=GroupRole.OWNER.value),
+            is_enabled=True,
+        ),
+        SimpleNamespace(
+            user_id=15,
+            member_kind=GroupMemberKind.AGENT,
+            role=SimpleNamespace(value=GroupRole.OWNER.value),
+            is_enabled=True,
+        ),
     ]
 
     assert is_group_owner(memberships, 10) is True
     assert is_group_owner(memberships, 12) is True
+    assert is_group_owner(memberships, 14) is True
     assert is_group_owner(memberships, 11) is False
     assert is_group_owner(memberships, 13) is False
+    assert is_group_owner(memberships, 15) is False
 
 
 def test_visible_groups_filters_by_membership_ids_for_dicts_and_objects():

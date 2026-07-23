@@ -1,7 +1,13 @@
 from .actions import ACTION_DESCRIPTORS
 from .commands import COMMAND_DESCRIPTORS
+from .collections import AI_MODEL_EXECUTOR_COLLECTION_VIEW_SPECS
 from .module import APMATIA_AI_MODEL_EXECUTOR_MODULE, register
-from .models import HostResourceSnapshot, LlamaCppRuntimeConfig, ModelExecutionRecord
+from .module_views import ApmatiaAiModelExecutorModuleViewProvider
+from .models import (
+    HostResourceSnapshot,
+    LlamaCppRuntimeConfig,
+    ModelExecutionRecord,
+)
 from .services import (
     can_run_model,
     get_execution_record,
@@ -20,6 +26,8 @@ from .views import VIEW_DESCRIPTORS
 __all__ = [
     "ACTION_DESCRIPTORS",
     "APMATIA_AI_MODEL_EXECUTOR_MODULE",
+    "ApmatiaAiModelExecutorModuleViewProvider",
+    "AI_MODEL_EXECUTOR_COLLECTION_VIEW_SPECS",
     "COMMAND_DESCRIPTORS",
     "HostResourceSnapshot",
     "LlamaCppRuntimeConfig",

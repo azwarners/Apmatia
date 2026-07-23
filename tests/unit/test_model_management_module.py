@@ -1,15 +1,15 @@
 from datetime import datetime
 from unittest.mock import patch
 
-from apmatia.lib.model_management.models import LLM
-from apmatia.lib.model_management.module import LLMManager
+from apmatia.modules.ai_model_manager.models import LLMConfig as LLM
+from apmatia.modules.ai_model_manager.services import LLMManager
 
 
 def test_list_configs_normalizes_missing_base_fields():
     manager = LLMManager()
 
     with patch(
-        "apmatia.lib.model_management.module.get_config_value",
+        "apmatia.modules.ai_model_manager.services.get_config_value",
         return_value=[
             {
                 "id": 1,
@@ -38,10 +38,10 @@ def test_create_config_persists_base_fields():
     def fake_save(config):
         saved.update(config)
 
-    with patch("apmatia.lib.model_management.module.get_config_value", return_value=[]), patch(
-        "apmatia.lib.model_management.module.load_app_config",
-        return_value={"llm": {"configs": []}},
-    ), patch("apmatia.lib.model_management.module.save_app_config", side_effect=fake_save):
+    with patch("apmatia.modules.ai_model_manager.services.get_config_value", return_value=[]), patch(
+        "apmatia.modules.ai_model_manager.services.load_app_config",
+        return_value={"ai_model_manager": {"llm_configs": []}},
+    ), patch("apmatia.modules.ai_model_manager.services.save_app_config", side_effect=fake_save):
         created = manager.create_config(
             LLM(
                 user_alias="Local",
@@ -51,7 +51,7 @@ def test_create_config_persists_base_fields():
             )
         )
 
-    configs = saved["llm"]["configs"]
+    configs = saved["ai_model_manager"]["llm_configs"]
     assert created.id == 1
     assert created.owner_user_id == 7
     assert len(configs) == 1
@@ -67,19 +67,17 @@ def test_probe_config_uses_limited_prompt_response():
 
     with patch.object(
         manager,
-        "list_configs",
-        return_value=[
-            LLM(
-                id=4,
-                user_alias="Verifier",
-                backend="openai_compatible",
-                provider_name="demo",
-                model_url="http://localhost:5001",
-                max_response_size=4096,
-            )
-        ],
+        "get_config",
+        return_value=LLM(
+            id=4,
+            user_alias="Verifier",
+            backend="openai_compatible",
+            provider_name="demo",
+            model_url="http://localhost:5001",
+            max_response_size=4096,
+        ),
     ), patch(
-        "apmatia.lib.discussions.prompt_llm.prompt_llm",
+        "apmatia.modules.contacts_and_discussions.services.prompt_llm",
         return_value="ready and connected",
     ) as mock_prompt:
         result = manager.probe_config(4)

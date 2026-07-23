@@ -143,7 +143,7 @@ def test_cli_module_list_includes_worksim_module(capsys):
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "worksim | Apmatia Worksim | 0.1.0" in captured.out
+    assert "worksim | Worksim | 0.1.0" in captured.out
 
 
 def test_cli_module_list_json_output_is_valid_json(capsys):
@@ -217,7 +217,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[0]["is_workspace"] is False
     payload = payload[1:]
     assert payload[0]["module"]["module_id"] == "agent_loops"
-    assert payload[0]["module"]["name"] == "Apmatia Agent Loops"
+    assert payload[0]["module"]["name"] == "Agent Loops"
     assert payload[0]["module"]["version"] == "0.1.0"
     assert payload[0]["module"]["description"] == "A long-running workspace for autonomous contact-driven task loops and run history."
     assert payload[0]["module"]["author"] == "Nick"
@@ -242,7 +242,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     ]
     assert payload[0]["source"] == "bundled"
     assert payload[0]["is_workspace"] is False
-    assert payload[1]["module"]["name"] == "Apmatia AI Host Management"
+    assert payload[1]["module"]["name"] == "AI Host Management"
     assert payload[1]["module"]["version"] == "0.1.0"
     assert payload[1]["module"]["description"] == "Track AI-capable hosts and inspect current resource utilization across registered hosts for future model placement."
     assert payload[1]["module"]["metadata"] == {
@@ -275,9 +275,9 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "ai_host_management.hosts.view",
         "ai_host_management.resources.view",
     ]
-    assert payload[2]["module"]["name"] == "Apmatia AI Model Executor"
+    assert payload[2]["module"]["name"] == "AI Model Executor"
     assert payload[2]["module"]["version"] == "0.1.0"
-    assert payload[3]["module"]["name"] == "Apmatia AI Model Manager"
+    assert payload[3]["module"]["name"] == "AI Model Manager"
     assert payload[3]["module"]["version"] == "0.1.0"
     assert payload[3]["module"]["description"] == "Local GGUF model metadata management with size estimates and task routing preferences."
     assert payload[3]["module"]["metadata"] == {"category": "models", "tags": ["gguf", "models", "preferences", "scanning", "estimates"]}
@@ -289,10 +289,16 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "tools": [],
     }
     assert payload[3]["actions"] == [
+        "ai_model_manager.llm_configs",
         "ai_model_manager.models",
         "ai_model_manager.preferences",
     ]
     assert payload[3]["commands"] == [
+        "ai_model_manager.llm_configs.create",
+        "ai_model_manager.llm_configs.delete",
+        "ai_model_manager.llm_configs.edit",
+        "ai_model_manager.llm_configs.list",
+        "ai_model_manager.llm_configs.test",
         "ai_model_manager.models.create",
         "ai_model_manager.models.delete",
         "ai_model_manager.models.edit",
@@ -305,11 +311,12 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "ai_model_manager.preferences.list",
     ]
     assert payload[3]["views"] == [
+        "ai_model_manager.llm_configs.view",
         "ai_model_manager.models.view",
         "ai_model_manager.preferences.view",
     ]
     assert payload[4]["module"]["module_id"] == "contacts_and_discussions"
-    assert payload[4]["module"]["name"] == "Apmatia Contacts and Discussions"
+    assert payload[4]["module"]["name"] == "Contacts and Discussions"
     assert payload[4]["module"]["version"] == "0.1.0"
     assert payload[4]["module"]["description"] == "A topic-centered discussion system for organizing work, conversations, summaries, and chat targets."
     assert payload[4]["module"]["author"] == "Nick"
@@ -359,7 +366,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "contacts_and_discussions.chat_targets.view",
     ]
     assert payload[5]["module"]["module_id"] == "dev_tools"
-    assert payload[5]["module"]["name"] == "Apmatia Dev Tools"
+    assert payload[5]["module"]["name"] == "Dev Tools"
     assert payload[5]["module"]["version"] == "0.1.0"
     assert payload[5]["module"]["description"] == "Developer tools for tree inspection, source reading, and dependency tracing."
     assert payload[5]["module"]["author"] == "Nick"
@@ -378,7 +385,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[5]["commands"] == []
     assert payload[5]["views"] == []
     assert payload[6]["module"]["module_id"] == "ipe"
-    assert payload[6]["module"]["name"] == "Apmatia Integrated Productivity Environment"
+    assert payload[6]["module"]["name"] == "Integrated Productivity Environment"
     assert payload[6]["module"]["version"] == "0.1.0"
     assert payload[6]["module"]["description"] == "An integrated workspace for ideas, tasks, projects, habits, and calendar planning."
     assert payload[6]["module"]["author"] == "Nick"
@@ -423,7 +430,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "ipe.task.view",
     ]
     assert payload[7]["module"]["module_id"] == "logging"
-    assert payload[7]["module"]["name"] == "Apmatia Logging"
+    assert payload[7]["module"]["name"] == "Logging"
     assert payload[7]["module"]["version"] == "0.1.0"
     assert payload[7]["module"]["description"] == "Structured runtime logging and a browsable log viewer for Apmatia."
     assert payload[7]["module"]["author"] == "Nick"
@@ -442,7 +449,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[7]["commands"] == []
     assert payload[7]["views"] == ["logging.entries.view"]
     assert payload[8]["module"]["module_id"] == "worksim"
-    assert payload[8]["module"]["name"] == "Apmatia Worksim"
+    assert payload[8]["module"]["name"] == "Worksim"
     assert payload[8]["module"]["version"] == "0.1.0"
     assert payload[8]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
     assert payload[8]["module"]["author"] == "Nick"
@@ -467,7 +474,7 @@ def test_cli_module_show_displays_worksim_module_details(capsys):
 
     assert exit_code == 0
     assert "Module: worksim" in captured.out
-    assert "Name: Apmatia Worksim" in captured.out
+    assert "Name: Worksim" in captured.out
     assert "Version: 0.1.0" in captured.out
     assert "Description: A workplace simulation module centered on a persistent org chart wiki." in captured.out
     assert "Author:" in captured.out
@@ -488,7 +495,7 @@ def test_cli_module_show_json_output_is_valid_json(capsys):
 
     assert exit_code == 0
     assert payload["module"]["module_id"] == "worksim"
-    assert payload["module"]["name"] == "Apmatia Worksim"
+    assert payload["module"]["name"] == "Worksim"
     assert payload["module"]["version"] == "0.1.0"
     assert payload["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
     assert payload["module"]["author"] == "Nick"

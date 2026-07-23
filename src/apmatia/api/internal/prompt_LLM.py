@@ -1,4 +1,4 @@
-from apmatia.lib.discussions.prompt_llm import prompt_llm as core_prompt_llm
+from apmatia.modules.contacts_and_discussions.services import prompt_llm as core_prompt_llm
 
 def prompt_llm(
     prompt: str = "Hello",

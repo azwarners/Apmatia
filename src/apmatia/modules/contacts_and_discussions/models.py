@@ -9,6 +9,7 @@ from apmatia.lib.apmatia_core.models import ApmatiaObject, utc_now
 
 TOPIC_STATUSES = {"active", "evolving", "closed", "archived"}
 DISCUSSION_STATUSES = {"active", "paused", "closed", "archived"}
+DISCUSSION_AGENT_MODES = {"discussion", "agentic"}
 PARTICIPANT_ROLES = {"agent", "coordinator", "reviewer", "observer"}
 PARTICIPANT_TURN_POLICIES = {"manual", "auto", "round_robin", "coordinator_only"}
 SUMMARY_REASONS = {"topic_closed", "topic_evolved", "user_requested", "maintenance"}
@@ -79,6 +80,9 @@ class Discussion(ApmatiaObject):
     started_at: datetime | None = None
     last_activity_at: datetime | None = None
     closed_at: datetime | None = None
+    agent_mode: str = "discussion"
+    owner_user_id: int | None = None
+    focused_wiki_id: str | int | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -90,6 +94,9 @@ class Discussion(ApmatiaObject):
         self.started_at = _normalize_datetime(self.started_at)
         self.last_activity_at = _normalize_datetime(self.last_activity_at)
         self.closed_at = _normalize_datetime(self.closed_at)
+        self.agent_mode = _normalize_status(self.agent_mode, DISCUSSION_AGENT_MODES, default="discussion")
+        self.owner_user_id = _normalize_int(self.owner_user_id)
+        self.focused_wiki_id = self.focused_wiki_id if self.focused_wiki_id in (None, "") else str(self.focused_wiki_id)
         self.metadata = dict(self.metadata or {})
 
 

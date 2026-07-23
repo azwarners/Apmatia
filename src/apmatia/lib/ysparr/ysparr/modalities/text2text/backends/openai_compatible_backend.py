@@ -40,7 +40,17 @@ class OpenAICompatibleBackend:
                 "OpenAI-compatible base_url not provided and not found in config"
             )
         self.base_url = self.base_url.rstrip("/")
+        
+        # Debug: Log base_url before Docker resolution
+        import os
+        original_url = self.base_url
         self.base_url = _resolve_docker_host_loopback(self.base_url)
+        
+        if os.getenv("APMATIA_DEBUG_BACKEND", "0") == "1":
+            print(f"[OpenAICompatibleBackend] model_name={model_name}")
+            print(f"[OpenAICompatibleBackend] base_url (original)={original_url}")
+            print(f"[OpenAICompatibleBackend] base_url (resolved)={self.base_url}")
+            print(f"[OpenAICompatibleBackend] running_in_docker={_running_in_docker()}")
 
         self.api_key = (
             api_key
@@ -92,6 +102,13 @@ class OpenAICompatibleBackend:
         headers = self._build_headers()
         metadata = request.metadata if isinstance(request.metadata, dict) else {}
         on_event = metadata.get("on_event")
+        
+        # Debug: Log request details
+        if os.getenv("APMATIA_DEBUG_BACKEND", "0") == "1":
+            print(f"[OpenAICompatibleBackend] Request to endpoint={endpoint}")
+            print(f"[OpenAICompatibleBackend] Full URL={url}")
+            print(f"[OpenAICompatibleBackend] model_name={payload.get('model', self.default_model_name)}")
+            print(f"[OpenAICompatibleBackend] prompt_length={len(payload.get('prompt', payload.get('messages', '')))}")
 
         try:
             with requests.post(
@@ -284,11 +301,16 @@ def _resolve_docker_host_loopback(base_url: str) -> str:
         return base_url
 
     try:
-        if not ip_address(hostname).is_loopback and hostname != "localhost":
-            return base_url
+        addr = ip_address(hostname)
+        # Only rewrite actual loopback addresses. Private addresses may be
+        # valid model servers on the user's LAN (for example 192.168.x.x)
+        # and must remain reachable from the container.
+        is_loopback = addr.is_loopback
     except ValueError:
-        if hostname != "localhost":
-            return base_url
+        is_loopback = hostname == "localhost"
+
+    if not is_loopback:
+        return base_url
 
     gateway_host = _docker_gateway_host() or "host.docker.internal"
     netloc = gateway_host

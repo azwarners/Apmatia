@@ -8,7 +8,7 @@ from .tools import TOOL_DESCRIPTORS
 
 APMATIA_DEV_TOOLS_MODULE = ModuleMetadata(
     module_id="dev_tools",
-    name="Apmatia Dev Tools",
+    name="Dev Tools",
     version="0.1.0",
     description="Read directories, inspect source files, and trace imports for agent-side development review.",
     metadata={

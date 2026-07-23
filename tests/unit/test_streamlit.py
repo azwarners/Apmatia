@@ -9,7 +9,6 @@ from apmatia.api.http.routes.settings_routes import SettingsPayload
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-
 def test_show_auth_form_returns_true_when_api_session_is_authenticated(mock_streamlit):
     """Auth form short-circuits when the API session is already active."""
     with patch(
@@ -24,7 +23,6 @@ def test_show_auth_form_returns_true_when_api_session_is_authenticated(mock_stre
     assert result is True
     assert mock_streamlit.session_state["auth_token"] == "api-session"
     assert mock_streamlit.session_state["authenticated_user"]["username"] == "testuser"
-
 
 def test_show_auth_form_logs_in_via_api(mock_streamlit):
     """Sign-in uses the API client rather than talking to core directly."""
@@ -53,7 +51,6 @@ def test_show_auth_form_logs_in_via_api(mock_streamlit):
     assert mock_streamlit.session_state["authenticated_user"]["username"] == "testuser"
     mock_streamlit.success.assert_called_with("Welcome back, testuser!")
     mock_streamlit.rerun.assert_called_once()
-
 
 def test_api_client_hydrates_cookie_from_browser_context(mock_streamlit):
     """The Streamlit API client restores auth from a browser cookie on refresh."""
@@ -93,7 +90,6 @@ def test_api_client_hydrates_cookie_from_browser_context(mock_streamlit):
     assert mock_streamlit.session_state["api_cookies"]["apmatia_session"] == "browser-token"
     mock_streamlit.html.assert_called()
     assert mock_client.cookies["apmatia_session"] == "browser-token"
-
 
 def test_settings_page_loads_and_saves(mock_streamlit):
     """Settings page loads grouped values and posts them back through the API."""
@@ -162,7 +158,6 @@ def test_settings_page_loads_and_saves(mock_streamlit):
     assert any(c.args[:1] == ("Current UTC",) for c in mock_streamlit.metric.call_args_list)
     mock_streamlit.success.assert_called_with("Settings saved.")
 
-
 def test_agent_management_page_loads_creates_and_lists(mock_streamlit):
     """Agent management page uses the API client for CRUD and LLM selection."""
     agents = [
@@ -221,7 +216,6 @@ def test_agent_management_page_loads_creates_and_lists(mock_streamlit):
     mock_streamlit.caption.assert_any_call(
         "Create, edit, and remove Agent objects through the local API."
     )
-
 
 def test_agent_management_clone_button_prefills_new_agent_form(mock_streamlit):
     """Clone selected agent loads a new draft agent into the editor."""
@@ -284,7 +278,6 @@ def test_agent_management_clone_button_prefills_new_agent_form(mock_streamlit):
     assert mock_streamlit.session_state["agent_form_values"]["memory_id"] == 11
     assert mock_streamlit.session_state["agent_selected_id"] == 1
 
-
 def test_agent_management_delete_requires_confirmation(mock_streamlit):
     agents = [
         {
@@ -333,7 +326,6 @@ def test_agent_management_delete_requires_confirmation(mock_streamlit):
     assert mock_streamlit.session_state["agent_selected_id"] == 1
     assert mock_streamlit.session_state["agent_form_values"]["id"] == 1
     mock_streamlit.rerun.assert_called()
-
 
 def test_agent_management_confirmed_delete_clears_selected_form_state(mock_streamlit):
     agents = [
@@ -386,7 +378,6 @@ def test_agent_management_confirmed_delete_clears_selected_form_state(mock_strea
     assert "agent_delete_target" not in mock_streamlit.session_state
     mock_streamlit.success.assert_any_call("Agent deleted.")
     mock_streamlit.rerun.assert_called()
-
 
 def test_tool_management_page_executes_safe_tool_calls(mock_streamlit):
     """Tool management page loads definitions and executes a selected safe tool through the API."""
@@ -481,7 +472,6 @@ def test_tool_management_page_executes_safe_tool_calls(mock_streamlit):
     mock_streamlit.caption.assert_any_call(
         "Create tool definitions, grant them to agents, and run safe demo calls through the local API."
     )
-
 
 def test_tool_management_page_grants_multiple_tools_with_checklists(mock_streamlit):
     """Tool management page can grant several tools at once using checklist controls."""
@@ -578,7 +568,6 @@ def test_tool_management_page_grants_multiple_tools_with_checklists(mock_streaml
     )
     mock_execute.assert_not_called()
 
-
 def test_tool_management_page_updates_existing_tool(mock_streamlit):
     """Tool management page can edit an existing tool definition without creating a new one."""
     agents = [{"id": 7, "name": "Planner"}]
@@ -634,7 +623,6 @@ def test_tool_management_page_updates_existing_tool(mock_streamlit):
         metadata={"builtin": True},
     )
     mock_streamlit.success.assert_any_call("Updated tool definition echo (ID 1).")
-
 
 def test_memory_management_page_loads_saved_memories(mock_streamlit):
     """Memory management page loads saved memories through the API client."""
@@ -709,7 +697,6 @@ def test_memory_management_page_loads_saved_memories(mock_streamlit):
     assert list_memories_calls == [{"include_archived": True, "owner_agent_id": 7}]
     assert search_memories_calls == []
 
-
 def test_memory_management_page_limits_owner_agent_choices_to_writable_agents(mock_streamlit):
     """The create form should only offer agents owned by the current user."""
     agents = [
@@ -747,7 +734,6 @@ def test_memory_management_page_limits_owner_agent_choices_to_writable_agents(mo
 
     mock_streamlit.info.assert_any_call("No memories found.")
 
-
 def test_model_management_page_shows_saved_model_url(mock_streamlit):
     """Existing model cards show the saved base URL for verification."""
     configs = [
@@ -776,7 +762,6 @@ def test_model_management_page_shows_saved_model_url(mock_streamlit):
         model_management_page.render()
 
     mock_streamlit.caption.assert_any_call("URL: http://localhost:5001")
-
 
 def test_model_management_page_can_test_ai_model(mock_streamlit):
     """Model management can probe a saved AI model through the API."""
@@ -814,7 +799,6 @@ def test_model_management_page_can_test_ai_model(mock_streamlit):
         "AI model responded: ready and connected"
     )
 
-
 def test_model_management_page_uses_ai_model_labels(mock_streamlit):
     """Model management page uses the updated AI model terminology and fields."""
     llm_configs = [
@@ -846,7 +830,6 @@ def test_model_management_page_uses_ai_model_labels(mock_streamlit):
     )
     mock_streamlit.subheader.assert_any_call("AI Model")
     mock_streamlit.subheader.assert_any_call("Existing AI models")
-
 
 def test_user_management_page_loads_and_manages_groups(mock_streamlit):
     """User management uses the API client for users, groups, and membership updates."""
@@ -927,7 +910,6 @@ def test_user_management_page_loads_and_manages_groups(mock_streamlit):
         "Create users, edit your account, and manage the groups you own through the local API."
     )
 
-
 def test_user_management_page_allows_adding_agent_members(mock_streamlit):
     """Group member selection should switch to agents and submit an agent payload."""
     mock_streamlit.session_state["authenticated_user"] = {"user_id": 1, "username": "nick"}
@@ -990,117 +972,6 @@ def test_user_management_page_allows_adding_agent_members(mock_streamlit):
         agent_id=77,
     )
 
-
-def test_discussion_page_uses_agent_and_discussion_backend(mock_streamlit):
-    """Discussion page selects agents by ID and sends prompts through the API."""
-    agents = [
-        {"id": 7, "name": "Planner", "active_model_id": 301},
-        {"id": 8, "name": "Writer"},
-    ]
-    llm_configs = [
-        {"id": 301, "user_alias": "Default", "backend": "openai_compatible", "model_url": "http://localhost:5001"},
-    ]
-    tree = {
-        "current_discussion_id": "IDabc123",
-        "discussions": [
-            {"discussion_id": "IDabc123", "title": "Sprint Planning", "participant_agent_ids": [7]},
-            {"discussion_id": "IDdef456", "title": "Research", "participant_agent_ids": [7]},
-        ],
-    }
-    snapshot = {
-        "discussion_id": "IDabc123",
-        "messages": [{"role": "User", "text": "Hello"}],
-        "last_error": None,
-    }
-    mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
-    mock_streamlit.text_area.return_value = "Write a status update."
-    mock_streamlit.form_submit_button.return_value = True
-    mock_streamlit.button.return_value = False
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_tree",
-        return_value=tree,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_state",
-        return_value=snapshot,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.prompt_discussion"
-    ) as mock_prompt:
-        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-        discussion_page = importlib.reload(discussion_page)
-        discussion_page.render()
-
-    mock_prompt.assert_called_once()
-    payload = mock_prompt.call_args.kwargs
-    assert payload["agent_id"] == 7
-    assert payload["prompt"] == "Write a status update."
-    assert payload["attachments"] == []
-    mock_streamlit.title.assert_called_with("Discussion")
-    mock_streamlit.caption.assert_any_call(
-        "Using Default via openai_compatible at http://localhost:5001."
-    )
-    mock_streamlit.markdown.assert_any_call("Hello")
-
-
-def test_discussion_page_can_update_participants(mock_streamlit):
-    """The discussion page lets you assign multiple agents to the current discussion."""
-    agents = [
-        {"id": 7, "name": "Planner", "active_model_id": 301},
-        {"id": 8, "name": "Writer", "active_model_id": 302},
-    ]
-    llm_configs = [
-        {"id": 301, "user_alias": "Planner Model", "backend": "openai_compatible", "model_url": "http://localhost:5001"},
-        {"id": 302, "user_alias": "Writer Model", "backend": "openai_compatible", "model_url": "http://localhost:6001"},
-    ]
-    tree = {
-        "current_discussion_id": "IDabc123",
-        "discussions": [
-            {
-                "discussion_id": "IDabc123",
-                "title": "Shared Thread",
-                "participant_agent_ids": [7],
-                "chat_mode": "round_robin",
-            }
-        ],
-    }
-    snapshot = {
-        "discussion_id": "IDabc123",
-        "messages": [],
-        "last_error": None,
-        "is_streaming": False,
-        "chat_mode": "round_robin",
-        "chat_pause_seconds": None,
-        "chat_is_paused": False,
-        "chat_turn_index": 0,
-        "chat_coordinator_agent_id": None,
-    }
-    mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
-    mock_streamlit.multiselect.return_value = [7, 8]
-    mock_streamlit.button.side_effect = lambda label, *args, **kwargs: label == "Save chat targets"
-    mock_streamlit.form_submit_button.return_value = False
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_tree",
-        return_value=tree,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_state",
-        return_value=snapshot,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.update_discussion"
-    ) as mock_update:
-        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-        discussion_page = importlib.reload(discussion_page)
-        discussion_page.render()
-
-    mock_update.assert_called_once_with("IDabc123", participant_agent_ids=[7, 8])
-
-
 def test_message_text_blocks_preserve_markdown_and_emoji(mock_streamlit):
     import apmatia.interfaces.streamlit.components.message_card as message_card
 
@@ -1108,484 +979,6 @@ def test_message_text_blocks_preserve_markdown_and_emoji(mock_streamlit):
     message_card.render_message_text_block("Hello **world**\nLine two 😀")
 
     mock_streamlit.markdown.assert_called_once_with("Hello **world**\nLine two 😀")
-
-
-def test_discussion_message_titles_use_user_and_agent_names(mock_streamlit):
-    """Message cards show the authenticated username and selected agent name."""
-    import apmatia.interfaces.streamlit.components.message_card as message_card
-    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-    importlib.reload(message_card)
-    discussion_page = importlib.reload(discussion_page)
-    discussion_page._render_message_card(
-        "IDabc123",
-        0,
-        {"role": "User", "text": "Hello"},
-        username="nick",
-        agent_name="Planner",
-    )
-    discussion_page._render_message_card(
-        "IDabc123",
-        1,
-        {"role": "Assistant", "text": "Hi"},
-        username="nick",
-        agent_name="Planner",
-    )
-
-    mock_streamlit.caption.assert_any_call("nick")
-    mock_streamlit.caption.assert_any_call("Planner")
-
-
-def test_tutor_page_loads_discussion_and_wiki_workspace(mock_streamlit):
-    agents = [{"id": 7, "name": "Tutor", "active_model_id": 301}]
-    llm_configs = [
-        {"id": 301, "user_alias": "Default", "backend": "openai_compatible", "model_url": "http://localhost:5001"},
-    ]
-    tree = {
-        "current_discussion_id": "IDtutor01",
-        "discussions": [
-            {
-                "discussion_id": "IDregular01",
-                "title": "Regular discussion",
-                "participant_agent_ids": [7],
-                "focused_wiki_id": None,
-            },
-            {
-                "discussion_id": "IDtutor01",
-                "title": "Algebra session",
-                "participant_agent_ids": [7],
-                "focused_wiki_id": "wiki_algebra",
-            }
-        ],
-    }
-    snapshot = {
-        "discussion_id": "IDtutor01",
-        "messages": [{"role": "User", "text": "Can we solve for x?"}],
-        "last_error": None,
-        "is_streaming": False,
-    }
-    wikis = [{"id": "wiki_algebra", "title": "Algebra I", "description": "Session notes"}]
-    wiki_tree = {
-        "wiki": {
-            "id": "wiki_algebra",
-            "title": "Algebra I",
-            "description": "Session notes",
-            "root_node_id": "wn_root",
-        },
-        "root": {
-            "id": "wn_root",
-            "wiki_id": "wiki_algebra",
-            "parent_id": None,
-            "node_type": "branch",
-            "title": "Algebra I",
-            "body": "",
-            "sort_order": 0,
-            "children": [
-                {
-                    "id": "wn_leaf",
-                    "wiki_id": "wiki_algebra",
-                    "parent_id": "wn_root",
-                    "node_type": "leaf",
-                    "title": "Linear equations",
-                    "body": "Balance both sides.",
-                    "sort_order": 0,
-                    "children": [],
-                }
-            ],
-        },
-    }
-    mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
-    mock_streamlit.text_input.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.text_area.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.form_submit_button.return_value = False
-    mock_streamlit.button.side_effect = lambda *args, **kwargs: False
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_tree",
-        return_value=tree,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_state",
-        return_value=snapshot,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.list_wikis",
-        return_value=wikis,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.get_wiki_tree",
-        return_value=wiki_tree,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.search_wiki",
-        return_value=[],
-    ):
-        import apmatia.interfaces.streamlit.pages.tutor as tutor_page
-
-        tutor_page = importlib.reload(tutor_page)
-        tutor_page.render()
-
-    mock_streamlit.title.assert_called_with("Tutor")
-    mock_streamlit.caption.assert_any_call("Building notes in: Algebra I")
-    mock_streamlit.caption.assert_any_call("Selected node: Algebra I")
-
-
-def test_tutor_page_hides_regular_discussions_from_saved_session_picker(mock_streamlit):
-    agents = [{"id": 7, "name": "Tutor", "active_model_id": 301}]
-    llm_configs = [
-        {"id": 301, "user_alias": "Default", "backend": "openai_compatible", "model_url": "http://localhost:5001"},
-    ]
-    tree = {
-        "current_discussion_id": "IDregular01",
-        "discussions": [
-            {
-                "discussion_id": "IDregular01",
-                "title": "Regular discussion",
-                "participant_agent_ids": [7],
-                "focused_wiki_id": None,
-            },
-            {
-                "discussion_id": "IDtutor01",
-                "title": "Saved tutor session",
-                "participant_agent_ids": [7],
-                "focused_wiki_id": "wiki_algebra",
-            },
-        ],
-    }
-    snapshot = {
-        "discussion_id": "IDtutor01",
-        "messages": [],
-        "last_error": None,
-        "is_streaming": False,
-    }
-    wikis = [{"id": "wiki_algebra", "title": "Algebra I", "description": "Session notes"}]
-    wiki_tree = {
-        "wiki": {
-            "id": "wiki_algebra",
-            "title": "Algebra I",
-            "description": "Session notes",
-            "root_node_id": "wn_root",
-        },
-        "root": {
-            "id": "wn_root",
-            "wiki_id": "wiki_algebra",
-            "parent_id": None,
-            "node_type": "branch",
-            "title": "Algebra I",
-            "body": "",
-            "sort_order": 0,
-            "children": [],
-        },
-    }
-
-    def _selectbox(label, options, index=0, **_kwargs):
-        if label == "Discussion":
-            assert [option.get("title") for option in options] == ["Saved tutor session"]
-        return options[index]
-
-    mock_streamlit.selectbox.side_effect = _selectbox
-    mock_streamlit.text_input.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.text_area.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.form_submit_button.return_value = False
-    mock_streamlit.button.side_effect = lambda *args, **kwargs: False
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_tree",
-        return_value=tree,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_state",
-        return_value=snapshot,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.list_wikis",
-        return_value=wikis,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.get_wiki_tree",
-        return_value=wiki_tree,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.search_wiki",
-        return_value=[],
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.open_discussion"
-    ) as mock_open:
-        import apmatia.interfaces.streamlit.pages.tutor as tutor_page
-
-        tutor_page = importlib.reload(tutor_page)
-        tutor_page.render()
-
-    mock_open.assert_called_once_with("IDtutor01")
-
-
-def test_tutor_page_creates_wiki_without_session_state_error(mock_streamlit):
-    agents = [{"id": 7, "name": "Tutor", "active_model_id": 301}]
-    llm_configs = [
-        {"id": 301, "user_alias": "Default", "backend": "openai_compatible", "model_url": "http://localhost:5001"},
-    ]
-    tree = {"current_discussion_id": None, "discussions": []}
-    wikis = []
-    snapshot = {"discussion_id": None, "messages": [], "last_error": None, "is_streaming": False}
-    wiki_tree = None
-
-    def _selectbox(label, options, index=0, **_kwargs):
-        return options[index]
-
-    mock_streamlit.selectbox.side_effect = _selectbox
-    mock_streamlit.text_input.side_effect = lambda label, value="", **_kwargs: "Algebra Notes" if label == "Wiki title" else value
-    mock_streamlit.text_area.side_effect = lambda label, value="", **_kwargs: "Notes" if label == "Wiki description" else value
-    mock_streamlit.form_submit_button.return_value = False
-    mock_streamlit.button.side_effect = lambda *args, **kwargs: False
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_tree", return_value=tree
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_state", return_value=snapshot
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.list_wikis", return_value=wikis
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.get_wiki_tree", return_value=wiki_tree
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.search_wiki", return_value=[]
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.create_wiki",
-        return_value={"wiki": {"id": "wiki_123", "title": "Algebra Notes", "description": "Notes"}},
-    ) as mock_create:
-        import apmatia.interfaces.streamlit.pages.tutor as tutor_page
-
-        tutor_page = importlib.reload(tutor_page)
-        tutor_page.render()
-
-    mock_create.assert_not_called()
-    assert mock_streamlit.session_state["tutor_clear_new_wiki_fields"] is False
-
-
-def test_tutor_live_discussion_uses_selected_tutor_agent(mock_streamlit):
-    agents = [
-        {"id": 9, "name": "Other Agent", "active_model_id": 301},
-        {"id": 7, "name": "Tutor Agent", "active_model_id": 302},
-    ]
-    snapshot = {"discussion_id": "disc-1", "messages": [], "last_error": None, "is_streaming": False}
-    wiki_tree = {
-        "wiki": {
-            "id": "wiki-1",
-            "title": "Tutor Wiki",
-            "description": "Notes",
-            "root_node_id": "root-1",
-        },
-        "root": {
-            "id": "root-1",
-            "wiki_id": "wiki-1",
-            "parent_id": None,
-            "node_type": "branch",
-            "title": "Tutor Wiki",
-            "body": "",
-            "sort_order": 0,
-            "children": [],
-        },
-    }
-    mock_streamlit.session_state["tutor_selected_agent_id"] = 7
-    mock_streamlit.session_state["tutor_selected_wiki_id"] = "wiki-1"
-    mock_streamlit.text_area.return_value = "Ask the tutor"
-    mock_streamlit.form_submit_button.return_value = True
-    mock_streamlit.button.side_effect = lambda *args, **kwargs: False
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_state",
-        return_value=snapshot,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.get_wiki_tree",
-        return_value=wiki_tree,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.prompt_discussion",
-    ) as mock_prompt:
-        import apmatia.interfaces.streamlit.pages.tutor_live_discussion as live_page
-
-        live_page = importlib.reload(live_page)
-        live_page.render()
-
-    mock_prompt.assert_called_once()
-    assert mock_prompt.call_args.kwargs["agent_id"] == 7
-
-
-def test_discussion_selectbox_auto_opens_selected_discussion(mock_streamlit):
-    """Changing the discussion dropdown opens that discussion without a button."""
-    agents = [{"id": 7, "name": "Planner"}]
-    llm_configs = [
-        {"id": 301, "user_alias": "Default", "backend": "openai_compatible", "model_url": "http://localhost:5001"},
-    ]
-    tree = {
-        "current_discussion_id": "IDabc123",
-        "discussions": [
-            {"discussion_id": "IDabc123", "title": "Current", "participant_agent_ids": [7]},
-            {"discussion_id": "IDdef456", "title": "Next", "participant_agent_ids": [7]},
-        ],
-    }
-    snapshot = {"discussion_id": "IDabc123", "messages": [], "last_error": None}
-    mock_streamlit.selectbox.side_effect = lambda label, options, index=0, **_kwargs: (
-        options[0] if label == "Agent" else options[1]
-    )
-    mock_streamlit.button.return_value = False
-    mock_streamlit.form_submit_button.return_value = False
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_tree",
-        return_value=tree,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_state",
-        return_value=snapshot,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.open_discussion"
-    ) as mock_open:
-        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-        discussion_page = importlib.reload(discussion_page)
-        discussion_page.render()
-
-    mock_open.assert_called_once_with("IDdef456")
-    mock_streamlit.rerun.assert_called()
-
-
-def test_discussion_page_filters_discussions_by_selected_agent(mock_streamlit):
-    """The discussion dropdown only shows discussions associated with the selected agent."""
-    agents = [{"id": 7, "name": "Planner"}, {"id": 8, "name": "Researcher"}]
-    llm_configs = [
-        {"id": 301, "user_alias": "Planner Model", "backend": "openai_compatible", "model_url": "http://localhost:5001"},
-        {"id": 302, "user_alias": "Research Model", "backend": "openai_compatible", "model_url": "http://localhost:6001"},
-    ]
-    tree = {
-        "current_discussion_id": "IDghi789",
-        "discussions": [
-            {"discussion_id": "IDabc123", "title": "Planner Thread", "participant_agent_ids": [7]},
-            {"discussion_id": "IDdef456", "title": "Shared Thread", "participant_agent_ids": [7, 8]},
-            {"discussion_id": "IDghi789", "title": "Research Thread", "participant_agent_ids": [8]},
-        ],
-    }
-    snapshot = {"discussion_id": "IDghi789", "messages": [], "last_error": None, "is_streaming": False}
-    captured_discussion_options = []
-
-    def _selectbox(label, options, index=0, **_kwargs):
-        if label == "Discussion":
-            captured_discussion_options.extend(options)
-            return options[0]
-        return options[1]
-
-    mock_streamlit.selectbox.side_effect = _selectbox
-    mock_streamlit.button.return_value = False
-    mock_streamlit.form_submit_button.return_value = False
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_tree",
-        return_value=tree,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_state",
-        return_value=snapshot,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.open_discussion"
-    ) as mock_open:
-        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-        discussion_page = importlib.reload(discussion_page)
-        discussion_page.render()
-
-    assert [option["discussion_id"] for option in captured_discussion_options] == ["IDabc123", "IDdef456"]
-    mock_open.assert_called_once_with("IDabc123")
-
-
-def test_discussion_delete_selected_button_calls_api(mock_streamlit):
-    """Delete selected discussion moves the selected discussion to trash."""
-    agents = [{"id": 7, "name": "Planner"}]
-    llm_configs = [
-        {"id": 301, "user_alias": "Default", "backend": "openai_compatible", "model_url": "http://localhost:5001"},
-    ]
-    tree = {
-        "current_discussion_id": "IDabc123",
-        "discussions": [{"discussion_id": "IDabc123", "title": "Current", "participant_agent_ids": [7]}],
-    }
-    snapshot = {"discussion_id": "IDabc123", "messages": [], "last_error": None}
-    render_phase = {"value": 0}
-
-    def button_side_effect(label, *args, **_kwargs):
-        if render_phase["value"] == 0:
-            return label == "Delete selected discussion"
-        return label == "Delete"
-
-    mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
-    mock_streamlit.button.side_effect = button_side_effect
-    mock_streamlit.form_submit_button.return_value = False
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_tree",
-        return_value=tree,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_state",
-        return_value=snapshot,
-        ), patch(
-            "apmatia.interfaces.streamlit.api_client.delete_discussion"
-        ) as mock_delete:
-        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-        discussion_page = importlib.reload(discussion_page)
-        discussion_page.render()
-        render_phase["value"] = 1
-        discussion_page.render()
-
-    mock_delete.assert_called_once_with("IDabc123")
-    mock_streamlit.success.assert_called_with("Discussion moved to trash.")
-    mock_streamlit.rerun.assert_called()
-
-
-def test_discussion_delete_last_discussion_does_not_open_replacement(mock_streamlit):
-    """Deleting the final visible discussion does not auto-open or auto-create a new one."""
-    agents = [{"id": 7, "name": "Planner"}]
-    llm_configs = [
-        {"id": 301, "user_alias": "Default", "backend": "openai_compatible", "model_url": "http://localhost:5001"},
-    ]
-    tree = {
-        "current_discussion_id": "IDabc123",
-        "discussions": [{"discussion_id": "IDabc123", "title": "Current", "participant_agent_ids": [7]}],
-    }
-    snapshot = {"discussion_id": "IDabc123", "messages": [], "last_error": None, "is_streaming": False}
-    render_phase = {"value": 0}
-
-    def button_side_effect(label, *args, **_kwargs):
-        if render_phase["value"] == 0:
-            return label == "Delete selected discussion"
-        return label == "Delete"
-
-    mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
-    mock_streamlit.button.side_effect = button_side_effect
-    mock_streamlit.form_submit_button.return_value = False
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_tree",
-        return_value=tree,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_state",
-        return_value=snapshot,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.delete_discussion",
-        return_value={"status": "deleted", "result": {"discussion_id": "IDabc123", "next_discussion_id": None}},
-    ) as mock_delete, patch(
-        "apmatia.interfaces.streamlit.api_client.open_discussion"
-        ) as mock_open:
-        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-        discussion_page = importlib.reload(discussion_page)
-        discussion_page.render()
-        render_phase["value"] = 1
-        discussion_page.render()
-
-    mock_delete.assert_called_once_with("IDabc123")
-    mock_open.assert_not_called()
-
 
 def test_contacts_shell_creates_fresh_discussion_for_agent_contact(mock_streamlit):
     """Selecting an agent contact should create a fresh contacts discussion."""
@@ -1613,6 +1006,26 @@ def test_contacts_shell_creates_fresh_discussion_for_agent_contact(mock_streamli
     )
     mock_open.assert_called_once_with("IDnew123")
 
+def test_selecting_contacts_module_restores_contacts_shell(mock_streamlit):
+    """Contacts uses its roster sidebar instead of the generic Chat Targets view."""
+    mock_streamlit.session_state.clear()
+
+    import apmatia.interfaces.streamlit.app as streamlit_app
+
+    streamlit_app = importlib.reload(streamlit_app)
+    with patch.object(streamlit_app, "_render_contacts_sidebar", return_value="discussion") as mock_contacts_sidebar:
+        streamlit_app._select_module_for_navigation("contacts_and_discussions", [])
+
+    assert mock_streamlit.session_state["selected_page"] == "discussion"
+    assert mock_streamlit.session_state["selected_module_id"] == "contacts_and_discussions"
+    assert mock_streamlit.session_state["selected_module_view_id"] == "contacts_and_discussions.chat_targets.view"
+    assert mock_streamlit.session_state["contacts_shell_active"] is True
+    mock_streamlit.rerun.assert_called_once()
+
+    with patch.object(streamlit_app, "_render_contacts_sidebar", return_value="discussion") as mock_contacts_sidebar:
+        selected_page = streamlit_app.render_sidebar()
+    assert selected_page == "discussion"
+    mock_contacts_sidebar.assert_called_once()
 
 def test_contacts_shell_reopens_existing_discussion_for_agent_contact(mock_streamlit):
     """Refreshing an agent contact should reopen the prior discussion instead of creating a new one."""
@@ -1645,7 +1058,6 @@ def test_contacts_shell_reopens_existing_discussion_for_agent_contact(mock_strea
     mock_open.assert_called_once_with("IDagentexisting")
     mock_create.assert_not_called()
 
-
 def test_contacts_shell_creates_fresh_discussion_for_group_contact(mock_streamlit):
     """Selecting a group contact should create a fresh contacts discussion."""
     mock_streamlit.session_state.clear()
@@ -1674,7 +1086,6 @@ def test_contacts_shell_creates_fresh_discussion_for_group_contact(mock_streamli
         group_id=9,
     )
     mock_open.assert_called_once_with("IDgroupnew123")
-
 
 def test_contacts_shell_reopens_existing_discussion_for_group_contact(mock_streamlit):
     """Refreshing a group contact should reopen the prior discussion instead of creating a new one."""
@@ -1707,31 +1118,6 @@ def test_contacts_shell_reopens_existing_discussion_for_group_contact(mock_strea
     mock_open.assert_called_once_with("IDgroupexisting")
     mock_create.assert_not_called()
 
-
-def test_discussion_message_copy_action_renders_html_button(mock_streamlit):
-    """The message copy action renders a browser-side copy button."""
-
-    import apmatia.interfaces.streamlit.components.message_card as message_card
-    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-    importlib.reload(message_card)
-    discussion_page = importlib.reload(discussion_page)
-    discussion_page._render_message_card(
-        "IDabc123",
-        0,
-        {"role": "User", "text": "Hello"},
-        username="nick",
-        agent_name="Planner",
-    )
-
-    html_calls = [call.args[0] for call in mock_streamlit.html.call_args_list]
-    assert any("apmatia-copy-button" in body for body in html_calls)
-    assert any("apmatia-copy-glyph" in body for body in html_calls)
-    assert any("data-copy=\"SGVsbG8=\"" in body for body in html_calls)
-    assert any("navigator.clipboard.writeText(text)" in body for body in html_calls)
-    mock_streamlit.rerun.assert_not_called()
-
-
 def test_clipboard_button_component_renders_main_dom_copy_control(mock_streamlit):
     """The reusable clipboard component writes directly to the browser clipboard."""
     import apmatia.interfaces.streamlit.components.clipboard_button as clipboard_button
@@ -1746,7 +1132,6 @@ def test_clipboard_button_component_renders_main_dom_copy_control(mock_streamlit
     assert 'data-copy="SGVsbG8="' in rendered_html
     assert "navigator.clipboard.writeText(text)" in rendered_html
 
-
 def test_clipboard_image_paste_bridge_renders_paste_listener(mock_streamlit):
     """The paste bridge listens for clipboard images without blocking text paste."""
     import apmatia.interfaces.streamlit.components.clipboard_button as clipboard_button
@@ -1760,7 +1145,6 @@ def test_clipboard_image_paste_bridge_renders_paste_listener(mock_streamlit):
     assert "input.files = dataTransfer.files" in rendered_html
     assert "clipboardData" in rendered_html
     assert "pasted-screenshot" in rendered_html
-
 
 def test_message_card_css_hides_streamlit_code_copy_button(mock_streamlit):
     """Only Apmatia's footer copy control is shown on message cards."""
@@ -1777,7 +1161,6 @@ def test_message_card_css_hides_streamlit_code_copy_button(mock_streamlit):
     assert "stMarkdownContainer" in rendered_css
     assert "Apple Color Emoji" in rendered_css
 
-
 def test_render_message_text_block_uses_markdown(mock_streamlit):
     """Message text rendering preserves markdown formatting and emoji."""
     import apmatia.interfaces.streamlit.components.message_card as message_card
@@ -1786,7 +1169,6 @@ def test_render_message_text_block_uses_markdown(mock_streamlit):
     message_card.render_message_text_block("Hello <Nick>\nWorld 😀")
 
     mock_streamlit.markdown.assert_called_once_with("Hello <Nick>\nWorld 😀")
-
 
 def test_message_card_css_includes_emoji_safe_font_stack(mock_streamlit):
     import apmatia.interfaces.streamlit.components.message_card as message_card
@@ -1798,666 +1180,6 @@ def test_message_card_css_includes_emoji_safe_font_stack(mock_streamlit):
     assert "Apple Color Emoji" in rendered_css
     assert "Segoe UI Emoji" in rendered_css
     assert "Noto Color Emoji" in rendered_css
-
-
-def test_discussion_message_edit_action_sets_target_and_reruns(mock_streamlit):
-    """The message edit action opens inline editing on the first click."""
-    mock_streamlit.button.side_effect = lambda _label, *args, **kwargs: kwargs.get("help") == "Edit"
-
-    import apmatia.interfaces.streamlit.components.message_card as message_card
-    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-    importlib.reload(message_card)
-    discussion_page = importlib.reload(discussion_page)
-    discussion_page._render_message_card(
-        "IDabc123",
-        0,
-        {"role": "User", "text": "Hello"},
-        username="nick",
-        agent_name="Planner",
-    )
-
-    assert mock_streamlit.session_state["discussion_edit_target"] == {
-        "discussion_id": "IDabc123",
-        "index": 0,
-        "text": "Hello",
-    }
-    mock_streamlit.rerun.assert_called_once()
-
-
-def test_discussion_message_delete_action_sets_target_and_reruns(mock_streamlit):
-    """The message delete action opens confirmation on the first click."""
-    mock_streamlit.button.side_effect = lambda _label, *args, **kwargs: kwargs.get("help") == "Delete"
-
-    import apmatia.interfaces.streamlit.components.message_card as message_card
-    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-    importlib.reload(message_card)
-    discussion_page = importlib.reload(discussion_page)
-    discussion_page._render_message_card(
-        "IDabc123",
-        0,
-        {"role": "User", "text": "Hello"},
-        username="nick",
-        agent_name="Planner",
-    )
-
-    assert mock_streamlit.session_state["discussion_delete_target"] == {
-        "discussion_id": "IDabc123",
-        "index": 0,
-        "text": "Hello",
-    }
-    mock_streamlit.rerun.assert_called_once()
-
-
-def test_discussion_bulk_delete_panel_calls_batch_api(mock_streamlit):
-    """The bulk delete panel should forward the selected indices to the API."""
-    mock_streamlit.checkbox.side_effect = lambda label, value=False, **_kwargs: label.startswith("0:") or label.startswith("2:")
-    mock_streamlit.button.side_effect = lambda label, *args, **kwargs: label == "Delete selected messages"
-
-    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-    discussion_page = importlib.reload(discussion_page)
-    snapshot = {
-        "discussion_id": "IDabc123",
-        "messages": [
-            {"role": "User", "text": "Hello"},
-            {"role": "Assistant", "text": "First reply", "speaker_name": "Planner"},
-            {"role": "Assistant", "text": "Second reply", "speaker_name": "Planner"},
-        ],
-        "is_streaming": False,
-    }
-
-    with patch.object(discussion_page, "delete_discussion_messages") as mock_delete:
-        discussion_page._render_bulk_message_delete_controls(
-            snapshot,
-            username="nick",
-            agent_name="Planner",
-        )
-
-    mock_delete.assert_called_once_with("IDabc123", [0, 2])
-    assert mock_streamlit.checkbox.call_count == 3
-    mock_streamlit.success.assert_called_with("Selected messages deleted.")
-    mock_streamlit.rerun.assert_called_once()
-
-
-def test_discussion_activity_status_text_includes_generation_and_server_details(mock_streamlit):
-    """The live status subtitle should describe the agent and llama.cpp stats once."""
-    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-    discussion_page = importlib.reload(discussion_page)
-
-    activity = {
-        "stage": "generating",
-        "agent_name": "Planner",
-        "speaker_name": "Planner",
-    }
-    llama_status = {
-        "chat_format": "peg-native",
-        "thinking_enabled": True,
-        "selected_slot_id": 0,
-        "current_task_id": 220,
-        "prompt_processing_progress": 0.995794,
-        "prompt_processing_n_tokens": 947,
-        "prompt_tokens_total": 951,
-        "prompt_eval": {"tokens_per_second": 203.64},
-        "eval": {"tokens_per_second": 22.6},
-        "total_time_ms": 31612.67,
-        "total_tokens": 1559,
-        "slots_idle": False,
-    }
-
-    text = discussion_page._activity_status_text(
-        activity,
-        agent_lookup={},
-        model_lookup={},
-        llama_server_status=llama_status,
-    )
-
-    assert text is not None
-    assert "Planner is generating a response." in text
-    assert text.count("generating a response") == 1
-    assert "slot 0 task 220" in text
-    assert "processing prompt" in text
-    assert "99.6%" in text
-    assert "prompt 203.64 tok/s" in text
-    assert "generation 22.60 tok/s" in text
-    assert "total 1559 tokens / 31.61s" in text
-
-
-def test_discussion_message_card_renders_llama_stats_caption(mock_streamlit):
-    """Assistant responses should show persisted llama.cpp stats beneath the message."""
-    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-    discussion_page = importlib.reload(discussion_page)
-    message = {
-        "role": "Assistant",
-        "text": "Here is the answer.",
-        "speaker_name": "Planner",
-        "metadata": {
-            "llama_server_status": {
-                "chat_format": "peg-native",
-                "thinking_enabled": True,
-                "selected_slot_id": 0,
-                "current_task_id": 220,
-                "prompt_processing_progress": 0.995794,
-                "prompt_processing_n_tokens": 947,
-                "prompt_tokens_total": 951,
-                "prompt_eval": {"tokens_per_second": 203.64},
-                "eval": {"tokens_per_second": 22.6},
-                "total_time_ms": 31612.67,
-                "total_tokens": 1559,
-                "slots_idle": False,
-            }
-        },
-    }
-
-    discussion_page._render_message_card(
-        "IDabc123",
-        1,
-        message,
-        username="nick",
-        agent_name="Planner",
-        activity=None,
-        llama_server_status=None,
-    )
-
-    captions = [call.args[0] for call in mock_streamlit.caption.call_args_list]
-    assert any("processing prompt" in caption for caption in captions)
-    assert any("generation 22.60 tok/s" in caption for caption in captions)
-
-
-def test_discussion_message_card_ignores_unrelated_live_status(mock_streamlit):
-    """A finished message should keep its own stats when another agent is currently active."""
-    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-    discussion_page = importlib.reload(discussion_page)
-    message = {
-        "role": "Assistant",
-        "text": "Here is the answer.",
-        "speaker_name": "Planner",
-        "metadata": {
-            "llama_server_status": {
-                "chat_format": "peg-native",
-                "thinking_enabled": True,
-                "selected_slot_id": 0,
-                "current_task_id": 220,
-                "prompt_processing_progress": 0.995794,
-                "prompt_processing_n_tokens": 947,
-                "prompt_tokens_total": 951,
-                "prompt_eval": {"tokens_per_second": 203.64},
-                "eval": {"tokens_per_second": 22.6},
-                "total_time_ms": 31612.67,
-                "total_tokens": 1559,
-                "slots_idle": False,
-            }
-        },
-    }
-    live_status = {
-        "chat_format": "peg-native",
-        "thinking_enabled": False,
-        "selected_slot_id": 1,
-        "current_task_id": 999,
-        "prompt_processing_progress": 0.25,
-        "prompt_processing_n_tokens": 128,
-        "prompt_tokens_total": 512,
-        "prompt_eval": {"tokens_per_second": 44.0},
-        "eval": {"tokens_per_second": 8.5},
-        "total_time_ms": 2400.0,
-        "total_tokens": 256,
-        "slots_idle": False,
-    }
-
-    discussion_page._render_message_card(
-        "IDabc123",
-        1,
-        message,
-        username="nick",
-        agent_name="Planner",
-        activity={
-            "stage": "generating",
-            "agent_name": "Nova-Wiki-Tutor",
-            "speaker_name": "Nova-Wiki-Tutor",
-        },
-        llama_server_status=live_status,
-    )
-
-    captions = [call.args[0] for call in mock_streamlit.caption.call_args_list]
-    assert any("generation 22.60 tok/s" in caption for caption in captions)
-    assert any("total 1559 tokens / 31.61s" in caption for caption in captions)
-    assert not any("generation 8.50 tok/s" in caption for caption in captions)
-    assert not any("slot 1 task 999" in caption for caption in captions)
-
-
-def test_discussion_activity_status_text_includes_tool_details(mock_streamlit):
-    """Tool activity should say which agent is executing the tool and with what parameters."""
-    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-    discussion_page = importlib.reload(discussion_page)
-
-    activity = {
-        "stage": "tool",
-        "agent_name": "Planner",
-        "speaker_name": "Planner",
-        "tool": {
-            "name": "wiki_lookup",
-            "status": "running",
-            "arguments": {"query": "llama.cpp"},
-        },
-    }
-
-    text = discussion_page._activity_status_text(
-        activity,
-        agent_lookup={},
-        model_lookup={},
-        llama_server_status=None,
-    )
-
-    assert text is not None
-    assert "Planner is executing wiki_lookup (running)." in text
-    assert 'Parameters: {"query": "llama.cpp"}.' in text
-
-
-def test_discussion_render_messages_places_live_activity_in_placeholder_card(mock_streamlit):
-    """A new active turn should render as its own live card instead of rewriting the previous message."""
-    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-    discussion_page = importlib.reload(discussion_page)
-    snapshot = {
-        "discussion_id": "IDabc123",
-        "messages": [
-            {"role": "User", "text": "Hello"},
-            {
-                "role": "Assistant",
-                "text": "All done.",
-                "speaker_name": "Planner",
-                "metadata": {
-                    "llama_server_status": {
-                        "chat_format": "peg-native",
-                        "thinking_enabled": True,
-                        "selected_slot_id": 0,
-                        "current_task_id": 220,
-                        "prompt_processing_progress": 1.0,
-                        "prompt_processing_n_tokens": 947,
-                        "prompt_tokens_total": 951,
-                        "prompt_eval": {"tokens_per_second": 203.64},
-                        "eval": {"tokens_per_second": 22.6},
-                        "total_time_ms": 31612.67,
-                        "total_tokens": 1559,
-                        "slots_idle": False,
-                    }
-                },
-            },
-        ],
-        "last_error": None,
-        "is_streaming": True,
-        "activity": {
-            "stage": "generating",
-            "agent_name": "Nova-Wiki-Tutor",
-            "speaker_name": "Nova-Wiki-Tutor",
-        },
-        "llama_server_status": {
-            "chat_format": "peg-native",
-            "thinking_enabled": False,
-            "selected_slot_id": 1,
-            "current_task_id": 999,
-            "prompt_processing_progress": 0.25,
-            "prompt_processing_n_tokens": 128,
-            "prompt_tokens_total": 512,
-            "prompt_eval": {"tokens_per_second": 44.0},
-            "eval": {"tokens_per_second": 8.5},
-            "total_time_ms": 2400.0,
-            "total_tokens": 256,
-            "slots_idle": False,
-        },
-    }
-    rendered = []
-
-    def fake_render_message_card(*args, **kwargs):
-        rendered.append({"args": args, "kwargs": kwargs})
-
-    with patch.object(discussion_page, "render_message_card", side_effect=fake_render_message_card):
-        discussion_page._render_messages(
-            snapshot,
-            username="nick",
-            agent_name="Planner",
-        )
-
-    assert len(rendered) == 3
-    assert rendered[1]["kwargs"]["card_key"] == "discussion-IDabc123-1"
-    assert rendered[1]["kwargs"]["details"] is None
-    assert rendered[2]["kwargs"]["card_key"] == "discussion-IDabc123-live-activity"
-    assert rendered[2]["kwargs"]["subtitle"] is None
-
-
-def test_discussion_page_shows_stop_button_while_streaming(mock_streamlit):
-    """The discussion submit control becomes a stop button during streaming."""
-    agents = [{"id": 7, "name": "Planner"}]
-    llm_configs = [
-        {"id": 301, "user_alias": "Default", "backend": "openai_compatible", "model_url": "http://localhost:5001"},
-    ]
-    tree = {
-        "current_discussion_id": "IDabc123",
-        "discussions": [{"discussion_id": "IDabc123", "title": "Current", "participant_agent_ids": [7]}],
-    }
-    snapshot = {
-        "discussion_id": "IDabc123",
-        "messages": [{"role": "User", "text": "Hello"}],
-        "last_error": None,
-        "is_streaming": True,
-    }
-    mock_streamlit.selectbox.return_value = agents[0]
-    mock_streamlit.text_area.return_value = "Write a status update."
-    mock_streamlit.button.side_effect = lambda label, *args, **kwargs: label == "Stop"
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_tree",
-        return_value=tree,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_state",
-        return_value=snapshot,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.stop_discussion"
-    ) as mock_stop:
-        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-        discussion_page = importlib.reload(discussion_page)
-        discussion_page.stop_discussion = mock_stop
-        discussion_page.render()
-
-    mock_stop.assert_called_once()
-    mock_streamlit.button.assert_any_call("Stop", use_container_width=False)
-    mock_streamlit.success.assert_called_with("Message stopped. Refreshing discussion.")
-
-
-def test_discussion_page_returns_to_send_message_when_streaming_finishes(mock_streamlit):
-    """The discussion submit control returns to send mode after a refresh shows streaming is done."""
-    agents = [{"id": 7, "name": "Planner"}]
-    llm_configs = [
-        {"id": 301, "user_alias": "Default", "backend": "openai_compatible", "model_url": "http://localhost:5001"},
-    ]
-    tree = {
-        "current_discussion_id": "IDabc123",
-        "discussions": [{"discussion_id": "IDabc123", "title": "Current", "participant_agent_ids": [7]}],
-    }
-    streaming_snapshot = {
-        "discussion_id": "IDabc123",
-        "messages": [{"role": "User", "text": "Hello"}],
-        "last_error": None,
-        "is_streaming": True,
-    }
-    finished_snapshot = {
-        "discussion_id": "IDabc123",
-        "messages": [{"role": "User", "text": "Hello"}],
-        "last_error": None,
-        "is_streaming": False,
-    }
-    mock_streamlit.selectbox.return_value = agents[0]
-    mock_streamlit.button.return_value = False
-    mock_streamlit.form_submit_button.return_value = False
-    mock_streamlit.fragment.__module__ = "streamlit.testing"
-    mock_streamlit.fragment.side_effect = lambda run_every=0.5: (lambda func: func)
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_tree",
-        return_value=tree,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_state",
-        side_effect=[streaming_snapshot, finished_snapshot],
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.stop_discussion"
-    ) as mock_stop:
-        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-        discussion_page = importlib.reload(discussion_page)
-    discussion_page.render()
-
-    mock_stop.assert_not_called()
-    assert mock_streamlit.rerun.call_count >= 1
-
-
-def test_discussion_page_keeps_stop_mode_while_streaming(mock_streamlit):
-    """Streaming keeps the discussion page on the stop control until the backend finishes."""
-    agents = [{"id": 7, "name": "Planner"}]
-    llm_configs = [
-        {"id": 301, "user_alias": "Default", "backend": "openai_compatible", "model_url": "http://localhost:5001"},
-    ]
-    tree = {
-        "current_discussion_id": "IDabc123",
-        "discussions": [{"discussion_id": "IDabc123", "title": "Current", "participant_agent_ids": [7]}],
-    }
-    snapshot = {
-        "discussion_id": "IDabc123",
-        "messages": [{"role": "User", "text": "Hello"}],
-        "last_error": None,
-        "is_streaming": True,
-    }
-    mock_streamlit.selectbox.return_value = agents[0]
-    mock_streamlit.form_submit_button.return_value = False
-    mock_streamlit.button.side_effect = lambda label, *args, **kwargs: label == "Stop"
-    mock_streamlit.fragment.__module__ = "streamlit.testing"
-    mock_streamlit.fragment.side_effect = lambda run_every=0.5: (lambda func: func)
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_tree",
-        return_value=tree,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.discussion_state",
-        return_value=snapshot,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.stop_discussion"
-    ) as mock_stop:
-        import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-        discussion_page = importlib.reload(discussion_page)
-    discussion_page.render()
-
-    mock_stop.assert_called_once()
-    assert mock_streamlit.rerun.call_count >= 1
-
-
-def test_discussion_page_streaming_fragment_shows_new_messages_while_generating(mock_streamlit):
-    """Streaming rerenders the latest transcript so in-flight messages stay readable."""
-    agents = [{"id": 7, "name": "Planner"}]
-    llm_configs = [
-        {"id": 301, "user_alias": "Default", "backend": "openai_compatible", "model_url": "http://localhost:5001"},
-    ]
-    tree = {
-        "current_discussion_id": "IDabc123",
-        "discussions": [{"discussion_id": "IDabc123", "title": "Current", "participant_agent_ids": [7]}],
-    }
-    initial_snapshot = {
-        "discussion_id": "IDabc123",
-        "messages": [{"role": "User", "text": "Hello"}],
-        "last_error": None,
-        "is_streaming": True,
-        "activity": {
-            "stage": "generating",
-            "agent_name": "DevTeam",
-            "speaker_name": "DevTeam",
-        },
-    }
-    updated_snapshot = {
-        "discussion_id": "IDabc123",
-        "messages": [
-            {"role": "User", "text": "Hello"},
-            {"role": "Assistant", "text": "Draft answer", "speaker_name": "Planner"},
-        ],
-        "last_error": None,
-        "is_streaming": True,
-        "activity": {
-            "stage": "generating",
-            "agent_name": "DevTeam",
-            "speaker_name": "DevTeam",
-        },
-    }
-    mock_streamlit.selectbox.return_value = agents[0]
-    mock_streamlit.form_submit_button.return_value = False
-    mock_streamlit.button.return_value = False
-    mock_streamlit.fragment.__module__ = "streamlit.testing"
-    mock_streamlit.fragment.side_effect = lambda run_every=0.5: (lambda func: func)
-    rendered_cards = []
-
-    def fake_render_message_card(*args, **kwargs):
-        rendered_cards.append(kwargs["card_key"])
-
-    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-    discussion_page = importlib.reload(discussion_page)
-    with patch.object(discussion_page, "list_agents", return_value=agents), patch.object(
-        discussion_page,
-        "list_llm_configs",
-        return_value=llm_configs,
-    ), patch.object(
-        discussion_page,
-        "discussion_tree",
-        return_value=tree,
-    ), patch.object(
-        discussion_page,
-        "discussion_state",
-        side_effect=[initial_snapshot, updated_snapshot],
-    ), patch.object(
-        discussion_page,
-        "render_message_card",
-        side_effect=fake_render_message_card,
-    ):
-        discussion_page.render()
-
-    assert rendered_cards == ["discussion-IDabc123-0", "discussion-IDabc123-1"]
-    assert not any("responding" in str(call.args[0]).lower() for call in mock_streamlit.caption.call_args_list)
-
-
-def test_discussion_history_collapses_older_messages_and_skips_active_message(mock_streamlit):
-    """The static transcript should keep only recent messages visible while streaming."""
-    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-    discussion_page = importlib.reload(discussion_page)
-    snapshot = {
-        "discussion_id": "IDabc123",
-        "messages": [
-            {"role": "User", "text": f"Message {index}"}
-            for index in range(10)
-        ],
-        "activity": {
-            "stage": "generating",
-            "agent_name": "Planner",
-            "speaker_name": "Planner",
-        },
-        "is_streaming": True,
-    }
-    rendered = []
-
-    def fake_render_message_card(*args, **kwargs):
-        rendered.append(kwargs["card_key"])
-
-    with patch.object(discussion_page, "render_message_card", side_effect=fake_render_message_card):
-        discussion_page._render_message_history(
-            snapshot,
-            username="nick",
-            agent_name="Planner",
-            active_message_index=9,
-        )
-
-    assert rendered == [
-        "discussion-IDabc123-0",
-        "discussion-IDabc123-1",
-        "discussion-IDabc123-2",
-        "discussion-IDabc123-3",
-        "discussion-IDabc123-4",
-        "discussion-IDabc123-5",
-        "discussion-IDabc123-6",
-        "discussion-IDabc123-7",
-        "discussion-IDabc123-8",
-    ]
-    mock_streamlit.expander.assert_called_once_with("Older messages (1)", expanded=False)
-
-
-def test_discussion_streaming_view_renders_only_the_active_message(mock_streamlit):
-    """The live fragment should update only the in-flight assistant message."""
-    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-    discussion_page = importlib.reload(discussion_page)
-    snapshot = {
-        "discussion_id": "IDabc123",
-        "messages": [
-            {"role": "User", "text": "Hello"},
-            {"role": "Assistant", "text": "Working on it", "speaker_name": "Planner"},
-        ],
-        "activity": {
-            "stage": "generating",
-            "agent_name": "Planner",
-            "speaker_name": "Planner",
-        },
-        "llama_server_status": {
-            "chat_format": "peg-native",
-            "thinking_enabled": False,
-            "selected_slot_id": 1,
-            "current_task_id": 999,
-            "prompt_processing_progress": 0.25,
-            "prompt_processing_n_tokens": 128,
-            "prompt_tokens_total": 512,
-            "prompt_eval": {"tokens_per_second": 44.0},
-            "eval": {"tokens_per_second": 8.5},
-            "total_time_ms": 2400.0,
-            "total_tokens": 256,
-            "slots_idle": False,
-        },
-        "is_streaming": True,
-    }
-    rendered = []
-
-    def fake_render_message_card(*args, **kwargs):
-        rendered.append(kwargs["card_key"])
-
-    with patch.object(discussion_page, "render_message_card", side_effect=fake_render_message_card), patch.object(
-        discussion_page, "_render_live_activity_card"
-    ) as mock_live_activity:
-        returned_snapshot = discussion_page._render_streaming_message_view(
-            snapshot,
-            username="nick",
-            agent_name="Planner",
-            start_index=1,
-        )
-
-    assert returned_snapshot is snapshot
-    assert rendered == ["discussion-IDabc123-1"]
-    mock_live_activity.assert_not_called()
-
-
-def test_discussion_compact_messages_render_only_the_requested_tail(mock_streamlit):
-    """The contacts-style transcript renderer should only redraw the live tail."""
-    import apmatia.interfaces.streamlit.pages.discussion as discussion_page
-
-    discussion_page = importlib.reload(discussion_page)
-    snapshot = {
-        "discussion_id": "IDabc123",
-        "messages": [
-            {"role": "User", "text": "Message 0"},
-            {"role": "Assistant", "text": "Message 1", "speaker_name": "Planner"},
-            {"role": "Assistant", "text": "Message 2", "speaker_name": "Planner"},
-        ],
-    }
-    rendered = []
-
-    def fake_render_message_card(*args, **kwargs):
-        rendered.append(kwargs["card_key"])
-
-    with patch.object(discussion_page, "render_message_card", side_effect=fake_render_message_card):
-        discussion_page._render_compact_messages(
-            snapshot,
-            username="nick",
-            agent_name="Planner",
-            start_index=1,
-        )
-
-    assert rendered == ["contacts-IDabc123-1", "contacts-IDabc123-2"]
-
 
 def test_contacts_sidebar_filters_to_selected_group_members_and_highlights_current_speaker(mock_streamlit):
     """Group contacts should only show their members, with the active speaker highlighted."""
@@ -2505,7 +1227,6 @@ def test_contacts_sidebar_filters_to_selected_group_members_and_highlights_curre
     assert not any(call.args and call.args[0] == "Chloe the Tester" for call in button_calls)
     mock_streamlit.sidebar.caption.assert_any_call("Showing members of DevTeam.")
 
-
 def test_main_function_authenticated_routes_to_settings(mock_streamlit):
     """Authenticated users can navigate to settings through the sidebar."""
     mock_streamlit.sidebar.button.side_effect = lambda label, *args, **kwargs: label == "⚙️ Settings"
@@ -2543,18 +1264,12 @@ def test_main_function_authenticated_routes_to_settings(mock_streamlit):
         "client.showSidebarNavigation", False
     )
     mock_streamlit.sidebar.title.assert_called_once_with("Apmatia")
-    assert mock_streamlit.sidebar.button.call_count == 9
-    mock_streamlit.sidebar.button.assert_any_call(
-        "🧩 AI Models",
-        key="nav_model_management",
-        use_container_width=True,
-        type="secondary",
-    )
+    assert mock_streamlit.sidebar.button.call_count == 6
     mock_streamlit.sidebar.button.assert_any_call(
         "📦 Modules",
         key="nav_module_management",
         use_container_width=True,
-        type="secondary",
+        type="primary",
     )
     mock_streamlit.markdown.assert_called()
     rendered_css = "\n".join(
@@ -2576,7 +1291,6 @@ def test_main_function_authenticated_routes_to_settings(mock_streamlit):
     mock_settings_render.assert_called_once()
     assert mock_streamlit.session_state["selected_page"] == "settings"
 
-
 def test_render_sidebar_shows_visible_module_with_active_subpages(mock_streamlit):
     mock_streamlit.session_state["selected_page"] = "module_view"
     mock_streamlit.session_state["selected_module_id"] = "ipe"
@@ -2585,7 +1299,7 @@ def test_render_sidebar_shows_visible_module_with_active_subpages(mock_streamlit
     modules = [
         {
             "module_id": "ipe",
-            "name": "Apmatia IPE",
+            "name": "Integrated Productivity Environment",
             "hidden": False,
             "views": [
                 {"view_id": "ipe.task.view", "name": "Tasks View", "effective_hidden": False},
@@ -2610,7 +1324,7 @@ def test_render_sidebar_shows_visible_module_with_active_subpages(mock_streamlit
 
     assert selected_page == "module_view"
     mock_streamlit.sidebar.button.assert_any_call(
-        "Apmatia IPE",
+        "Integrated Productivity Environment",
         key="nav_module_ipe",
         use_container_width=True,
         type="primary",
@@ -2625,18 +1339,17 @@ def test_render_sidebar_shows_visible_module_with_active_subpages(mock_streamlit
     assert "Projects View" not in button_labels
     assert "Hidden Module" not in button_labels
 
-
 def test_render_sidebar_clicking_module_selects_first_visible_view(mock_streamlit):
     mock_streamlit.session_state["selected_page"] = "discussion"
 
     def sidebar_button(label, *args, **kwargs):
-        return label == "Apmatia IPE"
+        return label == "Integrated Productivity Environment"
 
     mock_streamlit.sidebar.button.side_effect = sidebar_button
     modules = [
         {
             "module_id": "ipe",
-            "name": "Apmatia IPE",
+            "name": "Integrated Productivity Environment",
             "hidden": False,
             "views": [
                 {"view_id": "ipe.task.view", "name": "Tasks View", "effective_hidden": False},
@@ -2657,7 +1370,6 @@ def test_render_sidebar_clicking_module_selects_first_visible_view(mock_streamli
     assert mock_streamlit.session_state["selected_module_view_id"] == "ipe.task.view"
     mock_streamlit.rerun.assert_called_once()
 
-
 def test_render_sidebar_shows_agent_loops_contact_roster(mock_streamlit):
     mock_streamlit.session_state["selected_page"] = "module_view"
     mock_streamlit.session_state["selected_module_id"] = "agent_loops"
@@ -2667,7 +1379,7 @@ def test_render_sidebar_shows_agent_loops_contact_roster(mock_streamlit):
     modules = [
         {
             "module_id": "agent_loops",
-            "name": "Apmatia Agent Loops",
+            "name": "Agent Loops",
             "hidden": False,
             "views": [
                 {
@@ -2741,7 +1453,6 @@ def test_render_sidebar_shows_agent_loops_contact_roster(mock_streamlit):
     assert "Modules" not in [call.args[0] for call in mock_streamlit.sidebar.subheader.call_args_list if call.args]
     mock_streamlit.rerun.assert_called()
 
-
 def test_main_function_authenticated_routes_to_agent_management(mock_streamlit):
     """Authenticated users can navigate to the agent page through the sidebar."""
     mock_streamlit.sidebar.button.side_effect = lambda label, *args, **kwargs: label == "🤖 Agents"
@@ -2762,7 +1473,6 @@ def test_main_function_authenticated_routes_to_agent_management(mock_streamlit):
 
     mock_agent_render.assert_called_once()
     assert mock_streamlit.session_state["selected_page"] == "agent_management"
-
 
 def test_main_function_authenticated_routes_to_user_management(mock_streamlit):
     """Authenticated users can navigate to the user management page through the sidebar."""
@@ -2785,9 +1495,8 @@ def test_main_function_authenticated_routes_to_user_management(mock_streamlit):
     mock_user_render.assert_called_once()
     assert mock_streamlit.session_state["selected_page"] == "user_management"
 
-
-def test_main_function_wraps_each_page_in_a_generation_specific_shell(mock_streamlit):
-    """Switching pages should render each body inside a fresh generation-scoped shell."""
+def test_main_function_reuses_generation_for_same_module_view(mock_streamlit):
+    """Rendering the same module view keeps its generation-scoped shell stable."""
 
     class _Container:
         def __enter__(self):
@@ -2825,28 +1534,24 @@ def test_main_function_wraps_each_page_in_a_generation_specific_shell(mock_strea
     ), patch.object(
         app,
         "render_sidebar",
-        side_effect=["discussion", "module_view"],
+        side_effect=["module_view", "module_view"],
     ), patch.object(
         app,
         "ensure_ipe_coach_agent_for_user",
     ), patch(
-        "apmatia.interfaces.streamlit.pages.discussion.render",
-    ) as mock_discussion_render, patch(
         "apmatia.interfaces.streamlit.pages.module_views.render",
     ) as mock_module_views_render:
         app.main()
         app.main()
 
-    assert mock_discussion_render.call_count == 1
-    assert mock_module_views_render.call_count == 1
+    assert mock_module_views_render.call_count == 2
     shell_keys = [kwargs.get("key") for _args, kwargs in mock_streamlit.container.call_args_list]
     assert len(shell_keys) == 2
-    assert shell_keys[0].startswith("apm-page-shell:discussion:")
+    assert shell_keys[0].startswith("apm-page-shell:module_view:")
     assert shell_keys[1].startswith("apm-page-shell:module_view:")
     first_generation = int(shell_keys[0].rsplit(":", 1)[-1])
     second_generation = int(shell_keys[1].rsplit(":", 1)[-1])
-    assert second_generation == first_generation + 1
-
+    assert second_generation == first_generation
 
 def test_main_function_restarts_shell_when_module_view_detail_changes(mock_streamlit):
     """Changing the module-view detail while staying on module_view should still refresh the shell."""
@@ -2918,7 +1623,6 @@ def test_main_function_restarts_shell_when_module_view_detail_changes(mock_strea
     second_generation = int(shell_keys[1].rsplit(":", 1)[-1])
     assert second_generation == first_generation + 1
 
-
 def test_header_menu_settings_button_selects_settings_page(mock_streamlit):
     """The top-right menu routes users to settings without a page reload."""
     mock_streamlit.button.side_effect = (
@@ -2943,7 +1647,6 @@ def test_header_menu_settings_button_selects_settings_page(mock_streamlit):
     mock_streamlit.rerun.assert_called_once()
     mock_streamlit.sidebar.button.assert_not_called()
 
-
 def test_main_function_shows_auth_when_unauthenticated(mock_streamlit):
     """Unauthenticated users are sent to the auth page."""
     with patch(
@@ -2959,7 +1662,6 @@ def test_main_function_shows_auth_when_unauthenticated(mock_streamlit):
 
     mock_show_auth_form.assert_called_once()
 
-
 def test_streamlit_container_copies_runtime_config():
     """The image must include Streamlit config so default page discovery stays hidden."""
     config_path = REPO_ROOT / ".streamlit" / "config.toml"
@@ -2969,23 +1671,20 @@ def test_streamlit_container_copies_runtime_config():
     assert 'toolbarMode = "minimal"' in config_path.read_text()
     assert 'base = "dark"' in config_path.read_text()
 
-
 def test_streamlit_entrypoint_disables_default_sidebar_navigation():
     """The runtime command must explicitly suppress Streamlit's built-in page list."""
     entrypoint = (REPO_ROOT / "scripts" / "entrypoint.sh").read_text()
 
     assert "--client.showSidebarNavigation false" in entrypoint
 
-
-def test_start_script_publishes_ports_on_host_loopback_only():
-    """The standard launcher must publish ports only on host loopback."""
+def test_start_script_defaults_to_loopback_and_supports_remote_bind_override():
+    """The launcher defaults safely but can publish through a trusted VPN when requested."""
     launcher = (REPO_ROOT / "start.sh").read_text()
 
-    assert '-p 127.0.0.1:8000:8000' in launcher
-    assert '-p 127.0.0.1:8501:8501' in launcher
-    assert '-p 0.0.0.0:8000:8000' not in launcher
-    assert '-p 0.0.0.0:8501:8501' not in launcher
-
+    assert 'APMATIA_DOCKER_BIND_HOST="${APMATIA_DOCKER_BIND_HOST:-127.0.0.1}"' in launcher
+    assert '-p "$APMATIA_DOCKER_BIND_HOST":8000:8000' in launcher
+    assert '-p "$APMATIA_DOCKER_BIND_HOST":8501:8501' in launcher
+    assert 'APMATIA_SERVER_TRANSPORT_SECURITY_ALLOW_INSECURE_NON_LOOPBACK=true' in launcher
 
 def test_start_script_supports_dev_mode():
     """The standard launcher must expose a dev mode that starts both services."""
@@ -2997,7 +1696,6 @@ def test_start_script_supports_dev_mode():
     assert 'run_core_container_detached "$CORE_IMAGE_NAME" >/dev/null' in launcher
     assert 'run_streamlit_container "$STREAMLIT_IMAGE_NAME"' in launcher
 
-
 def test_docker_compose_publishes_ports_on_host_loopback_only():
     """Docker Compose must keep the published ports on localhost."""
     compose = (REPO_ROOT / "docker-compose.yml").read_text()
@@ -3007,7 +1705,6 @@ def test_docker_compose_publishes_ports_on_host_loopback_only():
     assert '8001:8000' not in compose
     assert '0.0.0.0:8000:8000' not in compose
     assert '0.0.0.0:8501:8501' not in compose
-
 
 def test_docker_launchers_bind_processes_to_container_all_interfaces():
     """Docker launch paths must allow the process to bind inside the container while host publication stays local."""
@@ -3024,7 +1721,6 @@ def test_docker_launchers_bind_processes_to_container_all_interfaces():
     assert 'APMATIA_HOME=/home/apmatia/.apmatia' in compose
     assert 'APMATIA_WORKSPACE_ROOT=/home/apmatia/.apmatia/workspace/modules' in compose
 
-
 def test_start_script_mounts_persistent_user_state():
     """The standard launcher must mount the same host persistence directories used by compose."""
     launcher = (REPO_ROOT / "start.sh").read_text()
@@ -3040,7 +1736,6 @@ def test_start_script_mounts_persistent_user_state():
     assert 'APMATIA_CONTAINER_HOME="/home/apmatia"' in launcher
     assert '--user "$(id -u):$(id -g)"' in launcher
 
-
 def test_start_script_bootstraps_workspace_modules_on_the_host():
     """The standard launcher must create the user workspace under ~/.apmatia."""
     launcher = (REPO_ROOT / "start.sh").read_text()
@@ -3055,14 +1750,12 @@ def test_start_script_bootstraps_workspace_modules_on_the_host():
     assert 'mkdir -p "$APMATIA_HOME_HOST/workspace/modules"' not in launcher
     assert 'APMATIA_CONTAINER_HOME="/home/apmatia"' in launcher
 
-
 def test_start_script_uses_saved_llama_server_log_dir_when_env_is_missing():
     """The standard launcher should fall back to the saved config for llama.cpp logs."""
     launcher = (REPO_ROOT / "start.sh").read_text()
 
     assert "config.json" in launcher
     assert "llama_server" in launcher
-
 
 def test_start_script_mounts_saved_gguf_directory_when_env_is_missing():
     """The standard launcher should mount the saved GGUF directory into the container."""
@@ -3074,7 +1767,6 @@ def test_start_script_mounts_saved_gguf_directory_when_env_is_missing():
     assert "gguf_directories" in launcher
     assert '-e APMATIA_GGUF_DIRECTORIES="$GGUF_DIRECTORY_ENV"' in launcher
 
-
 def test_windows_launcher_bootstraps_persistent_directories():
     """The Windows launcher must create the same directories before compose starts."""
     launcher = (REPO_ROOT / "scripts" / "start.bat").read_text()
@@ -3083,7 +1775,6 @@ def test_windows_launcher_bootstraps_persistent_directories():
     assert 'mkdir "%USERPROFILE%\\.apmatia"' in launcher
     assert 'mkdir "%USERPROFILE%\\.config\\apmatia"' in launcher
     assert 'mkdir "%USERPROFILE%\\.local\\share\\apmatia"' in launcher
-
 
 def test_container_has_writable_non_root_home():
     """The image must support running mounted local state as the host user."""

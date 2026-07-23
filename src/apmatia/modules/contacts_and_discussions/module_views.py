@@ -8,7 +8,7 @@ from typing import Any
 from apmatia.core.module_view_runtime import ModuleViewContext
 from apmatia.core.registry import CommandContribution, ViewContribution
 from apmatia.lib.apmatia_core.models import utc_now
-from apmatia.lib.model_management import LLMManager
+from apmatia.core.model_management_runtime import get_llm_config_manager
 
 from .models import Discussion, DiscussionParticipant, DiscussionTurn, Topic, TopicSummary
 from .services import TopicManagementService
@@ -745,7 +745,7 @@ def _model_name(service: Any | None, model_id: int | None) -> str | None:
     if model_id is None:
         return None
     try:
-        config = LLMManager().get_config(int(model_id))
+        config = get_llm_config_manager().get_config(int(model_id))
     except Exception:
         config = None
     if config is not None:

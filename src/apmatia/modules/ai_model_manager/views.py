@@ -23,10 +23,20 @@ VIEW_DESCRIPTORS: tuple[ViewContribution, ...] = tuple(
                     {"key": "local_path", "label": "Local Path"},
                     {"key": "file_size_human", "label": "Size"},
                     {"key": "size_class", "label": "Size Class"},
+                    {"key": "seats", "label": "Seats"},
                     {"key": "vision_enabled", "label": "Vision"},
                     {"key": "cost_mode", "label": "Cost"},
                 ]
                 if spec.object_type == "gguf_model"
+                else [
+                    {"key": "user_alias", "label": "Alias"},
+                    {"key": "backend", "label": "Backend"},
+                    {"key": "provider_name", "label": "Provider"},
+                    {"key": "model_url", "label": "API URL"},
+                    {"key": "max_response_size", "label": "Max Size"},
+                    {"key": "seats", "label": "Seats"},
+                ]
+                if spec.object_type == "llm_config"
                 else [
                     {"key": "task_name", "label": "Task"},
                     {"key": "preferred_size_classes", "label": "Preferred Sizes"},

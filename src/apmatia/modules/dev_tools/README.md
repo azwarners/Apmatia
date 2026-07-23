@@ -1,4 +1,4 @@
-# Apmatia Dev Tools
+# Dev Tools
 
 This bundled module exposes developer-facing inspection tools for agents that need to understand the codebase:
 

@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from apmatia.core.module_management import list_module_catalog, set_module_hidden, set_view_hidden
+from apmatia.core.module_management import list_module_catalog, set_module_hidden, set_module_order, set_view_hidden
 from apmatia.core.registry import ModuleMetadata, Registry, ViewContribution
 
 
@@ -13,7 +13,7 @@ def _registry_with_modules() -> Registry:
     registry.register_module(
         ModuleMetadata(
             module_id="ipe",
-            name="Apmatia IPE",
+            name="Integrated Productivity Environment",
             version="0.1.0",
             description="Personal productivity tools.",
         )
@@ -21,7 +21,7 @@ def _registry_with_modules() -> Registry:
     registry.register_module(
         ModuleMetadata(
             module_id="worksim",
-            name="Apmatia Worksim",
+            name="Worksim",
             version="0.1.0",
             description="A workplace simulation module centered on a persistent org chart wiki.",
         )
@@ -98,6 +98,38 @@ def test_set_module_hidden_persists_sorted_unique_hidden_module_ids():
         value=["ipe", "worksim"],
     )
     assert result == {"module_id": "ipe", "hidden": True}
+
+
+def test_list_module_catalog_applies_saved_module_order():
+    values = {("ui", "module_orders"): ["worksim", "ipe"]}
+
+    def fake_get_config_value(*keys, default=None):
+        return values.get(keys, default)
+
+    with patch("apmatia.core.module_management.get_application_registry", return_value=_registry_with_modules()), patch(
+        "apmatia.core.module_management.get_config_value", side_effect=fake_get_config_value
+    ):
+        catalog = list_module_catalog()
+
+    assert [module["module_id"] for module in catalog] == ["worksim", "ipe"]
+    assert [module["sort_order"] for module in catalog] == [0, 1]
+
+
+def test_set_module_order_persists_order_and_returns_module():
+    values = {("ui", "module_orders"): []}
+
+    def fake_get_config_value(*keys, default=None):
+        return values.get(keys, default)
+
+    with patch("apmatia.core.module_management.get_application_registry", return_value=_registry_with_modules()), patch(
+        "apmatia.core.module_management.get_config_value", side_effect=fake_get_config_value
+    ), patch("apmatia.core.module_management.set_config_value") as mock_set_config_value, patch(
+        "apmatia.core.module_management.get_module_catalog_entry", return_value={"module_id": "worksim"}
+    ):
+        result = set_module_order("worksim", new_index=0)
+
+    mock_set_config_value.assert_called_once_with("ui", "module_orders", value=["worksim", "ipe"])
+    assert result == {"module_id": "worksim"}
 
 
 def test_set_view_hidden_removes_view_from_hidden_list_when_showing():

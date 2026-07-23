@@ -25,7 +25,7 @@ from apmatia.core.tool_management_runtime import get_tool_manager
 from apmatia.lib.agent_management.agent_prompt import compile_agent_system_prompt, default_agent_prompt
 from apmatia.lib.agent_management.models import Agent
 from apmatia.lib.apmatia_core.models import ApmatiaObject, utc_now
-from apmatia.lib.model_management.models import LLM
+from apmatia.modules.ai_model_manager.models import LLMConfig as LLM
 
 from apmatia.lib.discussions.discussion_templates import DISCUSSION_CHAT_TEMPLATE, build_chat_messages
 from apmatia.lib.discussions.group_chat import (

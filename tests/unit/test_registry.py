@@ -65,7 +65,7 @@ def test_worksim_module_registers_into_registry():
     assert registry.list_modules() == [
         ModuleMetadata(
             module_id="worksim",
-            name="Apmatia Worksim",
+            name="Worksim",
             version="0.1.0",
             description="A workplace simulation module centered on a persistent org chart wiki.",
             metadata={

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from apmatia.core.app_config import get_config_value
-from apmatia.lib.model_management.models import LLM
+from apmatia.modules.ai_model_manager.models import LLMConfig as LLM
 
 try:
     from ysparr.core.types import PromptRequest

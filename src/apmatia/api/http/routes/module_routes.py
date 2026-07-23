@@ -8,6 +8,7 @@ from apmatia.api.internal.module_management import (
     update_module_visibility,
     update_view_visibility,
     update_view_order,
+    update_module_order,
 )
 from apmatia.api.internal.module_views import get_module_view_items, run_module_command
 
@@ -43,6 +44,19 @@ def patch_module_visibility(
     require_session(request)
     try:
         return update_module_visibility(module_id, hidden=payload.hidden)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.patch("/modules/{module_id}/order", response_model=dict)
+def patch_module_order(
+    request: Request,
+    payload: ViewOrderPayload,
+    module_id: str = Path(..., description="Module ID"),
+) -> dict:
+    require_session(request)
+    try:
+        return update_module_order(module_id, new_index=payload.new_index)
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
 

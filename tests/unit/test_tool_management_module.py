@@ -474,8 +474,8 @@ def test_memory_create_tool_errors_when_agent_has_no_owner_user_id():
 
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(
-            "apmatia.lib.discussions.discussion_state._get_discussion",
-            lambda discussion_id: None,
+            "apmatia.modules.contacts_and_discussions.services.get_discussion",
+            lambda discussion_id, *, bundle=None: None,
         )
         result = tool_manager.execute_tool_call(
             ToolCall(
@@ -506,8 +506,8 @@ def test_memory_tool_repairs_ownerless_agent_from_discussion_owner():
 
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(
-            "apmatia.lib.discussions.discussion_state._get_discussion",
-            lambda discussion_id: SimpleNamespace(owner_user_id=77) if discussion_id == "disc-9" else None,
+            "apmatia.modules.contacts_and_discussions.services.get_discussion",
+            lambda discussion_id, *, bundle=None: SimpleNamespace(owner_user_id=77) if discussion_id == "disc-9" else None,
         )
         result = tool_manager.execute_tool_call(
             ToolCall(
@@ -546,8 +546,8 @@ def test_wiki_tools_execute_against_focused_discussion_wiki():
 
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(
-            "apmatia.lib.discussions.discussion_state._get_discussion",
-            lambda discussion_id: SimpleNamespace(owner_user_id=1, focused_wiki_id=wiki.wiki_id)
+            "apmatia.modules.contacts_and_discussions.services.get_discussion",
+            lambda discussion_id, *, bundle=None: SimpleNamespace(owner_user_id=1, focused_wiki_id=wiki.wiki_id)
             if discussion_id == "disc-tutor"
             else None,
         )

@@ -6,6 +6,7 @@ import streamlit as st
 from apmatia.interfaces.streamlit.api_client import (
     ApiError,
     list_modules,
+    set_module_order,
     set_module_visibility,
     set_module_view_order,
     set_module_view_visibility,
@@ -29,24 +30,24 @@ def render() -> None:
 
     st.title("Module Management")
     st.caption(
-        "Hide modules, reorder module views, or hide individual views through the local API. "
-        "View order controls the left navigation."
+        "Hide or reorder modules, reorder module views, or hide individual views through the local API. "
+        "These orders control the left navigation."
     )
 
     if not modules:
         st.info("No modules are registered yet.")
         return
 
-    for module in modules:
+    for module_index, module in enumerate(modules):
         module_id = str(module.get("module_id") or "")
         module_name = str(module.get("name") or module_id or "Unnamed module")
         module_hidden = bool(module.get("hidden", False))
         views = list(module.get("views") or [])
 
         with st.container(border=True):
-            title_col, button_col = st.columns([3, 1])
+            title_col, move_up_col, move_down_col, button_col = st.columns([3, 1, 1, 1])
             with title_col:
-                st.write(f"**{module_name}**")
+                st.subheader(module_name)
                 st.caption(f"{module_id} · version {module.get('version') or 'unknown'}")
             with button_col:
                 if st.button(_module_toggle_label(module), key=f"toggle_module_{module_id}", use_container_width=True):
@@ -56,6 +57,25 @@ def render() -> None:
                         st.error(f"Unable to update module visibility: {error.detail}")
                     else:
                         st.success(f"{module_name} {'hidden' if not module_hidden else 'shown'}.")
+                        st.rerun()
+
+            with move_up_col:
+                if st.button("Move up", key=f"move_module_up_{module_id}", use_container_width=True, disabled=module_index == 0):
+                    try:
+                        set_module_order(module_id, new_index=module_index - 1)
+                    except ApiError as error:
+                        st.error(f"Unable to reorder module: {error.detail}")
+                    else:
+                        st.success(f"{module_name} moved up.")
+                        st.rerun()
+            with move_down_col:
+                if st.button("Move down", key=f"move_module_down_{module_id}", use_container_width=True, disabled=module_index >= len(modules) - 1):
+                    try:
+                        set_module_order(module_id, new_index=module_index + 1)
+                    except ApiError as error:
+                        st.error(f"Unable to reorder module: {error.detail}")
+                    else:
+                        st.success(f"{module_name} moved down.")
                         st.rerun()
 
             description = str(module.get("description") or "").strip()

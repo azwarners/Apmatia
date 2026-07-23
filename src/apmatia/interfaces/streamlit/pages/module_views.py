@@ -1202,8 +1202,8 @@ def _render_agent_loops_shell(selected_module: dict[str, object]) -> None:
     workspace_view = views_by_type.get("workspace")
     knowledge_view = views_by_type.get("knowledge")
     if contacts_view is None or runs_view is None or workspace_view is None or knowledge_view is None:
-        st.title(str(selected_module.get("name") or "Apmatia Agent Loops"))
-        st.info("Apmatia Agent Loops is missing one or more expected views.")
+        st.title(str(selected_module.get("name") or "Agent Loops"))
+        st.info("Agent Loops is missing one or more expected views.")
         return
 
     contact_items = list_module_view_items(str(contacts_view.get("view_id") or ""))
@@ -1230,7 +1230,7 @@ def _render_agent_loops_shell(selected_module: dict[str, object]) -> None:
 
     selected_contact = next((item for item in contact_items if str(item.get("id") or "") == selected_contact_id), None)
     if selected_contact is None:
-        st.title(str(selected_module.get("name") or "Apmatia Agent Loops"))
+        st.title(str(selected_module.get("name") or "Agent Loops"))
         st.info("Pick an agent or group from the sidebar to view its task workspace.")
         return
 

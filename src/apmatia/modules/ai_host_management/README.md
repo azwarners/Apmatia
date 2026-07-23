@@ -1,4 +1,4 @@
-# Apmatia AI Host Management
+# AI Host Management
 
 Tracks AI-capable host records and inspects current resource utilization across registered hosts for future model placement decisions.
 

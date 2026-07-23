@@ -148,7 +148,7 @@ class LLMManager:
         return True
 
     def probe_config(self, config_id: int) -> dict:
-        from apmatia.lib.discussions.prompt_llm import prompt_llm
+        from apmatia.modules.contacts_and_discussions.services import prompt_llm
 
         config = self.get_config(config_id)
         if config is None:

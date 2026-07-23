@@ -10,7 +10,7 @@ from .views import VIEW_DESCRIPTORS
 
 APMATIA_AI_MODEL_MANAGER_MODULE = ModuleMetadata(
     module_id="ai_model_manager",
-    name="Apmatia AI Model Manager",
+    name="AI Model Manager",
     version="0.1.0",
     description="Local GGUF model metadata management with size estimates and task routing preferences.",
     metadata={
@@ -29,4 +29,3 @@ def register(registry: Registry) -> None:
         registry.register_command(command)
     for view in VIEW_DESCRIPTORS:
         registry.register_view(view)
-

@@ -23,31 +23,21 @@ from apmatia.interfaces.streamlit.module_views.adapter import adapt_module_view
 from apmatia.interfaces.streamlit.module_views.renderers import render_navigation_pane
 from apmatia.interfaces.streamlit.page_runtime import sync_page_generation
 from apmatia.interfaces.streamlit.pages.login import show_auth_form
+from apmatia.interfaces.streamlit.pages.archive import discussion
 from apmatia.interfaces.streamlit.pages import (
     settings,
-    model_management,
     module_management,
     agent_management,
     memory_management,
     module_views,
     tool_management,
     user_management,
-    discussion,
-    tutor,
-    tutor_live_discussion,
-    tutor_session_config,
-    tutor_session_wiki,
 )
 from apmatia.lib.persistence.logger import get_logger
 
 FAVICON_PATH = Path(__file__).resolve().parents[4] / "assets" / "favicon.png"
 PAGE_OPTIONS = [
     "discussion",
-    "tutor",
-    "tutor_session_config",
-    "tutor_live_discussion",
-    "tutor_session_wiki",
-    "model_management",
     "module_management",
     "agent_management",
     "module_view",
@@ -61,18 +51,6 @@ LOGGER = get_logger(__name__)
 
 
 def _format_page_label(page: str) -> str:
-    if page == "discussion":
-        return "💬 Discussion"
-    if page == "tutor":
-        return "📚 Tutor"
-    if page == "tutor_session_config":
-        return "📚 Tutor · Session Config"
-    if page == "tutor_live_discussion":
-        return "📚 Tutor · Live Discussion"
-    if page == "tutor_session_wiki":
-        return "📚 Tutor · Session Wiki"
-    if page == "model_management":
-        return "🧩 AI Models"
     if page == "module_management":
         return "📦 Modules"
     if page == "agent_management":
@@ -529,21 +507,22 @@ hr {
 
 def render_sidebar():
     """Render the sidebar navigation."""
+    visible_modules = _visible_module_catalog()
     if "selected_page" not in st.session_state or st.session_state["selected_page"] not in PAGE_OPTIONS:
-        st.session_state["selected_page"] = "discussion"
+        st.session_state["selected_page"] = "module_view" if visible_modules else "module_management"
+        if visible_modules:
+            first_module = visible_modules[0]
+            st.session_state["selected_module_id"] = str(first_module.get("module_id") or "")
+            first_views = list(first_module.get("views") or [])
+            st.session_state["selected_module_view_id"] = (
+                str(first_views[0].get("view_id") or "") if first_views else None
+            )
     if _contacts_shell_active():
         return _render_contacts_sidebar()
     if _agent_loops_shell_active():
         return _render_agent_loops_sidebar()
 
     st.sidebar.title("Apmatia")
-    tutor_active = st.session_state["selected_page"] in {
-        "tutor",
-        "tutor_session_config",
-        "tutor_live_discussion",
-        "tutor_session_wiki",
-    }
-    visible_modules = _visible_module_catalog()
 
     def _nav_button(page: str) -> None:
         if st.sidebar.button(
@@ -555,13 +534,6 @@ def render_sidebar():
             st.session_state["selected_page"] = page
             st.rerun()
 
-    _nav_button("discussion")
-    _nav_button("tutor")
-    if tutor_active:
-        st.sidebar.subheader("Tutor")
-        _nav_button("tutor_session_config")
-        _nav_button("tutor_live_discussion")
-        _nav_button("tutor_session_wiki")
     if visible_modules:
         st.sidebar.divider()
         st.sidebar.subheader("Modules")
@@ -569,7 +541,6 @@ def render_sidebar():
             _render_module_sidebar_section(module)
     st.sidebar.divider()
     st.sidebar.subheader("Management")
-    _nav_button("model_management")
     _nav_button("module_management")
     _nav_button("agent_management")
     _nav_button("user_management")
@@ -694,7 +665,7 @@ def _render_agent_loops_sidebar() -> str:
         st.rerun()
 
     st.sidebar.divider()
-    st.sidebar.title("Apmatia Agent Loops")
+    st.sidebar.title("Agent Loops")
 
     try:
         modules = _visible_module_catalog()
@@ -704,7 +675,7 @@ def _render_agent_loops_sidebar() -> str:
 
     module = next((item for item in modules if str(item.get("module_id") or "") == "agent_loops"), None)
     if module is None:
-        st.sidebar.info("Apmatia Agent Loops is not available yet.")
+        st.sidebar.info("Agent Loops is not available yet.")
         return st.session_state["selected_page"]
 
     contacts_view = next(
@@ -717,7 +688,7 @@ def _render_agent_loops_sidebar() -> str:
         None,
     )
     if contacts_view is None:
-        st.sidebar.info("Apmatia Agent Loops does not currently expose a contact list.")
+        st.sidebar.info("Agent Loops does not currently expose a contact list.")
         return st.session_state["selected_page"]
 
     contact_items = list_module_view_items(str(contacts_view.get("view_id") or ""))
@@ -1038,7 +1009,7 @@ def _deactivate_agent_loops_shell() -> None:
         "selected_module_view_id",
     ):
         st.session_state.pop(key, None)
-    st.session_state["selected_page"] = "discussion"
+    st.session_state["selected_page"] = "module_management"
 
 
 def _activate_agent_loops_contact(contact: dict[str, object]) -> None:
@@ -1052,7 +1023,7 @@ def _activate_agent_loops_contact(contact: dict[str, object]) -> None:
 
 def _render_module_sidebar_section(module: dict[str, object]) -> None:
     module_id = str(module.get("module_id") or "")
-    module_name = str(module.get("name") or module_id or "Unnamed module")
+    module_name = _module_display_name(module)
     module_views = list(module.get("views") or [])
     is_active_module = (
         st.session_state.get("selected_page") == "module_view"
@@ -1070,10 +1041,11 @@ def _render_module_sidebar_section(module: dict[str, object]) -> None:
     if not is_active_module:
         return
 
-    st.sidebar.subheader(module_name)
     for view in module_views:
         view_id = str(view.get("view_id") or "")
         view_name = str(view.get("name") or view_id or "Unnamed view")
+        if view_name == module_name:
+            continue
         is_active_view = st.session_state.get("selected_module_view_id") == view_id
         if st.sidebar.button(
             view_name,
@@ -1131,6 +1103,13 @@ def _select_module_for_navigation(module_id: str, module_views: list[dict[str, o
         st.session_state["selected_module_id"] = module_id
         st.session_state["selected_module_view_id"] = next_view_id
     st.rerun()
+
+
+def _module_display_name(module: dict[str, object]) -> str:
+    """Show the module's user-facing name without the legacy product prefix."""
+    module_id = str(module.get("module_id") or "")
+    module_name = str(module.get("name") or module_id or "Unnamed module")
+    return module_name.removeprefix("Apmatia ")
 
 
 def _set_theme_preference(theme: str) -> None:
@@ -1256,10 +1235,6 @@ def main():
             settings.render()
             return
 
-        if selected_page == "model_management":
-            model_management.render()
-            return
-
         if selected_page == "module_management":
             module_management.render()
             return
@@ -1287,22 +1262,6 @@ def main():
         if selected_page == "discussion":
             discussion.render()
             return
-
-        if selected_page == "tutor_session_config":
-            tutor_session_config.render()
-            return
-
-        if selected_page == "tutor_live_discussion":
-            tutor_live_discussion.render()
-            return
-
-        if selected_page == "tutor_session_wiki":
-            tutor_session_wiki.render()
-            return
-
-        if selected_page == "tutor":
-            tutor.render()
-
 
 if __name__ == "__main__":
     main()

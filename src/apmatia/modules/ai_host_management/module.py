@@ -10,7 +10,7 @@ from .views import VIEW_DESCRIPTORS
 
 APMATIA_AI_HOST_MANAGEMENT_MODULE = ModuleMetadata(
     module_id="ai_host_management",
-    name="Apmatia AI Host Management",
+    name="AI Host Management",
     version="0.1.0",
     description="Track AI-capable hosts and inspect current resource utilization across registered hosts for future model placement.",
     metadata={

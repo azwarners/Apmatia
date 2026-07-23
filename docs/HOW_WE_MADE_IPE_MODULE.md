@@ -1,4 +1,4 @@
-# How We Made The Apmatia IPE Module
+# How We Made The IPE Module
 
 This document records the path we took to build the `ipe` module.
 

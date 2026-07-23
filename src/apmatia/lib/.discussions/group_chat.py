@@ -245,5 +245,6 @@ def build_turn_prompt(
     return (
         "Speak once in turn, then yield to the next participant. "
         "After every participant has spoken, the conversation should pause and wait for the user."
+        " ONLY generate your own reply for this turn — do not simulate or predict what other participants will say."
         f"{coordinator_note}"
     )

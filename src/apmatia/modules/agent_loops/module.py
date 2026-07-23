@@ -11,7 +11,7 @@ from .views import VIEW_DESCRIPTORS
 
 APMATIA_AGENT_LOOPS_MODULE = ModuleMetadata(
     module_id="agent_loops",
-    name="Apmatia Agent Loops",
+    name="Agent Loops",
     version="0.1.0",
     description="A long-running workspace for autonomous contact-driven task loops and run history.",
     metadata={

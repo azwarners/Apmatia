@@ -335,3 +335,238 @@ def _summary_title(topic_title: str, reason: str) -> str:
     base = str(topic_title or "Topic").strip() or "Topic"
     suffix = reason.replace("_", " ").strip().title()
     return f"{base} Summary - {suffix}"
+
+
+# ---------------------------------------------------------------------------
+# prompt_llm – thin wrapper around ysparr for use by other modules
+# ---------------------------------------------------------------------------
+import sys
+import uuid
+import json
+from threading import Event
+from pathlib import Path
+from typing import Callable
+
+from apmatia.core.app_config import get_config_value
+from apmatia.modules.ai_model_manager.models import LLMConfig as _LLMConfig
+
+try:
+    from ysparr.core.types import PromptRequest
+    from ysparr.modalities.text2text.backends.koboldcpp_backend import KoboldCppBackend
+    from ysparr.modalities.text2text.backends.openai_compatible_backend import (
+        OpenAICompatibleBackend,
+    )
+    from ysparr.modalities.text2text.executor import execute
+    from ysparr.modalities.text2text.storage import TextFileStorage
+except ModuleNotFoundError:
+    _ysparr_path = Path(__file__).resolve().parents[4] / "src" / "apmatia" / "lib" / "ysparr"
+    if str(_ysparr_path) not in sys.path:
+        sys.path.insert(0, str(_ysparr_path))
+    from ysparr.core.types import PromptRequest  # noqa: E402
+    from ysparr.modalities.text2text.backends.koboldcpp_backend import KoboldCppBackend  # noqa: E402
+    from ysparr.modalities.text2text.backends.openai_compatible_backend import (  # noqa: E402
+        OpenAICompatibleBackend,
+    )
+    from ysparr.modalities.text2text.executor import execute  # noqa: E402
+    from ysparr.modalities.text2text.storage import TextFileStorage  # noqa: E402
+
+
+class _ChunkCallbackStorage(TextFileStorage):
+    def __init__(self, output_dir: str, *, on_chunk: Callable[[str], None] | None = None) -> None:
+        super().__init__(output_dir)
+        self._on_chunk = on_chunk
+
+    def append(self, request: "PromptRequest", text: str) -> None:
+        super().append(request, text)
+        if self._on_chunk is not None and text:
+            self._on_chunk(text)
+
+
+def _resolve_model_name(llm_config: _LLMConfig | None) -> str:
+    if llm_config is not None:
+        provider_name = str(getattr(llm_config, "provider_name", "") or "").strip()
+        if not provider_name:
+            provider_name = str(getattr(llm_config, "provider_model_name", "") or "").strip()
+        if provider_name:
+            return provider_name
+        model_name = str(getattr(llm_config, "user_alias", "") or "").strip()
+        if not model_name:
+            model_name = str(getattr(llm_config, "model_name", "") or "").strip()
+        if model_name:
+            return model_name
+    model_name = (
+        get_config_value("llm", "model_name", default=None)
+        or os.getenv("LLM_MODEL")
+        or "default"
+    )
+    return str(model_name)
+
+
+def _build_backend(llm_config: _LLMConfig | None = None):
+    backend_name = (
+        (llm_config.backend if llm_config is not None else None)
+        or get_config_value("llm", "backend", default=None)
+        or os.getenv("YSPARR_TEXT2TEXT_BACKEND")
+        or "openai_compatible"
+    ).strip().lower()
+    
+    # Debug: Log backend configuration
+    if os.getenv("APMATIA_DEBUG_BACKEND", "0") == "1":
+        print(f"[_build_backend] backend_name={backend_name}")
+        print(f"[_build_backend] llm_config.model_url={llm_config.model_url if llm_config else None}")
+        print(f"[_build_backend] llm_config.api_key={llm_config.api_key if llm_config else None}")
+
+    if backend_name in {"openai", "openai_compatible", "openai-compatible"}:
+        base_url = (
+            (llm_config.model_url if llm_config is not None else None)
+            or get_config_value("llm", "openai_compatible", "base_url", default=None)
+            or os.getenv("OPENAI_COMPAT_BASE_URL")
+        )
+        api_key = (
+            (llm_config.api_key if llm_config is not None else None)
+            or get_config_value("llm", "openai_compatible", "api_key", default=None)
+            or os.getenv("OPENAI_COMPAT_API_KEY")
+        )
+        model_name = (
+            _resolve_model_name(llm_config)
+            or get_config_value("llm", "openai_compatible", "model_name", default=None)
+            or os.getenv("OPENAI_COMPAT_MODEL")
+        )
+        
+        if os.getenv("APMATIA_DEBUG_BACKEND", "0") == "1":
+            print(f"[_build_backend] OpenAICompatibleBackend config:")
+            print(f"[_build_backend]   base_url={base_url}")
+            print(f"[_build_backend]   api_key={api_key[:10]}..." if api_key else f"[_build_backend]   api_key=None")
+            print(f"[_build_backend]   model_name={model_name}")
+        
+        return OpenAICompatibleBackend(
+            base_url=base_url,
+            api_key=api_key,
+            model_name=model_name,
+            timeout_seconds=None,
+        )
+
+    return KoboldCppBackend(
+        base_url=(
+            (llm_config.model_url if llm_config is not None else None)
+            or get_config_value("llm", "koboldcpp", "base_url", default=None)
+            or os.getenv("KOBOLDCPP_URL")
+            or "http://localhost:5001"
+        )
+    )
+
+
+def _default_generation_parameters(llm_config: _LLMConfig | None = None) -> dict[str, Any]:
+    max_tokens_value = (
+        (llm_config.max_response_size if llm_config is not None else None)
+        or get_config_value("llm", "max_tokens", default=None)
+        or os.getenv("LLM_MAX_TOKENS")
+        or 8192
+    )
+    max_tokens = int(max_tokens_value)
+    return {"max_tokens": max_tokens}
+
+
+def prompt_llm(
+    prompt: str = "Hello",
+    output_dir: str | None = None,
+    prompt_id: str | None = None,
+    append_existing: bool = False,
+    context: str | None = None,
+    request_metadata: dict[str, Any] | None = None,
+    llm_config: _LLMConfig | None = None,
+    stop_event: Event | None = None,
+    on_chunk: Callable[[str], None] | None = None,
+    on_event: Callable[[dict[str, Any]], None] | None = None,
+) -> str:
+    conversation_mode = str((request_metadata or {}).get("conversation_mode") or "direct").strip().lower()
+    speaker_name = str((request_metadata or {}).get("speaker_name") or "Assistant").strip()
+    user_name = str((request_metadata or {}).get("user_name") or "User").strip()
+    if conversation_mode == "group":
+        current_turn = f"{user_name}: {prompt}\n{speaker_name}:"
+        prompt_text = f"{context.rstrip()}\n{current_turn}" if context and context.strip() else current_turn
+    elif context and context.strip():
+        prompt_text = f"{context.rstrip()}\n{prompt}"
+    else:
+        prompt_text = prompt
+
+    model_name = _resolve_model_name(llm_config)
+    request = PromptRequest(
+        prompt_id=prompt_id or str(uuid.uuid4()),
+        prompt_text=prompt_text,
+        model_name=model_name,
+        parameters=_default_generation_parameters(llm_config),
+        metadata={
+            "append_existing": append_existing,
+            **(request_metadata or {}),
+            "on_event": on_event,
+        },
+        stop_event=stop_event,
+    )
+
+    backend = _build_backend(llm_config)
+    apmatia_home = Path(
+        os.getenv("APMATIA_HOME", str(Path.home() / ".apmatia"))
+    ).expanduser()
+    resolved_output_dir = (
+        Path(output_dir).expanduser()
+        if output_dir is not None
+        else apmatia_home / "prompt_logs"
+    )
+    if on_chunk is None:
+        storage = TextFileStorage(str(resolved_output_dir))
+    else:
+        storage = _ChunkCallbackStorage(str(resolved_output_dir), on_chunk=on_chunk)
+    result = execute(request, backend, storage)
+
+    raw_text = Path(result.output_path).read_text(encoding="utf-8").strip()
+
+    if append_existing:
+        return raw_text
+
+    try:
+        payload = json.loads(raw_text)
+        return payload["results"][0]["text"].strip()
+    except Exception:
+        return raw_text
+
+
+# ---------------------------------------------------------------------------
+# Discussion helpers used by other modules (get_discussion / set_agent_mode)
+# ---------------------------------------------------------------------------
+def get_discussion(discussion_id: str | int, *, bundle: TopicManagementBundle | None = None) -> Discussion | None:
+    """Return a Discussion by id (or None if not found / deleted)."""
+    bundle = bundle or TopicManagementBundle(CONTACTS_AND_DISCUSSIONS_DB)
+    return bundle.discussions.get(discussion_id)
+
+
+def set_agent_mode(
+    discussion_id: str | int,
+    mode: str,
+    *,
+    bundle: TopicManagementBundle | None = None,
+) -> dict[str, Any]:
+    """Set the agent_mode on a discussion. Returns a dict with status info."""
+    bundle = bundle or TopicManagementBundle(CONTACTS_AND_DISCUSSIONS_DB)
+    discussion = bundle.discussions.get(discussion_id)
+    if discussion is None:
+        raise ValueError(f"Discussion not found: {discussion_id}")
+
+    normalized_mode = mode.strip().lower()
+    if normalized_mode not in DISCUSSION_AGENT_MODES:
+        raise ValueError(f"mode must be one of {DISCUSSION_AGENT_MODES}")
+
+    previous_mode = discussion.agent_mode
+    updated = replace(discussion, agent_mode=normalized_mode, updated_at=utc_now())
+    bundle.discussions.update(updated)
+    refreshed = bundle.discussions.get(discussion_id)
+    if refreshed is None:
+        raise ValueError(f"Discussion not found after update: {discussion_id}")
+
+    status = "unchanged" if previous_mode == refreshed.agent_mode else "updated"
+    return {
+        "discussion_id": refreshed.id,
+        "previous_mode": previous_mode,
+        "current_mode": refreshed.agent_mode,
+        "status": status,
+    }

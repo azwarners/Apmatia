@@ -18,5 +18,12 @@ ACTION_DESCRIPTORS: tuple[ActionContribution, ...] = (
         description="Store routing preferences for tasks and model sizes.",
         metadata={"object_type": "task_preference"},
     ),
+    ActionContribution(
+        module_id="ai_model_manager",
+        action_id="ai_model_manager.llm_configs",
+        name="Remote LLM Configurations",
+        description="Manage remote LLM endpoint configurations.",
+        metadata={"object_type": "llm_config"},
+    ),
 )
 

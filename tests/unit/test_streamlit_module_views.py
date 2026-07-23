@@ -1005,7 +1005,7 @@ def test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs(mock_
     modules = [
         {
             "module_id": "agent_loops",
-            "name": "Apmatia Agent Loops",
+            "name": "Agent Loops",
             "hidden": False,
             "views": [
                 {
@@ -1210,7 +1210,7 @@ def test_module_views_page_starts_agent_loops_task_from_form(mock_streamlit, tmp
     modules = [
         {
             "module_id": "agent_loops",
-            "name": "Apmatia Agent Loops",
+            "name": "Agent Loops",
             "hidden": False,
             "views": [
                 {

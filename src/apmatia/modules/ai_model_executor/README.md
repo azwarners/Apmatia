@@ -1,4 +1,4 @@
-# Apmatia AI Model Executor
+# AI Model Executor
 
 A bundled module for local llama.cpp execution control.
 

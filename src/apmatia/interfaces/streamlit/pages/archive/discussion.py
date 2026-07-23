@@ -19,6 +19,7 @@ from apmatia.interfaces.streamlit.api_client import (
     list_llm_configs,
     open_discussion,
     prompt_discussion,
+    prompt_group_discussion,
     pause_group_chat,
     resume_group_chat,
     set_discussion_group_chat_mode,
@@ -720,8 +721,9 @@ def _render_streaming_messages(
     model_lookup: dict[int, dict[str, object]] | None = None,
     include_history: bool = False,
     start_index: int = 0,
+    discussion_id: str | None = None,
 ) -> dict[str, object]:
-    snapshot = discussion_state()
+    snapshot = discussion_state(discussion_id)
     if include_history:
         _render_messages(
             snapshot,
@@ -916,7 +918,7 @@ def _render_contacts_shell() -> None:
         return
 
     try:
-        snapshot = discussion_state()
+        snapshot = discussion_state(active_discussion_id if active_discussion_id else None)
     except ApiError as error:
         st.error(f"Unable to load discussion state: {error.detail}")
         return
@@ -929,7 +931,7 @@ def _render_contacts_shell() -> None:
             st.error(f"Unable to open discussion: {error.detail}")
             return
         try:
-            snapshot = discussion_state()
+            snapshot = discussion_state(active_discussion_id)
         except ApiError as error:
             st.error(f"Unable to load discussion state: {error.detail}")
             return
@@ -964,7 +966,7 @@ def _render_contacts_shell() -> None:
                 if not is_current_page_generation(page_generation):
                     st.empty()
                     return {"is_streaming": False, "messages": []}
-                current_snapshot = discussion_state()
+                current_snapshot = discussion_state(active_discussion_id)
                 current_activity = (
                     current_snapshot.get("activity") if isinstance(current_snapshot.get("activity"), dict) else None
                 )
@@ -1021,16 +1023,66 @@ def _render_contacts_shell() -> None:
         st.warning("Please enter a message.")
         return
 
+    send_status = st.status(f"{username}: {prompt}", expanded=True)
+    send_status.write("Message posted. Waiting for the model response...")
     try:
-        prompt_discussion(
-            prompt=prompt,
-            agent_id=st.session_state.get("contacts_active_agent_id") if contact_type == "agent" else None,
-            attachments=[],
-        )
+        # Determine model_id from selected agent if available
+        model_id = None
+        model_info = None
+        if contact_type == "agent":
+            selected_agent_id = st.session_state.get("contacts_active_agent_id")
+            if selected_agent_id is not None:
+                # Get the selected agent from the agents list
+                agents = st.session_state.get("agents_list", [])
+                selected_agent = next((a for a in agents if a.get("id") == selected_agent_id), None)
+                if selected_agent is not None:
+                    # Extract model_id from the agent's active_model_id or default_model_id
+                    model_id = selected_agent.get("active_model_id") or selected_agent.get("default_model_id")
+                    if model_id is not None:
+                        try:
+                            model_id = int(model_id)
+                            # Get model config for display
+                            try:
+                                from apmatia.interfaces.streamlit.api_client import list_llm_configs
+                                model_configs = list_llm_configs()
+                                model_info = next((m for m in model_configs if int(m.get("id")) == model_id), None)
+                            except Exception as me:
+                                st.toast(f"Warning: Could not load model config: {me}")
+                        except (TypeError, ValueError):
+                            model_id = None
+        if contact_type == "group":
+            try:
+                group_id = int(str(st.session_state.get("contacts_active_contact_id") or "").split(":", 1)[1])
+            except (IndexError, ValueError):
+                raise ApiError("The selected group is invalid.", 400)
+            prompt_group_discussion(
+                prompt=prompt,
+                group_id=group_id,
+                discussion_id=active_discussion_id,
+            )
+        else:
+            prompt_discussion(
+                prompt=prompt,
+                agent_id=selected_agent_id,
+                discussion_id=active_discussion_id,
+                model_id=model_id,
+                attachments=[],
+            )
     except ApiError as error:
+        send_status.update(label="Message sent, but the model request failed", state="error")
         st.error(f"Unable to send message: {error.detail}")
         return
-    st.success("Message sent. Refreshing discussion.")
+
+    send_status.update(label="Response received", state="complete")
+    
+    # Display model info if available
+    if model_info:
+        model_name = model_info.get("name", "Unknown")
+        model_url = model_info.get("model_url", "N/A")
+        model_backend = model_info.get("backend", "N/A")
+        st.success(f"Message sent using {model_name} ({model_backend}) at {model_url}. Refreshing discussion.")
+    else:
+        st.success("Message sent. Refreshing discussion.")
     st.rerun()
 
 
@@ -1236,7 +1288,7 @@ def render() -> None:
     }
     if selected_discussion_id is not None:
         try:
-            snapshot = discussion_state()
+            snapshot = discussion_state(selected_discussion_id)
         except ApiError as error:
             st.error(f"Unable to load discussion state: {error.detail}")
             return
@@ -1444,6 +1496,7 @@ def render() -> None:
                     model_lookup=model_lookup,
                     include_history=False,
                     start_index=tail_start_index,
+                    discussion_id=selected_discussion_id,
                 )
                 if not (current_snapshot.get("is_streaming") and not current_snapshot.get("chat_is_paused")):
                     st.session_state.pop(tail_start_key, None)
@@ -1458,6 +1511,7 @@ def render() -> None:
                 agent_lookup=agent_lookup,
                 model_lookup=model_lookup,
                 include_history=True,
+                discussion_id=selected_discussion_id,
             )
     else:
         st.session_state.pop(tail_start_key, None)

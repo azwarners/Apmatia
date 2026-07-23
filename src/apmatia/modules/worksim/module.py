@@ -11,7 +11,7 @@ from .views import VIEW_DESCRIPTORS
 
 APMATIA_WORKSIM_MODULE = ModuleMetadata(
     module_id="worksim",
-    name="Apmatia Worksim",
+    name="Worksim",
     version="0.1.0",
     description="A workplace simulation module centered on a persistent org chart wiki.",
     metadata={

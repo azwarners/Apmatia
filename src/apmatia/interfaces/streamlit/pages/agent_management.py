@@ -73,6 +73,9 @@ def _model_option_label(config: dict[str, object]) -> str:
     config_id = config.get("id")
     name = config.get("user_alias") or config.get("name") or "Unnamed config"
     provider_name = config.get("provider_name") or config.get("model_name") or "default"
+    seats = config.get("seats")
+    if seats is not None and seats > 1:
+        return f"{name} (ID {config_id}, {provider_name}, {seats} seats)"
     return f"{name} (ID {config_id}, {provider_name})"
 
 

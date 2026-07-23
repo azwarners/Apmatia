@@ -17,6 +17,7 @@ class LlamaCppRuntimeConfig:
     stop_conflicting_models: bool = True
     log_dir: str = ""
 
+
 @dataclass(slots=True)
 class ModelRuntime(ApmatiaObject):
     id: str | None = None
@@ -38,6 +39,7 @@ class RuntimeReservation(ApmatiaObject):
     created_at: datetime = field(default_factory=utc_now)
     activated_at: datetime | None = None
     released_at: datetime | None = None
+
 
 @dataclass(slots=True)
 class HostResourceSnapshot:
@@ -63,8 +65,10 @@ class ModelExecutionRecord(ApmatiaObject):
     log_path: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
 
+
 @dataclass(slots=True)
 class SeatLease(ApmatiaObject):
+    """A temporary permit allowing an owner to consume one unit of runtime capacity."""
     id: str | None = None
     runtime_id: str | None = None
     owner_id: str | None = None
@@ -72,7 +76,7 @@ class SeatLease(ApmatiaObject):
     released_at: datetime | None = None
     status: str = "active"  # active, released, failed, cancelled, expired
     reservation_id: str | None = None
-    reservation_id: str | None = None
+
 
 @dataclass(slots=True)
 class TextGenerationWorkPayload:
@@ -82,8 +86,10 @@ class TextGenerationWorkPayload:
     max_tokens: int | None = None
     temperature: float | None = None
 
+
 @dataclass(slots=True)
 class WorkItem(ApmatiaObject):
+    """A persistent unit of pending work in the queue."""
     id: str | None = None
     payload: TextGenerationWorkPayload | None = None
     priority: int = 0  # Lower is higher priority (0=User, 1=Agent, 2=Background)
@@ -93,5 +99,4 @@ class WorkItem(ApmatiaObject):
     claimed_at: datetime | None = None
     completed_at: datetime | None = None
     error: str | None = None
-    reservation_id: str | None = None
     reservation_id: str | None = None

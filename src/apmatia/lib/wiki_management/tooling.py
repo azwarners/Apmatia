@@ -408,9 +408,9 @@ class WikiToolProvider:
         discussion_id = getattr(tool_call, "discussion_id", None)
         if not discussion_id:
             raise ValueError("wiki_id is required when no focused tutor wiki is attached to the discussion.")
-        from apmatia.lib.discussions import discussion_state
+        from apmatia.modules.contacts_and_discussions.services import get_discussion as _get_discussion
 
-        discussion = discussion_state._get_discussion(str(discussion_id))
+        discussion = _get_discussion(discussion_id)
         focused_wiki_id = None if discussion is None else getattr(discussion, "focused_wiki_id", None)
         if focused_wiki_id is None or not str(focused_wiki_id).strip():
             raise ValueError("The current discussion does not have a focused wiki.")
@@ -420,9 +420,9 @@ class WikiToolProvider:
         discussion_id = getattr(tool_call, "discussion_id", None)
         if not discussion_id:
             return agent
-        from apmatia.lib.discussions import discussion_state
+        from apmatia.modules.contacts_and_discussions.services import get_discussion as _get_discussion
 
-        discussion = discussion_state._get_discussion(str(discussion_id))
+        discussion = _get_discussion(discussion_id)
         if discussion is None or discussion.owner_user_id is None:
             return agent
         try:

@@ -1,6 +1,6 @@
 [module]
 module_id = "logging"
-name = "Apmatia Logging"
+name = "Logging"
 version = "0.1.0"
 description = "Structured runtime logging and a browsable log viewer for Apmatia."
 author = "Nick"
@@ -15,4 +15,3 @@ python_packages = []
 system_packages = []
 modules = []
 tools = []
-

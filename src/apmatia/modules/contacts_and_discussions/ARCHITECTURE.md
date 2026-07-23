@@ -1,4 +1,4 @@
-# Apmatia Contacts and Discussions Architecture
+# Contacts and Discussions Architecture
 
 This module is the long-running conversation workspace for Apmatia.
 It is intentionally not a ChatGPT-style session manager.

@@ -53,6 +53,20 @@ def _command_descriptors() -> tuple[CommandContribution, ...]:
             ),
         )
     )
+
+    # Add test command for LLM configs
+    llm_spec = AI_MODEL_COLLECTION_VIEW_SPECS[2]
+    descriptors.append(
+        CommandContribution(
+            module_id="ai_model_manager",
+            action_id=llm_spec.action_id,
+            command_id="ai_model_manager.llm_configs.test",
+            path=("ai_model_manager", "llm_configs", "test"),
+            name="Test LLM Config",
+            description="Test connectivity to an LLM endpoint.",
+            metadata={"object_type": llm_spec.object_type, "verb": "test", "collection_view_id": llm_spec.view_id},
+        )
+    )
     return tuple(descriptors)
 
 

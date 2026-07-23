@@ -1,4 +1,4 @@
-# Apmatia Integrated Productivity Environment
+# Integrated Productivity Environment
 
 A bundled module for the personal productivity assistant experience.
 

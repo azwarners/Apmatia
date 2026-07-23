@@ -1,6 +1,6 @@
 [module]
 module_id = "ai_model_executor"
-name = "Apmatia AI Model Executor"
+name = "AI Model Executor"
 version = "0.1.0"
 description = "Local llama.cpp execution control with feasibility checks and process tracking."
 author = "Nick"

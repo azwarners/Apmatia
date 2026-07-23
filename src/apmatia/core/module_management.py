@@ -12,6 +12,7 @@ def list_module_catalog() -> list[dict[str, Any]]:
     registry = get_application_registry()
     hidden_module_ids = _hidden_identifier_set(get_config_value("ui", "hidden_module_ids", default=[]))
     hidden_view_ids = _hidden_identifier_set(get_config_value("ui", "hidden_view_ids", default=[]))
+    module_orders = _module_order_list()
     view_orders = _view_order_map()
 
     views_by_module: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -30,7 +31,8 @@ def list_module_catalog() -> list[dict[str, Any]]:
         )
 
     catalog: list[dict[str, Any]] = []
-    for module in registry.list_modules():
+    modules = _ordered_modules(registry.list_modules(), module_orders)
+    for module_index, module in enumerate(modules):
         metadata = dict(getattr(module, "metadata", {}) or {})
         module_hidden = module.module_id in hidden_module_ids
         raw_views = _ordered_views(module.module_id, views_by_module.get(module.module_id, []), view_orders)
@@ -51,12 +53,31 @@ def list_module_catalog() -> list[dict[str, Any]]:
                 "description": module.description,
                 "metadata": metadata,
                 "hidden": module_hidden,
+                "sort_order": module_index,
                 "views": serialized_views,
                 "view_count": len(serialized_views),
                 "visible_view_count": visible_view_count,
             }
         )
     return catalog
+
+
+def set_module_order(module_id: str, *, new_index: int) -> dict[str, Any]:
+    normalized_module_id = _require_known_module(module_id)
+    if new_index < 0:
+        raise ValueError("Module order cannot be negative.")
+
+    current_orders = _module_order_list()
+    known_module_ids = [module.module_id for module in get_application_registry().list_modules()]
+    current_module_ids = [module_id for module_id in _ordered_identifier_list(current_orders) if module_id in known_module_ids]
+    current_module_ids.extend(
+        module.module_id
+        for module in get_application_registry().list_modules()
+        if module.module_id not in current_module_ids
+    )
+    ordered_module_ids = _apply_identifier_order(current_module_ids, normalized_module_id, new_index)
+    set_config_value("ui", "module_orders", value=ordered_module_ids)
+    return get_module_catalog_entry(normalized_module_id)
 
 
 def set_module_hidden(module_id: str, *, hidden: bool) -> dict[str, Any]:
@@ -168,6 +189,17 @@ def _view_order_map() -> dict[str, list[str]]:
     return orders
 
 
+def _module_order_list() -> list[str]:
+    return _ordered_identifier_list(get_config_value("ui", "module_orders", default=[]))
+
+
+def _ordered_modules(modules: list[Any], module_orders: list[str]) -> list[Any]:
+    indexed_modules = {str(module.module_id): module for module in modules}
+    ordered_ids = [module_id for module_id in module_orders if module_id in indexed_modules]
+    remaining_ids = [str(module.module_id) for module in modules if str(module.module_id) not in ordered_ids]
+    return [indexed_modules[module_id] for module_id in [*ordered_ids, *remaining_ids]]
+
+
 def _ordered_identifier_list(value: Any) -> list[str]:
     if not isinstance(value, Iterable) or isinstance(value, (str, bytes, dict)):
         return []
@@ -197,13 +229,17 @@ def _ordered_views(
 
 
 def _apply_view_order(current_view_ids: list[str], view_id: str, new_index: int) -> list[str]:
-    ordered_ids = [identifier for identifier in current_view_ids if identifier]
-    if view_id not in ordered_ids:
-        raise ValueError(f"View does not belong to module: {view_id}")
+    return _apply_identifier_order(current_view_ids, view_id, new_index, item_label="View")
 
-    ordered_ids.remove(view_id)
+
+def _apply_identifier_order(current_ids: list[str], identifier: str, new_index: int, *, item_label: str = "Module") -> list[str]:
+    ordered_ids = [item for item in current_ids if item]
+    if identifier not in ordered_ids:
+        raise ValueError(f"{item_label} does not belong to collection: {identifier}")
+
+    ordered_ids.remove(identifier)
     target_index = min(new_index, len(ordered_ids))
-    ordered_ids.insert(target_index, view_id)
+    ordered_ids.insert(target_index, identifier)
     return ordered_ids
 
 

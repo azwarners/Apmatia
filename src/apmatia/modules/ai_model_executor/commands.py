@@ -4,6 +4,7 @@ from apmatia.core.registry import CommandContribution
 
 
 COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
+    # --- Host Resources ---
     CommandContribution(
         module_id="ai_model_executor",
         action_id="ai_model_executor.resources",
@@ -11,7 +12,17 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
         path=("ai_model_executor", "resources", "inspect"),
         name="Inspect Host Resources",
         description="Inspect host RAM and VRAM resources as JSON.",
-        metadata={"object_type": "host_resources", "verb": "resources"},
+        metadata={"object_type": "resources", "verb": "inspect"},
+    ),
+    # --- Executions ---
+    CommandContribution(
+        module_id="ai_model_executor",
+        action_id="ai_model_executor.executions",
+        command_id="ai_model_executor.executions.list",
+        path=("ai_model_executor", "executions", "list"),
+        name="List Executions",
+        description="List all model execution records.",
+        metadata={"object_type": "execution", "verb": "list"},
     ),
     CommandContribution(
         module_id="ai_model_executor",
@@ -20,7 +31,7 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
         path=("ai_model_executor", "executions", "can_run"),
         name="Can Run Model",
         description="Check whether a model can run on the current host.",
-        metadata={"object_type": "model_execution", "verb": "can-run"},
+        metadata={"object_type": "execution", "verb": "can_run"},
     ),
     CommandContribution(
         module_id="ai_model_executor",
@@ -29,7 +40,7 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
         path=("ai_model_executor", "executions", "start"),
         name="Start Model",
         description="Start a local llama.cpp execution for a model.",
-        metadata={"object_type": "model_execution", "verb": "start"},
+        metadata={"object_type": "execution", "verb": "start"},
     ),
     CommandContribution(
         module_id="ai_model_executor",
@@ -38,7 +49,7 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
         path=("ai_model_executor", "executions", "stop"),
         name="Stop Model",
         description="Stop a running local model execution.",
-        metadata={"object_type": "model_execution", "verb": "stop"},
+        metadata={"object_type": "execution", "verb": "stop"},
     ),
     CommandContribution(
         module_id="ai_model_executor",
@@ -47,6 +58,81 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
         path=("ai_model_executor", "executions", "status"),
         name="Execution Status",
         description="Show execution status records.",
-        metadata={"object_type": "model_execution", "verb": "status"},
+        metadata={"object_type": "execution", "verb": "status"},
+    ),
+    CommandContribution(
+        module_id="ai_model_executor",
+        action_id="ai_model_executor.executions",
+        command_id="ai_model_executor.executions.show",
+        path=("ai_model_executor", "executions", "show"),
+        name="Show Execution",
+        description="Show details of a specific execution record.",
+        metadata={"object_type": "execution", "verb": "show"},
+    ),
+    # --- Queue ---
+    CommandContribution(
+        module_id="ai_model_executor",
+        action_id="ai_model_executor.queue",
+        command_id="ai_model_executor.queue.list",
+        path=("ai_model_executor", "queue", "list"),
+        name="List Queue Items",
+        description="List all items in the work queue.",
+        metadata={"object_type": "queue_item", "verb": "list"},
+    ),
+    CommandContribution(
+        module_id="ai_model_executor",
+        action_id="ai_model_executor.queue",
+        command_id="ai_model_executor.queue.enqueue",
+        path=("ai_model_executor", "queue", "enqueue"),
+        name="Enqueue Work",
+        description="Add a text generation task to the work queue.",
+        metadata={"object_type": "queue_item", "verb": "enqueue"},
+    ),
+    CommandContribution(
+        module_id="ai_model_executor",
+        action_id="ai_model_executor.queue",
+        command_id="ai_model_executor.queue.cancel",
+        path=("ai_model_executor", "queue", "cancel"),
+        name="Cancel Queue Item",
+        description="Cancel (remove) an item from the work queue.",
+        metadata={"object_type": "queue_item", "verb": "cancel"},
+    ),
+    # --- Reservations ---
+    CommandContribution(
+        module_id="ai_model_executor",
+        action_id="ai_model_executor.reservations",
+        command_id="ai_model_executor.reservations.list",
+        path=("ai_model_executor", "reservations", "list"),
+        name="List Reservations",
+        description="List all seat reservations.",
+        metadata={"object_type": "reservation", "verb": "list"},
+    ),
+    CommandContribution(
+        module_id="ai_model_executor",
+        action_id="ai_model_executor.reservations",
+        command_id="ai_model_executor.reservations.create",
+        path=("ai_model_executor", "reservations", "create"),
+        name="Create Reservation",
+        description="Reserve seats on a model runtime.",
+        metadata={"object_type": "reservation", "verb": "create"},
+    ),
+    CommandContribution(
+        module_id="ai_model_executor",
+        action_id="ai_model_executor.reservations",
+        command_id="ai_model_executor.reservations.release",
+        path=("ai_model_executor", "reservations", "release"),
+        name="Release Reservation",
+        description="Release a seat reservation.",
+        metadata={"object_type": "reservation", "verb": "release"},
+    ),
+    # --- Capacity ---
+    CommandContribution(
+        module_id="ai_model_executor",
+        action_id="ai_model_executor.capacity",
+        command_id="ai_model_executor.capacity.list",
+        path=("ai_model_executor", "capacity", "list"),
+        name="List Capacity",
+        description="Show runtime capacity and admission control state.",
+        metadata={"object_type": "capacity", "verb": "list"},
     ),
 )

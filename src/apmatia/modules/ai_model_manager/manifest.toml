@@ -1,6 +1,6 @@
 [module]
 module_id = "ai_model_manager"
-name = "Apmatia AI Model Manager"
+name = "AI Model Manager"
 version = "0.1.0"
 description = "Local GGUF model metadata management with size estimates and task routing preferences."
 author = "Nick"
@@ -15,4 +15,3 @@ python_packages = []
 system_packages = []
 modules = []
 tools = []
-

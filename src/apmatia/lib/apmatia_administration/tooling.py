@@ -198,7 +198,7 @@ class ApmatiaAdministrationToolProvider:
             }
 
         if self.action == "set_agent_mode":
-            from apmatia.lib.discussions import discussion_state
+            from apmatia.modules.contacts_and_discussions.services import set_agent_mode as _set_agent_mode
 
             discussion_id = str(getattr(tool_call, "discussion_id", "") or "").strip()
             if not discussion_id:
@@ -207,7 +207,7 @@ class ApmatiaAdministrationToolProvider:
             if requested_mode not in {"discussion", "agentic"}:
                 raise ValueError("mode must be either 'discussion' or 'agentic'.")
 
-            refreshed = discussion_state.set_agent_mode(discussion_id=discussion_id, mode=requested_mode)
+            refreshed = _set_agent_mode(discussion_id=discussion_id, mode=requested_mode)
             return {
                 "previous_mode": str(refreshed.get("previous_mode") or "discussion"),
                 "current_mode": str(refreshed.get("current_mode") or requested_mode),
@@ -267,9 +267,9 @@ def _resolve_owner_context(agent: Any, arguments: dict[str, Any], tool_call: Any
 
     if (owner_user_id is None or owner_group_id is None) and getattr(tool_call, "discussion_id", None):
         try:
-            from apmatia.lib.discussions import discussion_state
+            from apmatia.modules.contacts_and_discussions.services import get_discussion as _get_discussion
 
-            discussion = discussion_state._get_discussion(str(tool_call.discussion_id))
+            discussion = _get_discussion(tool_call.discussion_id)
         except Exception:
             discussion = None
         if discussion is not None:

@@ -5,7 +5,7 @@ from typing import Any
 
 from apmatia.core.module_view_schema import build_collection_view_schema
 
-from .models import GGUFModelRecord, TaskSizePreference
+from .models import GGUFModelRecord, LLMConfig, TaskSizePreference
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +39,7 @@ MODEL_VIEW_SPEC = AiModelCollectionViewSpec(
             "local_path",
             "file_size_bytes",
             "size_class",
+            "seats",
             "vision_enabled",
             "cost_mode",
             "input_token_cost_per_1k",
@@ -49,6 +50,7 @@ MODEL_VIEW_SPEC = AiModelCollectionViewSpec(
             "local_path",
             "file_size_bytes",
             "size_class",
+            "seats",
             "cost_mode",
             "input_token_cost_per_1k",
             "output_token_cost_per_1k",
@@ -59,6 +61,7 @@ MODEL_VIEW_SPEC = AiModelCollectionViewSpec(
             "local_path",
             "file_size_bytes",
             "size_class",
+            "seats",
             "cost_mode",
             "input_token_cost_per_1k",
             "output_token_cost_per_1k",
@@ -92,6 +95,14 @@ MODEL_VIEW_SPEC = AiModelCollectionViewSpec(
                     "large (85-256 GB, CPU-bound only on the server), "
                     "xlarge (256-512 GB, one model this large on the server)."
                 ),
+            },
+            "seats": {
+                "label": "Seats",
+                "field_type": "number",
+                "min_value": 1,
+                "step": 1,
+                "default": 1,
+                "help_text": "Number of concurrent user seats this model runtime supports. Reserved seats protect interactive users from background work.",
             },
             "vision_enabled": {
                 "label": "Vision",
@@ -176,8 +187,115 @@ PREFERENCE_VIEW_SPEC = AiModelCollectionViewSpec(
     delete_command_id="ai_model_manager.preferences.delete",
 )
 
+LLM_CONFIG_VIEW_SPEC = AiModelCollectionViewSpec(
+    action_id="ai_model_manager.llm_configs",
+    view_id="ai_model_manager.llm_configs.view",
+    object_type="llm_config",
+    singular_label="LLM Config",
+    plural_label="LLM Configs",
+    description="Manage remote LLM endpoint configurations (OpenAI-compatible APIs).",
+    schema=build_collection_view_schema(
+        LLMConfig,
+        list_fields=(
+            "user_alias",
+            "backend",
+            "provider_name",
+            "model_url",
+            "max_response_size",
+            "seats",
+        ),
+        create_fields=(
+            "user_alias",
+            "backend",
+            "provider_name",
+            "model_url",
+            "api_key",
+            "max_response_size",
+            "seats",
+            "system_prompt",
+        ),
+        edit_fields=(
+            "user_alias",
+            "backend",
+            "provider_name",
+            "model_url",
+            "api_key",
+            "max_response_size",
+            "seats",
+            "system_prompt",
+        ),
+        field_overrides={
+            "id": {"hidden": True},
+            "owner_user_id": {"hidden": True},
+            "owner_group_id": {"hidden": True},
+            "mode": {"hidden": True},
+            "created_at": {"hidden": True},
+            "updated_at": {"hidden": True},
+            "metadata": {"hidden": True},
+            "user_alias": {
+                "label": "Alias",
+                "placeholder": "My Model",
+                "help_text": "A friendly name for this model.",
+            },
+            "backend": {
+                "label": "Backend",
+                "field_type": "select",
+                "options": ["openai_compatible"],
+                "default": "openai_compatible",
+            },
+            "provider_name": {
+                "label": "Provider name",
+                "placeholder": "llama-3.1-8b",
+                "help_text": "The model identifier used by the provider.",
+            },
+            "model_url": {
+                "label": "API URL",
+                "placeholder": "https://api.example.com/v1",
+                "help_text": "Base URL for the OpenAI-compatible API.",
+            },
+            "api_key": {
+                "label": "API key",
+                "field_type": "password",
+                "help_text": "API key for authentication (leave blank to keep existing).",
+            },
+            "max_response_size": {
+                "label": "Max response size",
+                "field_type": "number",
+                "min_value": 1,
+                "step": 1,
+                "default": 8192,
+                "help_text": "Maximum tokens in the response.",
+            },
+            "seats": {
+                "label": "Seats",
+                "field_type": "number",
+                "min_value": 1,
+                "step": 1,
+                "default": 1,
+                "help_text": "Number of concurrent user seats this endpoint supports. Reserved seats protect interactive users from background work.",
+            },
+            "system_prompt": {
+                "label": "System prompt",
+                "field_type": "textarea",
+                "help_text": "Default system prompt for this model.",
+            },
+        },
+        create={
+            "title": "Add LLM Config",
+            "description": "Add a remote LLM endpoint configuration.",
+            "submit_label": "Save config",
+            "cancel_label": "Cancel",
+        },
+    ),
+    list_command_id="ai_model_manager.llm_configs.list",
+    create_command_id="ai_model_manager.llm_configs.create",
+    edit_command_id="ai_model_manager.llm_configs.edit",
+    delete_command_id="ai_model_manager.llm_configs.delete",
+)
+
 
 AI_MODEL_COLLECTION_VIEW_SPECS: tuple[AiModelCollectionViewSpec, ...] = (
     MODEL_VIEW_SPEC,
     PREFERENCE_VIEW_SPEC,
+    LLM_CONFIG_VIEW_SPEC,
 )

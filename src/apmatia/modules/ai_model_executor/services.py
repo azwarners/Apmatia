@@ -590,3 +590,166 @@ def _resolve_launch_path(local_path: str) -> Path:
         if matches:
             return matches[0].resolve()
     raise ValueError(f"No GGUF file found at path: {local_path}")
+
+
+# ---------------------------------------------------------------------------
+# Queue, Reservation, Capacity, and Runtime helpers for the view layer
+# ---------------------------------------------------------------------------
+
+_QUEUE_KEY = ("ai_model_executor", "queue")
+_RESERVATIONS_KEY = ("ai_model_executor", "reservations")
+_LEASES_KEY = ("ai_model_executor", "leases")
+_RUNTIMES_KEY = ("ai_model_executor", "runtimes")
+
+
+def _load_queue_items() -> list[dict[str, Any]]:
+    items = get_config_value(*_QUEUE_KEY, default=[])
+    if not isinstance(items, list):
+        return []
+    return [dict(item) for item in items]
+
+
+def _save_queue_items(items: list[dict[str, Any]]) -> None:
+    app_config = load_app_config()
+    app_config.setdefault("ai_model_executor", {})
+    app_config["ai_model_executor"]["queue"] = items
+    save_app_config(app_config)
+
+
+def _load_reservations() -> list[dict[str, Any]]:
+    items = get_config_value(*_RESERVATIONS_KEY, default=[])
+    if not isinstance(items, list):
+        return []
+    return [dict(item) for item in items]
+
+
+def _save_reservations(items: list[dict[str, Any]]) -> None:
+    app_config = load_app_config()
+    app_config.setdefault("ai_model_executor", {})
+    app_config["ai_model_executor"]["reservations"] = items
+    save_app_config(app_config)
+
+
+def _load_leases() -> list[dict[str, Any]]:
+    items = get_config_value(*_LEASES_KEY, default=[])
+    if not isinstance(items, list):
+        return []
+    return [dict(item) for item in items]
+
+
+def _save_leases(items: list[dict[str, Any]]) -> None:
+    app_config = load_app_config()
+    app_config.setdefault("ai_model_executor", {})
+    app_config["ai_model_executor"]["leases"] = items
+    save_app_config(app_config)
+
+
+def _load_runtimes() -> list[dict[str, Any]]:
+    items = get_config_value(*_RUNTIMES_KEY, default=[])
+    if not isinstance(items, list):
+        return []
+    return [dict(item) for item in items]
+
+
+def _save_runtimes(items: list[dict[str, Any]]) -> None:
+    app_config = load_app_config()
+    app_config.setdefault("ai_model_executor", {})
+    app_config["ai_model_executor"]["runtimes"] = items
+    save_app_config(app_config)
+
+
+def list_runtimes() -> list[dict[str, Any]]:
+    runtimes = _load_runtimes()
+    # Auto-register known runtimes from config
+    runtime_config = get_runtime_config()
+    existing_ids = {r.get("id") for r in runtimes}
+    if runtime_config.runtime_id not in existing_ids:
+        runtimes.append({
+            "id": runtime_config.runtime_id,
+            "name": runtime_config.executable_path,
+            "max_concurrency": 1,
+            "endpoint_url": "",
+            "state": "available",
+        })
+    return runtimes
+
+
+def enqueue_work(
+    *,
+    model_id: int,
+    prompt: str,
+    priority: int = 0,
+    runtime_id: str = "",
+    system_prompt: str | None = None,
+    max_tokens: int | None = None,
+    temperature: float | None = None,
+) -> dict[str, Any]:
+    from datetime import datetime, timezone
+    items = _load_queue_items()
+    next_id = max((int(item.get("id", 0)) for item in items), default=0) + 1
+    item = {
+        "id": next_id,
+        "model_id": model_id,
+        "prompt": prompt,
+        "system_prompt": system_prompt,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "priority": priority,
+        "runtime_id": runtime_id or "",
+        "status": "queued",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "claimed_at": None,
+        "completed_at": None,
+        "error": None,
+    }
+    items.append(item)
+    _save_queue_items(items)
+    return {"status": "enqueued", "item": item}
+
+
+def cancel_queue_item(item_id: str) -> dict[str, Any]:
+    items = _load_queue_items()
+    for item in items:
+        if str(item.get("id")) == str(item_id):
+            item["status"] = "cancelled"
+            _save_queue_items(items)
+            return {"status": "cancelled", "item": item}
+    return {"status": "not_found", "item_id": item_id}
+
+
+def request_reservation(
+    *,
+    runtime_id: str,
+    owner_user_id: int,
+    owner_session_id: str,
+    requested_seats: int = 1,
+    mode: str = "shared",
+) -> dict[str, Any]:
+    from datetime import datetime, timezone
+    items = _load_reservations()
+    next_id = f"res_{int(datetime.now(timezone.utc).timestamp())}"
+    item = {
+        "id": next_id,
+        "runtime_id": runtime_id,
+        "owner_user_id": owner_user_id,
+        "owner_session_id": owner_session_id,
+        "requested_seats": requested_seats,
+        "mode": mode,
+        "state": "requested",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "activated_at": None,
+        "released_at": None,
+    }
+    items.append(item)
+    _save_reservations(items)
+    return {"status": "created", "reservation": item}
+
+
+def release_reservation(reservation_id: str) -> dict[str, Any]:
+    items = _load_reservations()
+    for item in items:
+        if str(item.get("id")) == str(reservation_id):
+            item["state"] = "released"
+            _save_reservations(items)
+            return {"status": "released", "reservation": item}
+    return {"status": "not_found", "reservation_id": reservation_id}

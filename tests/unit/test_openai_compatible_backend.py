@@ -36,6 +36,20 @@ def test_resolve_docker_host_loopback_rewrites_localhost_in_docker():
         )
 
 
+def test_resolve_docker_host_loopback_preserves_lan_addresses_in_docker():
+    with patch(
+        "ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
+        return_value=True,
+    ), patch(
+        "ysparr.modalities.text2text.backends.openai_compatible_backend._docker_gateway_host",
+        return_value="172.17.0.1",
+    ):
+        assert (
+            _resolve_docker_host_loopback("http://192.168.86.132:8080")
+            == "http://192.168.86.132:8080"
+        )
+
+
 def test_docker_gateway_host_reads_default_route():
     route_data = """Iface\tDestination\tGateway\tFlags\tRefCnt\tUse\tMetric\tMask\tMTU\tWindow\tIRTT
 eth0\t00000000\t010012AC\t0003\t0\t0\t0\t00000000\t0\t0\t0

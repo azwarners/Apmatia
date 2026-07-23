@@ -9,7 +9,7 @@ from typing import Any, Iterable
 from apmatia.core.app_config import get_config_value, load_app_config, save_app_config
 from apmatia.lib.apmatia_core.models import utc_now
 
-from .models import GGUFModelRecord, TaskSizePreference
+from .models import GGUFModelRecord, LLMConfig, TaskSizePreference
 
 _MODELS_KEY = ("ai_model_manager", "models")
 _TASK_PREFERENCES_KEY = ("ai_model_manager", "task_preferences")
@@ -645,3 +645,246 @@ def format_bytes(value: int) -> str:
                 return f"{int(size)} B"
             return f"{size:.1f} {unit}"
         size /= 1000.0
+
+
+# --- LLM Config CRUD ---
+_LLM_CONFIGS_KEY = ("ai_model_manager", "llm_configs")
+
+
+def _normalize_llm_config(item: dict[str, Any]) -> dict[str, Any]:
+    """Normalize a raw LLM config dict for storage."""
+    item = dict(item)
+    # Handle legacy field name migrations
+    if "user_alias" not in item and "name" in item:
+        item["user_alias"] = item.pop("name", "")
+    if "provider_name" not in item:
+        item["provider_name"] = item.pop("model_name", item.pop("provider_model_name", ""))
+    item.pop("provider_model_name", None)
+    item["id"] = _parse_int(item.get("id"))
+    item["owner_user_id"] = _parse_int(item.get("owner_user_id"))
+    item["owner_group_id"] = _parse_int(item.get("owner_group_id"))
+    item["mode"] = _parse_int(item.get("mode"), default=0) or 0
+    item["created_at"] = _parse_datetime(item.get("created_at"))
+    item["updated_at"] = _parse_datetime(item.get("updated_at"))
+    item["user_alias"] = _normalize_text(item.get("user_alias"))
+    item["backend"] = _normalize_text(item.get("backend")) or "openai_compatible"
+    item["provider_name"] = _normalize_text(item.get("provider_name"))
+    item["model_url"] = _normalize_text(item.get("model_url"))
+    item["api_key"] = _normalize_text(item.get("api_key"))
+    item["max_response_size"] = _parse_int(item.get("max_response_size"), default=8192) or 8192
+    item["seats"] = _parse_int(item.get("seats"), default=1) or 1
+    item["system_prompt"] = _normalize_text(item.get("system_prompt"))
+    metadata = item.get("metadata")
+    item["metadata"] = dict(metadata) if isinstance(metadata, dict) else {}
+    return item
+
+
+def _serialize_llm_config(config: LLMConfig | dict[str, Any]) -> dict[str, Any]:
+    """Serialize an LLMConfig for storage."""
+    data = config if isinstance(config, dict) else asdict(config)
+    normalized = _normalize_llm_config(dict(data))
+    return {
+        "id": normalized["id"],
+        "owner_user_id": normalized["owner_user_id"],
+        "owner_group_id": normalized["owner_group_id"],
+        "mode": normalized["mode"],
+        "created_at": _serialize_datetime(normalized["created_at"]),
+        "updated_at": _serialize_datetime(normalized["updated_at"]),
+        "user_alias": normalized["user_alias"],
+        "backend": normalized["backend"],
+        "provider_name": normalized["provider_name"],
+        "model_url": normalized["model_url"],
+        "api_key": normalized["api_key"],
+        "max_response_size": normalized["max_response_size"],
+        "seats": normalized["seats"],
+        "system_prompt": normalized["system_prompt"],
+        "metadata": dict(normalized["metadata"]),
+    }
+
+
+def _load_llm_configs() -> list[dict[str, Any]]:
+    # Check new key first
+    configs = get_config_value(*_LLM_CONFIGS_KEY, default=None)
+    if isinstance(configs, list) and len(configs) > 0:
+        return [_normalize_llm_config(dict(item)) for item in configs if isinstance(item, dict)]
+
+    # Fallback to legacy key ("llm", "configs") and migrate
+    legacy_configs = get_config_value("llm", "configs", default=[])
+    if isinstance(legacy_configs, list) and len(legacy_configs) > 0:
+        migrated = [_normalize_llm_config(dict(item)) for item in legacy_configs if isinstance(item, dict)]
+        _save_llm_configs(migrated)
+        return migrated
+
+    return []
+
+
+def _save_llm_configs(configs: list[dict[str, Any]]) -> None:
+    config = load_app_config()
+    config.setdefault("ai_model_manager", {})
+    config["ai_model_manager"]["llm_configs"] = [
+        _serialize_llm_config(item if isinstance(item, dict) else LLMConfig(**item))
+        for item in configs
+    ]
+    save_app_config(config)
+
+
+def list_llm_configs() -> list[LLMConfig]:
+    """List all LLM endpoint configurations."""
+    return [LLMConfig(**item) for item in _load_llm_configs()]
+
+
+def get_llm_config(config_id: int) -> LLMConfig | None:
+    """Get a single LLM endpoint configuration by ID."""
+    for config in _load_llm_configs():
+        if int(config.get("id", -1)) == config_id:
+            return LLMConfig(**config)
+    return None
+
+
+def create_llm_config(config: LLMConfig) -> LLMConfig:
+    """Create a new LLM endpoint configuration."""
+    configs = _load_llm_configs()
+    next_id = max((int(item.get("id", 0)) for item in configs), default=0) + 1
+    now = utc_now()
+    created = LLMConfig(
+        id=next_id,
+        owner_user_id=config.owner_user_id,
+        owner_group_id=config.owner_group_id,
+        mode=config.mode,
+        user_alias=config.user_alias,
+        backend=config.backend,
+        provider_name=config.provider_name,
+        model_url=config.model_url,
+        api_key=config.api_key,
+        max_response_size=config.max_response_size,
+        seats=config.seats,
+        system_prompt=config.system_prompt,
+        created_at=config.created_at or now,
+        updated_at=now,
+        metadata=dict(config.metadata),
+    )
+    configs.append(_serialize_llm_config(created))
+    _save_llm_configs(configs)
+    return created
+
+
+def update_llm_config(config_id: int, **updates) -> LLMConfig:
+    """Update an existing LLM endpoint configuration."""
+    configs = _load_llm_configs()
+    normalized_updates = _normalize_llm_config(dict(updates))
+    for index, item in enumerate(configs):
+        if int(item.get("id", -1)) != config_id:
+            continue
+        existing = LLMConfig(**item)
+        merged = LLMConfig(
+            id=config_id,
+            owner_user_id=normalized_updates.get("owner_user_id", existing.owner_user_id),
+            owner_group_id=normalized_updates.get("owner_group_id", existing.owner_group_id),
+            mode=normalized_updates.get("mode", existing.mode),
+            user_alias=normalized_updates.get("user_alias", existing.user_alias),
+            backend=normalized_updates.get("backend", existing.backend),
+            provider_name=normalized_updates.get("provider_name", existing.provider_name),
+            model_url=normalized_updates.get("model_url", existing.model_url),
+            api_key=normalized_updates.get("api_key", existing.api_key),
+            max_response_size=normalized_updates.get("max_response_size", existing.max_response_size),
+            seats=normalized_updates.get("seats", existing.seats),
+            system_prompt=normalized_updates.get("system_prompt", existing.system_prompt),
+            created_at=normalized_updates.get("created_at", existing.created_at),
+            updated_at=utc_now(),
+            metadata=normalized_updates.get("metadata", existing.metadata),
+        )
+        configs[index] = _serialize_llm_config(merged)
+        _save_llm_configs(configs)
+        return merged
+    raise ValueError(f"LLM config not found: {config_id}")
+
+
+def delete_llm_config(config_id: int) -> bool:
+    """Delete an LLM endpoint configuration."""
+    configs = _load_llm_configs()
+    next_configs = [item for item in configs if int(item.get("id", -1)) != config_id]
+    if len(next_configs) == len(configs):
+        return False
+    _save_llm_configs(next_configs)
+    return True
+
+
+def probe_llm_config(config_id: int) -> dict[str, Any]:
+    """Test connectivity to an LLM endpoint."""
+    from apmatia.modules.contacts_and_discussions.services import prompt_llm
+
+    config = get_llm_config(config_id)
+    if config is None:
+        raise ValueError(f"LLM config not found: {config_id}")
+
+    limited_config = LLMConfig(
+        **{**asdict(config), "max_response_size": max(16, min(int(config.max_response_size or 64), 64))}
+    )
+    reply = prompt_llm(
+        prompt=(
+            "Reply in one short sentence, under 30 words, confirming connectivity "
+            "and include the word ready exactly once."
+        ),
+        llm_config=limited_config,
+    ).strip()
+    preview = reply[:240]
+    return {
+        "config_id": int(config_id),
+        "user_alias": config.user_alias,
+        "model_url": config.model_url,
+        "reply_preview": preview,
+        "reply_length": len(reply),
+    }
+
+
+class LLMManager:
+    """Backward-compatible wrapper for LLM CRUD operations.
+
+    The original ``LLMManager`` lived in ``apmatia.lib.model_management.module``.
+    This thin wrapper delegates every call to the consolidated service functions
+    so existing code that imports ``LLMManager`` continues to work.
+    """
+
+    def list_configs(self) -> list[LLMConfig]:
+        return list_llm_configs()
+
+    def get_config(self, config_id: int) -> LLMConfig | None:
+        return get_llm_config(config_id)
+
+    def create_config(self, config: LLMConfig) -> LLMConfig:
+        return create_llm_config(config)
+
+    def update_config(self, config_id: int, **updates) -> LLMConfig:
+        return update_llm_config(config_id, **updates)
+
+    def delete_config(self, config_id: int) -> bool:
+        return delete_llm_config(config_id)
+
+    def probe_config(self, config_id: int) -> dict[str, Any]:
+        from apmatia.modules.contacts_and_discussions.services import prompt_llm
+
+        config = self.get_config(config_id)
+        if config is None:
+            raise ValueError(f"LLM config not found: {config_id}")
+
+        from dataclasses import replace as dc_replace
+
+        limited_config = dc_replace(
+            config,
+            max_response_size=max(16, min(int(config.max_response_size or 64), 64)),
+        )
+        reply = prompt_llm(
+            prompt=(
+                "Reply in one short sentence, under 30 words, confirming connectivity "
+                "and include the word ready exactly once."
+            ),
+            llm_config=limited_config,
+        ).strip()
+        preview = reply[:240]
+        return {
+            "config_id": int(config_id),
+            "user_alias": config.user_alias,
+            "model_url": config.model_url,
+            "reply_preview": preview,
+            "reply_length": len(reply),
+        }

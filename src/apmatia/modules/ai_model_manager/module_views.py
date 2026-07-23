@@ -7,8 +7,8 @@ from typing import Any
 from apmatia.core.module_view_runtime import ModuleViewContext
 from apmatia.core.registry import CommandContribution, ViewContribution
 
-from .models import GGUFModelRecord, TaskSizePreference
-from .services import AIModelManager, format_bytes
+from .models import GGUFModelRecord, LLMConfig, TaskSizePreference
+from .services import AIModelManager, format_bytes, list_llm_configs, create_llm_config, update_llm_config, delete_llm_config, probe_llm_config, get_llm_config
 
 
 class ApmatiaAiModelManagerModuleViewProvider:
@@ -35,6 +35,9 @@ class ApmatiaAiModelManagerModuleViewProvider:
         if object_type == "task_preference":
             items = sorted(self._manager.list_task_preferences(), key=lambda item: (str(item.task_name).lower(), int(item.id or 0)))
             return [_preference_to_dict(item) for item in items]
+        if object_type == "llm_config":
+            items = list_llm_configs()
+            return [_llm_config_to_dict(item) for item in items]
         raise ValueError(f"Unsupported ai model manager object type: {object_type}")
 
     def execute_command(
@@ -66,6 +69,14 @@ class ApmatiaAiModelManagerModuleViewProvider:
             return self._edit_preference(payload)
         if object_type == "task_preference" and verb == "delete":
             return self._delete_preference(payload)
+        if object_type == "llm_config" and verb == "create":
+            return self._create_llm_config(payload)
+        if object_type == "llm_config" and verb == "edit":
+            return self._edit_llm_config(payload)
+        if object_type == "llm_config" and verb == "delete":
+            return self._delete_llm_config(payload)
+        if object_type == "llm_config" and verb == "test":
+            return self._test_llm_config(payload)
         raise ValueError(f"Unsupported module command verb for now: {verb}")
 
     def _scan(self, payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -121,6 +132,34 @@ class ApmatiaAiModelManagerModuleViewProvider:
         preference_id = _require_int(payload.get("item_id"))
         deleted = self._manager.delete_task_preference(preference_id)
         return {"status": "deleted" if deleted else "not_found", "item_id": preference_id, "deleted": deleted}
+
+    def _create_llm_config(self, payload: Mapping[str, Any]) -> dict[str, Any]:
+        config = _llm_config_from_payload(payload)
+        if not config.model_url:
+            raise ValueError("A model_url is required for an LLM config.")
+        created = create_llm_config(config)
+        return {"status": "created", "item": _llm_config_to_dict(created)}
+
+    def _edit_llm_config(self, payload: Mapping[str, Any]) -> dict[str, Any]:
+        config_id = _require_int(payload.get("item_id"))
+        updates = dict(payload)
+        updates.pop("item_id", None)
+        if updates.get("api_key") == "":
+            existing = get_llm_config(config_id)
+            if existing:
+                updates["api_key"] = existing.api_key
+        updated = update_llm_config(config_id, **_llm_config_update_payload(updates))
+        return {"status": "updated", "item": _llm_config_to_dict(updated)}
+
+    def _delete_llm_config(self, payload: Mapping[str, Any]) -> dict[str, Any]:
+        config_id = _require_int(payload.get("item_id"))
+        deleted = delete_llm_config(config_id)
+        return {"status": "deleted" if deleted else "not_found", "item_id": config_id, "deleted": deleted}
+
+    def _test_llm_config(self, payload: Mapping[str, Any]) -> dict[str, Any]:
+        config_id = _require_int(payload.get("item_id"))
+        result = probe_llm_config(config_id)
+        return {"status": "ok", "item": result}
 
 
 def _view_from_command(command: CommandContribution) -> ViewContribution:
@@ -270,4 +309,53 @@ def _preference_to_dict(preference: TaskSizePreference) -> dict[str, Any]:
         "task_name": preference.task_name,
         "preferred_size_classes": list(preference.preferred_size_classes),
         "notes": preference.notes,
+    }
+
+
+def _llm_config_from_payload(payload: Mapping[str, Any]) -> LLMConfig:
+    return LLMConfig(
+        id=_parse_int(payload.get("id")),
+        user_alias=str(payload.get("user_alias") or "").strip(),
+        backend=str(payload.get("backend") or "openai_compatible").strip() or "openai_compatible",
+        provider_name=str(payload.get("provider_name") or "").strip(),
+        model_url=str(payload.get("model_url") or "").strip(),
+        api_key=str(payload.get("api_key") or "").strip(),
+        max_response_size=_parse_int(payload.get("max_response_size"), default=8192) or 8192,
+        seats=_parse_int(payload.get("seats"), default=1) or 1,
+        system_prompt=str(payload.get("system_prompt") or "").strip(),
+        metadata=dict(payload.get("metadata") or {}) if isinstance(payload.get("metadata"), dict) else {},
+    )
+
+
+def _llm_config_update_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "user_alias": str(payload.get("user_alias") or "").strip(),
+        "backend": str(payload.get("backend") or "openai_compatible").strip() or "openai_compatible",
+        "provider_name": str(payload.get("provider_name") or "").strip(),
+        "model_url": str(payload.get("model_url") or "").strip(),
+        "api_key": str(payload.get("api_key") or "").strip(),
+        "max_response_size": _parse_int(payload.get("max_response_size"), default=8192) or 8192,
+        "seats": _parse_int(payload.get("seats"), default=1) or 1,
+        "system_prompt": str(payload.get("system_prompt") or "").strip(),
+        "metadata": dict(payload.get("metadata") or {}) if isinstance(payload.get("metadata"), dict) else {},
+    }
+
+
+def _llm_config_to_dict(config: LLMConfig) -> dict[str, Any]:
+    return {
+        "id": config.id,
+        "owner_user_id": config.owner_user_id,
+        "owner_group_id": config.owner_group_id,
+        "mode": config.mode,
+        "created_at": config.created_at.isoformat() if config.created_at else "",
+        "updated_at": config.updated_at.isoformat() if config.updated_at else "",
+        "user_alias": config.user_alias,
+        "backend": config.backend,
+        "provider_name": config.provider_name,
+        "model_url": config.model_url,
+        "api_key": config.api_key,
+        "max_response_size": config.max_response_size,
+        "seats": config.seats,
+        "system_prompt": config.system_prompt,
+        "metadata": dict(config.metadata),
     }

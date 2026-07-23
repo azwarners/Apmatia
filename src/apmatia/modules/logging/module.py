@@ -9,7 +9,7 @@ from .views import VIEW_DESCRIPTORS
 
 APMATIA_LOGGING_MODULE = ModuleMetadata(
     module_id="logging",
-    name="Apmatia Logging",
+    name="Logging",
     version="0.1.0",
     description="Structured runtime logging and a browsable log viewer for Apmatia.",
     metadata={
@@ -25,4 +25,3 @@ def register(registry: Registry) -> None:
     register_module_view_provider("logging", ApmatiaLoggingModuleViewProvider())
     for view in VIEW_DESCRIPTORS:
         registry.register_view(view)
-

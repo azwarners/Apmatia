@@ -69,6 +69,18 @@ APMATIA_CONTAINER_HOME_DIR="$APMATIA_CONTAINER_HOME/.apmatia"
 APMATIA_CONTAINER_DATA_DIR="$APMATIA_CONTAINER_HOME/.local/share/apmatia"
 APMATIA_CONTAINER_CONFIG_DIR="$APMATIA_CONTAINER_HOME/.config/apmatia"
 APMATIA_CONTAINER_WORKSPACE_DIR="$APMATIA_CONTAINER_HOME_DIR/workspace"
+APMATIA_DOCKER_BIND_HOST="${APMATIA_DOCKER_BIND_HOST:-127.0.0.1}"
+
+TRANSPORT_SECURITY_ARGS=(
+    -e APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true
+)
+if [ "$APMATIA_DOCKER_BIND_HOST" != "127.0.0.1" ] && [ "$APMATIA_DOCKER_BIND_HOST" != "localhost" ]; then
+    echo "WARNING: publishing Apmatia on $APMATIA_DOCKER_BIND_HOST with HTTP; use only on a trusted VPN or private network."
+    TRANSPORT_SECURITY_ARGS=(
+        -e APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=false
+        -e APMATIA_SERVER_TRANSPORT_SECURITY_ALLOW_INSECURE_NON_LOOPBACK=true
+    )
+fi
 
 repair_host_permissions() {
     local host_dir="$1"
@@ -154,7 +166,7 @@ run_core_container() {
     build_runtime_args
     docker run \
         --name "$CORE_CONTAINER_NAME" \
-        -p 127.0.0.1:8000:8000 \
+        -p "$APMATIA_DOCKER_BIND_HOST":8000:8000 \
         -v "$REPO_ROOT":/app \
         -v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR" \
         -v "$APMATIA_HOME_HOST":"$APMATIA_CONTAINER_HOME_DIR" \
@@ -165,7 +177,7 @@ run_core_container() {
         -e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR" \
         -e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules" \
         -e APMATIA_SERVER_HOST=0.0.0.0 \
-        -e APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true \
+        "${TRANSPORT_SECURITY_ARGS[@]}" \
         --user "$(id -u):$(id -g)" \
         "${LOG_DIR_ARGS[@]}" \
         "${GGUF_DIR_ARGS[@]}" \
@@ -179,7 +191,7 @@ run_core_container_detached() {
     build_runtime_args
     docker run -d \
         --name "$CORE_CONTAINER_NAME" \
-        -p 127.0.0.1:8000:8000 \
+        -p "$APMATIA_DOCKER_BIND_HOST":8000:8000 \
         -v "$REPO_ROOT":/app \
         -v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR" \
         -v "$APMATIA_HOME_HOST":"$APMATIA_CONTAINER_HOME_DIR" \
@@ -190,7 +202,7 @@ run_core_container_detached() {
         -e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR" \
         -e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules" \
         -e APMATIA_SERVER_HOST=0.0.0.0 \
-        -e APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true \
+        "${TRANSPORT_SECURITY_ARGS[@]}" \
         --user "$(id -u):$(id -g)" \
         "${LOG_DIR_ARGS[@]}" \
         "${GGUF_DIR_ARGS[@]}" \
@@ -204,7 +216,7 @@ run_streamlit_container() {
     build_runtime_args
     docker run \
         --name "$STREAMLIT_CONTAINER_NAME" \
-        -p 127.0.0.1:8501:8501 \
+        -p "$APMATIA_DOCKER_BIND_HOST":8501:8501 \
         -v "$REPO_ROOT":/app \
         -v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR" \
         -v "$APMATIA_HOME_HOST":"$APMATIA_CONTAINER_HOME_DIR" \
@@ -215,7 +227,7 @@ run_streamlit_container() {
         -e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR" \
         -e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules" \
         -e APMATIA_STREAMLIT_HOST=0.0.0.0 \
-        -e APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY=true \
+        "${TRANSPORT_SECURITY_ARGS[@]}" \
         --user "$(id -u):$(id -g)" \
         "${LOG_DIR_ARGS[@]}" \
         "${GGUF_DIR_ARGS[@]}" \

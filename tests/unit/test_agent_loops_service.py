@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from apmatia.lib.model_management.models import LLM
+from apmatia.modules.ai_model_manager.models import LLMConfig as LLM
 from apmatia.modules.agent_loops.models import AgentLoopTask, ModelRequest
 from apmatia.modules.agent_loops.service import YsparrModelExecutor, _limit_agent_loop_response_size
 

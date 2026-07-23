@@ -286,9 +286,9 @@ class MemoryToolProvider:
         discussion_id = getattr(tool_call, "discussion_id", None)
         if not discussion_id:
             return agent
-        from apmatia.lib.discussions import discussion_state
+        from apmatia.modules.contacts_and_discussions.services import get_discussion as _get_discussion
 
-        discussion = discussion_state._get_discussion(str(discussion_id))
+        discussion = _get_discussion(discussion_id)
         if discussion is None or discussion.owner_user_id is None:
             return agent
         try:

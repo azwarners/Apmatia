@@ -127,7 +127,7 @@ def _jar_session_cookie_value(cookie_jar: Any) -> str | None:
     return value
 
 
-def _request(method: str, path: str, json: dict[str, Any] | None = None) -> Any:
+def _request(method: str, path: str, json: dict[str, Any] | None = None, params: dict[str, Any] | None = None) -> Any:
     if TestClient is None:
         raise ModuleNotFoundError("fastapi is required for the Streamlit API client.")
 
@@ -135,7 +135,7 @@ def _request(method: str, path: str, json: dict[str, Any] | None = None) -> Any:
         for key, value in _cookie_state().items():
             client.cookies.set(key, value)
 
-        response = client.request(method, f"/api{path}", json=json)
+        response = client.request(method, f"/api{path}", json=json, params=params or {})
         updated_cookie = _jar_session_cookie_value(client.cookies)
         updated_cookies = _cookie_state()
         if updated_cookie in (None, ""):
@@ -355,6 +355,10 @@ def set_module_visibility(module_id: str, *, hidden: bool) -> dict[str, Any]:
     return _request("PATCH", f"/modules/{module_id}/visibility", json={"hidden": hidden})
 
 
+def set_module_order(module_id: str, *, new_index: int) -> dict[str, Any]:
+    return _request("PATCH", f"/modules/{module_id}/order", json={"new_index": new_index})
+
+
 def set_module_view_visibility(view_id: str, *, hidden: bool) -> dict[str, Any]:
     return _request("PATCH", f"/module-views/{view_id}/visibility", json={"hidden": hidden})
 
@@ -537,8 +541,11 @@ def get_compiled_agent_prompt(prompt_id: int, name: str | None = None) -> str:
     return _request("GET", _path_with_query(f"/agent-prompts/{prompt_id}/compiled", name=name))
 
 
-def discussion_state() -> dict[str, Any]:
-    return _request("GET", "/discussion/state")
+def discussion_state(discussion_id: str | None = None) -> dict[str, Any]:
+    params = {}
+    if discussion_id:
+        params["discussion_id"] = discussion_id
+    return _request("GET", "/discussion/state", params=params if params else None)
 
 
 def discussion_tree() -> dict[str, Any]:
@@ -563,6 +570,10 @@ def open_discussion(discussion_id: str) -> dict[str, Any]:
 
 def prompt_discussion(**payload: Any) -> dict[str, Any]:
     return _request("POST", "/discussion/prompt", json=payload)
+
+
+def prompt_group_discussion(**payload: Any) -> dict[str, Any]:
+    return _request("POST", "/discussion/group-prompt", json=payload)
 
 
 def stop_discussion() -> dict[str, Any]:

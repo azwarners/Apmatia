@@ -11,7 +11,7 @@ from .views import VIEW_DESCRIPTORS
 
 APMATIA_IPE_MODULE = ModuleMetadata(
     module_id="ipe",
-    name="Apmatia Integrated Productivity Environment",
+    name="Integrated Productivity Environment",
     version="0.1.0",
     description="An integrated workspace for ideas, tasks, projects, habits, and calendar planning.",
     metadata={

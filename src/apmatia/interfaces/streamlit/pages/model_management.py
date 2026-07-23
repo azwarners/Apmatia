@@ -23,6 +23,7 @@ def _empty_form_values() -> dict[str, object]:
         "api_key": "",
         "max_response_size": 8192,
         "system_prompt": "",
+        "seats": 1,
     }
 
 
@@ -59,6 +60,13 @@ def render() -> None:
                 index=0 if form_values["backend"] != "koboldcpp" else 1,
             )
             provider_name = st.text_input("Provider name", value=str(form_values["provider_name"]))
+            seats = st.number_input(
+                "Seats",
+                min_value=1,
+                step=1,
+                value=int(form_values["seats"]),
+                help="Number of concurrent executions this model supports",
+            )
             max_response_size = st.number_input(
                 "Max response size",
                 min_value=1,
@@ -83,6 +91,7 @@ def render() -> None:
             "provider_name": provider_name,
             "model_url": model_url,
             "api_key": api_key,
+            "seats": int(seats),
             "max_response_size": int(max_response_size),
             "system_prompt": system_prompt,
             "metadata": {},
@@ -109,8 +118,9 @@ def render() -> None:
     for config in configs:
         with st.container(border=True):
             st.write(f"**{_display_alias(config)}**")
+            seats = config.get('seats', 1)
             st.caption(
-                f"ID {config.get('id')} · {config.get('backend')} · {_display_provider_name(config)}"
+                f"ID {config.get('id') if config.get('id') else 'new'} · {config.get('backend')} · {_display_provider_name(config)} · {seats} seat{'s' if seats != 1 else ''}"
             )
             model_url = str(config.get("model_url") or "").strip()
             if model_url:

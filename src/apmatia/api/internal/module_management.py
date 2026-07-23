@@ -4,6 +4,7 @@ from apmatia.core.module_management import (
     get_module_catalog_entry,
     get_view_catalog_entry,
     list_module_catalog,
+    set_module_order,
     set_module_hidden,
     set_view_order,
     set_view_hidden,
@@ -24,3 +25,7 @@ def update_view_visibility(view_id: str, *, hidden: bool) -> dict:
 
 def update_view_order(module_id: str, view_id: str, *, new_index: int) -> dict:
     return set_view_order(module_id, view_id, new_index=new_index)
+
+
+def update_module_order(module_id: str, *, new_index: int) -> dict:
+    return set_module_order(module_id, new_index=new_index)

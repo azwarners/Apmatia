@@ -125,6 +125,7 @@ def _default_config() -> dict[str, Any]:
             "font_size": 16,
             "title_bar_height": 56,
             "title_bar_font_size": 20,
+            "module_orders": [],
             "module_view_orders": {},
         },
     }

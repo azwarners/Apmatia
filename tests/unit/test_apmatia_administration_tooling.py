@@ -203,7 +203,7 @@ def test_admin_tool_provider_inherits_owner_context_from_discussion_when_caller_
         owner_group_id = 88
         group_id = 91
 
-    with patch("apmatia.lib.discussions.discussion_state._get_discussion", return_value=MockDiscussion()):
+    with patch("apmatia.modules.contacts_and_discussions.services.get_discussion", return_value=MockDiscussion()):
         result = provider.execute(
             {
                 "name": "Discussion Agent",
@@ -232,8 +232,8 @@ def test_admin_tool_provider_switches_agent_mode():
         agent_service=agent_service,
     )
 
-    with patch("apmatia.lib.discussions.discussion_state") as mock_discussion_state:
-        mock_discussion_state.set_agent_mode.return_value = {
+    with patch("apmatia.modules.contacts_and_discussions.services.set_agent_mode") as mock_set_agent_mode:
+        mock_set_agent_mode.return_value = {
             "previous_mode": "discussion",
             "current_mode": "agentic",
             "status": "updated",
@@ -248,4 +248,4 @@ def test_admin_tool_provider_switches_agent_mode():
         "current_mode": "agentic",
         "status": "updated",
     }
-    mock_discussion_state.set_agent_mode.assert_called_once_with(discussion_id="disc-1", mode="agentic")
+    mock_set_agent_mode.assert_called_once_with(discussion_id="disc-1", mode="agentic")

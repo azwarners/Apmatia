@@ -10,9 +10,9 @@ from urllib.parse import urlparse, urlunparse
 
 import requests
 
-from ysparr.core.config import get_config_value
-from ysparr.core.exceptions import ExecutionError
-from ysparr.core.types import PromptRequest
+from apmatia.modules.ysparr.core.config import get_config_value
+from apmatia.modules.ysparr.core.exceptions import ExecutionError
+from apmatia.modules.ysparr.core.types import PromptRequest
 
 
 class OpenAICompatibleBackend:

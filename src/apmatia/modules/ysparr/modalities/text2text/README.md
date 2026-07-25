@@ -15,7 +15,7 @@ This module implements the following pattern:
 ## 🚀 Usage
 
 ```python
-from ysparr.modalities.text2text.executor import execute
+from apmatia.modules.ysparr.modalities.text2text.executor import execute
 ```
 
 Example (conceptual):
@@ -72,7 +72,7 @@ Each backend:
 
 - yields text output
 
-Available backends in `ysparr.modalities.text2text.backends`:
+Available backends in `apmatia.modules.ysparr.modalities.text2text.backends`:
 
 - `KoboldCppBackend`
 - `OpenAICompatibleBackend`

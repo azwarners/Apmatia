@@ -11,7 +11,7 @@ It separates shared structure from modality-specific behavior.
 ## 🧱 Architectural Model
 
 ```text
-Application / Library
+Application / Module
         ↓
 Modality Module (text2text, text2image, etc.)
         ↓

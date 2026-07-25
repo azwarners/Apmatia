@@ -3,8 +3,8 @@ from unittest.mock import mock_open
 
 import requests
 
-from ysparr.core.types import PromptRequest
-from ysparr.modalities.text2text.backends.openai_compatible_backend import (
+from apmatia.modules.ysparr.core.types import PromptRequest
+from apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend import (
     OpenAICompatibleBackend,
     _docker_gateway_host,
     _resolve_docker_host_loopback,
@@ -13,7 +13,7 @@ from ysparr.modalities.text2text.backends.openai_compatible_backend import (
 
 def test_resolve_docker_host_loopback_leaves_non_loopback_urls_unchanged():
     with patch(
-        "ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
+        "apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
         return_value=True,
     ):
         assert (
@@ -24,10 +24,10 @@ def test_resolve_docker_host_loopback_leaves_non_loopback_urls_unchanged():
 
 def test_resolve_docker_host_loopback_rewrites_localhost_in_docker():
     with patch(
-        "ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
+        "apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
         return_value=True,
     ), patch(
-        "ysparr.modalities.text2text.backends.openai_compatible_backend._docker_gateway_host",
+        "apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend._docker_gateway_host",
         return_value="172.17.0.1",
     ):
         assert (
@@ -38,10 +38,10 @@ def test_resolve_docker_host_loopback_rewrites_localhost_in_docker():
 
 def test_resolve_docker_host_loopback_preserves_lan_addresses_in_docker():
     with patch(
-        "ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
+        "apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
         return_value=True,
     ), patch(
-        "ysparr.modalities.text2text.backends.openai_compatible_backend._docker_gateway_host",
+        "apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend._docker_gateway_host",
         return_value="172.17.0.1",
     ):
         assert (
@@ -86,10 +86,10 @@ def test_backend_uses_host_gateway_for_loopback_urls_in_docker(monkeypatch):
     monkeypatch.setattr("requests.post", fake_post)
 
     with patch(
-        "ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
+        "apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
         return_value=True,
     ), patch(
-        "ysparr.modalities.text2text.backends.openai_compatible_backend._docker_gateway_host",
+        "apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend._docker_gateway_host",
         return_value="172.18.0.1",
     ):
         backend = OpenAICompatibleBackend(base_url="http://127.0.0.1:8080")
@@ -134,7 +134,7 @@ def test_backend_falls_back_to_completions_when_chat_endpoint_rejects_request(mo
     monkeypatch.setattr("requests.post", fake_post)
 
     with patch(
-        "ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
+        "apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
         return_value=False,
     ):
         backend = OpenAICompatibleBackend(base_url="http://127.0.0.1:8080")
@@ -185,7 +185,7 @@ def test_backend_sends_multimodal_chat_messages(monkeypatch):
     monkeypatch.setattr("requests.post", fake_post)
 
     with patch(
-        "ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
+        "apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
         return_value=False,
     ):
         backend = OpenAICompatibleBackend(base_url="http://127.0.0.1:8080")
@@ -248,7 +248,7 @@ def test_backend_stop_closes_active_response(monkeypatch):
     monkeypatch.setattr("requests.post", fake_post)
 
     with patch(
-        "ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
+        "apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker",
         return_value=False,
     ):
         backend = OpenAICompatibleBackend(base_url="http://127.0.0.1:8080")

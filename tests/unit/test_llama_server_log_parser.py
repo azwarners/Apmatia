@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from apmatia.lib.llama_server.log_parser import (
+from apmatia.modules.runtime_telemetry.log_parser import (
     parse_llama_server_log_file,
     parse_llama_server_log_text,
     parse_llama_server_log_turns,

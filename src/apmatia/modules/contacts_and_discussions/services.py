@@ -338,37 +338,23 @@ def _summary_title(topic_title: str, reason: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# prompt_llm – thin wrapper around ysparr for use by other modules
+# prompt_llm – thin wrapper around the Ysparr module for use by other modules
 # ---------------------------------------------------------------------------
-import sys
 import uuid
 import json
 from threading import Event
-from pathlib import Path
 from typing import Callable
 
 from apmatia.core.app_config import get_config_value
 from apmatia.modules.ai_model_manager.models import LLMConfig as _LLMConfig
 
-try:
-    from ysparr.core.types import PromptRequest
-    from ysparr.modalities.text2text.backends.koboldcpp_backend import KoboldCppBackend
-    from ysparr.modalities.text2text.backends.openai_compatible_backend import (
-        OpenAICompatibleBackend,
-    )
-    from ysparr.modalities.text2text.executor import execute
-    from ysparr.modalities.text2text.storage import TextFileStorage
-except ModuleNotFoundError:
-    _ysparr_path = Path(__file__).resolve().parents[4] / "src" / "apmatia" / "lib" / "ysparr"
-    if str(_ysparr_path) not in sys.path:
-        sys.path.insert(0, str(_ysparr_path))
-    from ysparr.core.types import PromptRequest  # noqa: E402
-    from ysparr.modalities.text2text.backends.koboldcpp_backend import KoboldCppBackend  # noqa: E402
-    from ysparr.modalities.text2text.backends.openai_compatible_backend import (  # noqa: E402
-        OpenAICompatibleBackend,
-    )
-    from ysparr.modalities.text2text.executor import execute  # noqa: E402
-    from ysparr.modalities.text2text.storage import TextFileStorage  # noqa: E402
+from apmatia.modules.ysparr.core.types import PromptRequest
+from apmatia.modules.ysparr.modalities.text2text.backends.koboldcpp_backend import KoboldCppBackend
+from apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend import (
+    OpenAICompatibleBackend,
+)
+from apmatia.modules.ysparr.modalities.text2text.executor import execute
+from apmatia.modules.ysparr.modalities.text2text.storage import TextFileStorage
 
 
 class _ChunkCallbackStorage(TextFileStorage):

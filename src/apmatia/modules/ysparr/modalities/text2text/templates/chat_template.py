@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 from jinja2 import BaseLoader, Environment, StrictUndefined, TemplateError
 
-from ysparr.core.exceptions import ExecutionError
+from apmatia.modules.ysparr.core.exceptions import ExecutionError
 
 
 # Small, strict renderer so template mistakes fail fast and clearly.

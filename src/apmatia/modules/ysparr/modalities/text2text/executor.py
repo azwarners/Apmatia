@@ -1,4 +1,4 @@
-from ysparr.core.types import ExecutionResult, PromptRequest
+from apmatia.modules.ysparr.core.types import ExecutionResult, PromptRequest
 
 
 def execute(request: PromptRequest, backend, storage) -> ExecutionResult:

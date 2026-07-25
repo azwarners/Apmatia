@@ -1,8 +1,8 @@
 import pytest
 
-from ysparr.core.exceptions import ExecutionError
-from ysparr.core.types import PromptRequest
-from ysparr.modalities.text2text.backends.koboldcpp_backend import KoboldCppBackend
+from apmatia.modules.ysparr.core.exceptions import ExecutionError
+from apmatia.modules.ysparr.core.types import PromptRequest
+from apmatia.modules.ysparr.modalities.text2text.backends.koboldcpp_backend import KoboldCppBackend
 
 
 class FakeResponse:

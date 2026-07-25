@@ -709,6 +709,24 @@ def test_module_views_page_creates_fresh_group_discussion_from_participant_view(
     assert mock_streamlit.session_state["discussion_selected_agent_id"] is None
 
 
+def test_module_views_page_routes_active_contacts_shell_to_discussion(mock_streamlit):
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    module_views_page = importlib.reload(module_views_page)
+    mock_streamlit.session_state["contacts_shell_active"] = True
+    mock_streamlit.session_state["selected_module_id"] = "ysparr"
+    mock_streamlit.session_state["selected_module_view_id"] = ""
+
+    with patch.object(module_views_page.discussion_view, "render") as mock_discussion_render, patch.object(
+        module_views_page,
+        "_selected_module_view",
+        side_effect=AssertionError("generic module selection should not run for the contacts shell"),
+    ):
+        module_views_page.render()
+
+    mock_discussion_render.assert_called_once_with()
+
+
 def test_module_views_page_creates_group_from_participant_view(mock_streamlit):
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 

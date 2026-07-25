@@ -23,7 +23,6 @@ from apmatia.interfaces.streamlit.module_views.adapter import adapt_module_view
 from apmatia.interfaces.streamlit.module_views.renderers import render_navigation_pane
 from apmatia.interfaces.streamlit.page_runtime import sync_page_generation
 from apmatia.interfaces.streamlit.module_views.auth import show_auth_form
-from apmatia.interfaces.streamlit.pages.archive import discussion
 from apmatia.interfaces.streamlit.pages import module_views
 from apmatia.lib.persistence.logger import get_logger
 
@@ -1193,7 +1192,7 @@ def main():
             return
 
         if selected_page == "discussion":
-            discussion.render()
+            module_views.render()
             return
 
 if __name__ == "__main__":

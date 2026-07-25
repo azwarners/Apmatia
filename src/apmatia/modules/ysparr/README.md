@@ -2,7 +2,7 @@
 
 **Ysparr Sends Prompts And Receives Responses**
 
-Ysparr is a modular execution library for generative AI systems.
+Ysparr is a stable Apmatia infrastructure module for generative AI execution.
 
 It provides a consistent pattern for interacting with AI backends:
 
@@ -79,7 +79,7 @@ Ysparr is used by importing a specific modality.
 Example:
 
 ```python
-from ysparr.modalities.text2text.executor import execute
+from apmatia.modules.ysparr.modalities.text2text.executor import execute
 ```
 
 Each modality provides its own usage patterns and configuration.
@@ -93,7 +93,7 @@ Refer to the modality-specific documentation for details.
 Each modality contains its own documentation:
 
 ```text
-ysparr/modalities/<modality>/
+apmatia/modules/ysparr/modalities/<modality>/
 ├── README.md
 └── ARCHITECTURE.md
 ```

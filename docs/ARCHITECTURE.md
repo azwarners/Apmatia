@@ -60,7 +60,7 @@ Top-level libraries in `src/apmatia/lib/` currently include:
 
   Provides lightweight persistence primitives, especially SQLite-backed storage and logging helpers. This package exists so higher layers can rely on a focused storage library instead of mixing data access details into orchestration code.
 
-- `ysparr` (and the new Seat-based concurrency infrastructure)
+- the stable `ysparr` infrastructure module (and the new Seat-based concurrency infrastructure)
 
   Provides the underlying generative execution engine used by Apmatia to talk to text-generation backends. It supplies modality-specific execution, backend adapters such as KoboldCpp and OpenAI-compatible endpoints, and output persistence for model runs.
 

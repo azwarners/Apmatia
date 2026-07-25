@@ -15,5 +15,5 @@ tags = ["agents", "groups", "loops", "tasks", "workspace", "runs"]
 python = ">=3.10"
 python_packages = []
 system_packages = []
-modules = []
+modules = ["ysparr"]
 tools = []

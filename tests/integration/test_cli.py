@@ -144,6 +144,7 @@ def test_cli_module_list_includes_worksim_module(capsys):
 
     assert exit_code == 0
     assert "worksim | Worksim | 0.1.0" in captured.out
+    assert "ysparr | Ysparr | 0.1.0" in captured.out
 
 
 def test_cli_module_list_json_output_is_valid_json(capsys):
@@ -173,8 +174,10 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "module_manager",
         "os_admin",
         "preferences",
+        "runtime_telemetry",
         "users",
         "worksim",
+        "ysparr",
     ]
     assert payload[0]["module"]["module_id"] == "agent_alarms"
     assert payload[0]["module"]["name"] == "Agent Alarms"
@@ -234,7 +237,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "python": ">=3.10",
         "python_packages": [],
         "system_packages": [],
-        "modules": [],
+        "modules": ["ysparr"],
         "tools": [],
     }
     assert payload[0]["actions"] == []
@@ -392,7 +395,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "python": ">=3.10",
         "python_packages": [],
         "system_packages": [],
-        "modules": [],
+        "modules": ["ysparr"],
         "tools": [],
     }
     assert payload[4]["actions"] == [
@@ -540,6 +543,29 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert preferences["actions"] == ["preferences.preferences"]
     assert preferences["commands"] == ["preferences.preferences.save"]
     assert preferences["views"] == ["preferences.preferences.view"]
+    runtime_telemetry = payload.pop(12)
+    assert runtime_telemetry["module"] == {
+        "module_id": "runtime_telemetry",
+        "name": "Runtime Telemetry",
+        "version": "0.1.0",
+        "description": "Parse and summarize telemetry emitted by Apmatia model runtimes.",
+        "author": "Nick",
+        "status": "stable",
+        "category": "core",
+        "default_enabled": True,
+        "tags": ["telemetry", "observability", "runtime", "llama.cpp", "metrics"],
+        "metadata": {},
+        "dependencies": {
+            "python": ">=3.10",
+            "python_packages": [],
+            "system_packages": [],
+            "modules": [],
+            "tools": [],
+        },
+    }
+    assert runtime_telemetry["actions"] == []
+    assert runtime_telemetry["commands"] == []
+    assert runtime_telemetry["views"] == []
     assert payload[12]["module"]["module_id"] == "users"
     assert payload[12]["module"]["name"] == "Users"
     assert payload[12]["module"]["version"] == "0.1.0"
@@ -580,6 +606,28 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[13]["actions"] == []
     assert payload[13]["commands"] == []
     assert payload[13]["views"] == []
+    assert payload[14]["module"] == {
+        "module_id": "ysparr",
+        "name": "Ysparr",
+        "version": "0.1.0",
+        "description": "Backend-agnostic generative execution and persistence infrastructure.",
+        "author": "Nick",
+        "status": "stable",
+        "category": "infrastructure",
+        "default_enabled": True,
+        "tags": ["generative-ai", "execution", "streaming", "backends", "persistence"],
+        "metadata": {},
+        "dependencies": {
+            "python": ">=3.10",
+            "python_packages": ["requests", "jinja2"],
+            "system_packages": [],
+            "modules": [],
+            "tools": [],
+        },
+    }
+    assert payload[14]["actions"] == []
+    assert payload[14]["commands"] == []
+    assert payload[14]["views"] == []
 
 
 def test_cli_module_show_displays_worksim_module_details(capsys):

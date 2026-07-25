@@ -32,6 +32,7 @@ from apmatia.interfaces.streamlit.module_views.renderers import (
 )
 from apmatia.interfaces.streamlit.module_views import users as users_view
 from apmatia.interfaces.streamlit.module_views import agents as agents_view
+from apmatia.interfaces.streamlit.module_views import discussion as discussion_view
 from apmatia.interfaces.streamlit.module_views import module_manager as module_manager_view
 from apmatia.interfaces.streamlit.components.shell_tabs import render_shell_tabs
 from apmatia.interfaces.streamlit.components.terminal_output import render_terminal_block
@@ -81,6 +82,10 @@ def _selected_module_view() -> tuple[dict[str, object] | None, dict[str, object]
 
 
 def render() -> None:
+    if bool(st.session_state.get("contacts_shell_active")):
+        discussion_view.render()
+        return
+
     selected_module, selected_view = _selected_module_view()
     if selected_module is None:
         st.title("Module Views")

@@ -18,7 +18,9 @@ STABLE_MODULE_IDS = {
     "logging",
     "module_manager",
     "preferences",
+    "runtime_telemetry",
     "users",
+    "ysparr",
 }
 
 
@@ -44,8 +46,10 @@ def test_load_bundled_modules_loads_bundled_modules():
         "module_manager",
         "os_admin",
         "preferences",
+        "runtime_telemetry",
         "users",
         "worksim",
+        "ysparr",
     ]
     assert [action.action_id for action in registry.list_actions()] == [
         "agent_alarms.alarms",
@@ -240,7 +244,9 @@ def test_create_application_registry_loads_bundled_modules():
         "logging",
         "module_manager",
         "preferences",
+        "runtime_telemetry",
         "users",
+        "ysparr",
     ]
     assert registry.list_actions()
     assert registry.list_commands()
@@ -272,5 +278,7 @@ def test_get_application_registry_returns_cached_registry():
         "logging",
         "module_manager",
         "preferences",
+        "runtime_telemetry",
         "users",
+        "ysparr",
     ]

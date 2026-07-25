@@ -2,7 +2,7 @@
 
 ## 1. Discovered Architecture
 - **Canonical Execution Path**:
-  `Internal API (ai_model_executor.py)` $\rightarrow$ `Module Service (ai_model_executor/services.py)` $\rightarrow$ `Library Executor (ysparr/modalities/text2text/executor.py)` $\rightarrow$ `Backend (OpenAI/KoboldCpp)`.
+  `Internal API (ai_model_executor.py)` $\rightarrow$ `Module Service (ai_model_executor/services.py)` $\rightarrow$ `Ysparr Module Executor (apmatia/modules/ysparr/modalities/text2text/executor.py)` $\rightarrow$ `Backend (OpenAI/KoboldCpp)`.
 - **Persistence Pattern**:
   Uses a `Repository` protocol. Current implementation relies on `get_config_value` (JSON/SQLite) but moves toward a formal `Repository` $\rightarrow$ `Service` $\rightarrow$ `Model` pattern.
 - **Dependency Direction**:
@@ -34,7 +34,7 @@
 1. **Register**: Create a `ModelRuntime` with `max_concurrency=3`.
 2. **Enqueue**: Submit a `WorkItem` with validated `TextGenerationWorkPayload`.
 3. **Dispatch**: `Dispatcher` finds the work, checks the runtime, and calls `acquire_seat()`.
-4. **Execute**: Call `ysparr` executor $\rightarrow$ get result.
+4. **Execute**: Call the stable `ysparr` module executor $\rightarrow$ get result.
 5. **Release**: Call `release_seat()` $\rightarrow$ `WorkItem` marked `completed`.
 
 ## 5. Concurrency & Lifecycle

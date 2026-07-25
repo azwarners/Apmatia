@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from ysparr.core.exceptions import StorageError
-from ysparr.core.types import PromptRequest
+from apmatia.modules.ysparr.core.exceptions import StorageError
+from apmatia.modules.ysparr.core.types import PromptRequest
 
 
 class TextFileStorage:

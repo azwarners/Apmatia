@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import sys
 import uuid
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -36,22 +35,11 @@ from .ports import AgentLoopTaskRepository, ModelExecutor, ToolExecutor
 from .repository import FileAgentLoopTaskRepository
 from .state import resolve_agent_loop_workspace_root, resolve_contact_roots
 
-try:
-    from ysparr.core.types import PromptRequest
-    from ysparr.modalities.text2text.backends.koboldcpp_backend import KoboldCppBackend
-    from ysparr.modalities.text2text.backends.openai_compatible_backend import OpenAICompatibleBackend
-    from ysparr.modalities.text2text.executor import execute
-    from ysparr.modalities.text2text.storage import TextFileStorage
-except ModuleNotFoundError:
-    ysparr_src = Path(__file__).resolve().parents[4] / "src" / "apmatia" / "lib" / "ysparr"
-    if str(ysparr_src) not in sys.path:
-        sys.path.append(str(ysparr_src))
-
-    from ysparr.core.types import PromptRequest
-    from ysparr.modalities.text2text.backends.koboldcpp_backend import KoboldCppBackend
-    from ysparr.modalities.text2text.backends.openai_compatible_backend import OpenAICompatibleBackend
-    from ysparr.modalities.text2text.executor import execute
-    from ysparr.modalities.text2text.storage import TextFileStorage
+from apmatia.modules.ysparr.core.types import PromptRequest
+from apmatia.modules.ysparr.modalities.text2text.backends.koboldcpp_backend import KoboldCppBackend
+from apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend import OpenAICompatibleBackend
+from apmatia.modules.ysparr.modalities.text2text.executor import execute
+from apmatia.modules.ysparr.modalities.text2text.storage import TextFileStorage
 
 
 TOOL_CALL_RE = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)

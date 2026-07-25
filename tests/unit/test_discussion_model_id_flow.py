@@ -83,12 +83,12 @@ def test_build_backend_uses_llm_config(mock_backend):
 
 def test_resolve_docker_host_loopback_localhost():
     """Test that localhost URLs get rewritten in Docker."""
-    from ysparr.modalities.text2text.backends.openai_compatible_backend import (
+    from apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend import (
         _resolve_docker_host_loopback,
         _running_in_docker,
     )
     
-    with patch("ysparr.modalities.text2text.backends.openai_compatible_backend.os") as mock_os:
+    with patch("apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend.os") as mock_os:
         mock_os.getenv.return_value = "1"
         mock_os.path.exists.return_value = True
         
@@ -100,11 +100,11 @@ def test_resolve_docker_host_loopback_localhost():
 
 def test_resolve_docker_host_loopback_preserves_non_loopback():
     """Test that non-loopback URLs are preserved in Docker."""
-    from ysparr.modalities.text2text.backends.openai_compatible_backend import (
+    from apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend import (
         _resolve_docker_host_loopback,
     )
     
-    with patch("ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker") as mock_running:
+    with patch("apmatia.modules.ysparr.modalities.text2text.backends.openai_compatible_backend._running_in_docker") as mock_running:
         mock_running.return_value = True
         
         result = _resolve_docker_host_loopback("http://api.example.com:8080")

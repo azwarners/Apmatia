@@ -123,7 +123,7 @@ class ApmatiaAiModelExecutorModuleViewProvider:
         model_agent_count = {}
         try:
             from apmatia.modules.ai_model_manager.services import list_llm_configs
-            from apmatia.core.agent_management_runtime import get_agent_manager
+            from apmatia.modules.agents.runtime import get_agent_manager
 
             llm_configs = list_llm_configs()
             # Find which LLM configs are assigned to agents

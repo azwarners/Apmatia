@@ -42,10 +42,11 @@ def adapt_module_view(
     )
     item_key = str(_mapping_value(ui, "item_key", default="id") or "id")
 
-    if render_mode != "collection":
+    if render_mode not in {"collection", "form"}:
         return CollectionViewDescriptor(
             view_id=view_id,
             title=title,
+            render_mode=render_mode,
             description=description,
             caption=caption,
             empty_state=empty_state,
@@ -83,6 +84,7 @@ def adapt_module_view(
     return CollectionViewDescriptor(
         view_id=view_id,
         title=title,
+        render_mode=render_mode,
         description=description,
         caption=caption,
         empty_state=empty_state,
@@ -100,7 +102,10 @@ def adapt_module_view(
             )
         ),
         edit_form=(
-            _parse_form_descriptor(_mapping_value(ui, "edit_form", default=None), default_key="edit")
+            _parse_form_descriptor(
+                _mapping_value(ui, "form", default=None) if render_mode == "form" else _mapping_value(ui, "edit_form", default=None),
+                default_key="form" if render_mode == "form" else "edit",
+            )
             or _form_from_schema(
                 _mapping_value(metadata, "schema", default=None),
                 default_key="edit",
@@ -180,7 +185,7 @@ def _parse_form_descriptor(raw_form: Any, *, default_key: str) -> ModuleViewForm
     title = str(raw_form.get("title") or "Form").strip() or "Form"
     description = str(raw_form.get("description") or "").strip()
     submit_label = str(raw_form.get("submit_label") or "Save").strip() or "Save"
-    cancel_label = str(raw_form.get("cancel_label") or "Cancel").strip() or "Cancel"
+    cancel_label = str(raw_form.get("cancel_label", "Cancel") or "").strip()
     actions = tuple(_parse_form_actions(raw_form.get("actions")))
     fields = tuple(_parse_form_fields(raw_form.get("fields")))
     return ModuleViewFormDescriptor(
@@ -233,6 +238,7 @@ def _parse_form_fields(raw_fields: Any) -> list[ModuleViewFormFieldDescriptor]:
         if not key:
             continue
         label = str(entry.get("label") or key.replace("_", " ").title()).strip()
+        section = str(entry.get("section") or "").strip()
         field_type = str(entry.get("field_type") or entry.get("type") or "text").strip() or "text"
         help_text = str(entry.get("help_text") or entry.get("help") or "").strip()
         placeholder = str(entry.get("placeholder") or "").strip()
@@ -247,6 +253,7 @@ def _parse_form_fields(raw_fields: Any) -> list[ModuleViewFormFieldDescriptor]:
             ModuleViewFormFieldDescriptor(
                 key=key,
                 label=label,
+                section=section,
                 field_type=field_type,
                 help_text=help_text,
                 placeholder=placeholder,

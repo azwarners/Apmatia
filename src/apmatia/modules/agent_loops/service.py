@@ -10,10 +10,10 @@ from pathlib import Path
 from threading import Event, Lock, Thread
 from typing import Any, Callable
 
-from apmatia.core.agent_management_runtime import get_agent_manager
+from apmatia.modules.agents.runtime import get_agent_manager
 from apmatia.core.model_management_runtime import get_llm_config_manager
 from apmatia.lib.apmatia_core.models import utc_now
-from apmatia.lib.agent_management.agent_prompt import default_agent_prompt
+from apmatia.modules.agents.agent_prompt import default_agent_prompt
 from apmatia.lib.persistence import logger as persistence_logger
 from apmatia.modules.agent_tools.models import ToolCall as RuntimeToolCall
 

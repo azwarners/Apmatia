@@ -5,8 +5,6 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 
-from apmatia.api.http.routes.settings_routes import SettingsPayload
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 def test_show_auth_form_returns_true_when_api_session_is_authenticated(mock_streamlit):
@@ -91,8 +89,8 @@ def test_api_client_hydrates_cookie_from_browser_context(mock_streamlit):
     mock_streamlit.html.assert_called()
     assert mock_client.cookies["apmatia_session"] == "browser-token"
 
-def test_settings_page_loads_and_saves(mock_streamlit):
-    """Settings page loads grouped values and posts them back through the API."""
+def test_preferences_module_view_loads_and_saves(mock_streamlit):
+    """The Preferences module view loads its item and saves through a module command."""
     current_settings = {
         "llama_server_log_dir": "/var/log/llama.cpp",
         "gguf_directories": "/models/gguf\n/alt/models/gguf",
@@ -127,36 +125,56 @@ def test_settings_page_loads_and_saves(mock_streamlit):
     mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
     mock_streamlit.color_picker.side_effect = lambda _label, value="#ff6b6b", **_kwargs: value
     mock_streamlit.slider.side_effect = lambda _label, min_value=0, max_value=100, value=0, **_kwargs: value
-    mock_streamlit.form_submit_button.side_effect = [True, False]
+    mock_streamlit.form_submit_button.return_value = True
+    mock_streamlit.session_state.update(
+        {
+            "selected_page": "module_view",
+            "selected_module_id": "preferences",
+            "selected_module_view_id": "preferences.preferences.view",
+        }
+    )
+    selected_module = {
+        "module_id": "preferences",
+        "name": "Preferences",
+        "hidden": False,
+        "views": [
+            {
+                "module_id": "preferences",
+                "view_id": "preferences.preferences.view",
+                "name": "Preferences",
+                "description": "Configure Apmatia through the local API.",
+                "effective_hidden": False,
+                "metadata": __import__("apmatia.modules.preferences.views", fromlist=["VIEW_DESCRIPTORS"]).VIEW_DESCRIPTORS[0].metadata,
+            }
+        ],
+    }
 
-    with patch(
-        "apmatia.interfaces.streamlit.api_client.get_settings",
-        return_value=current_settings,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.save_settings",
+    import apmatia.interfaces.streamlit.module_views.renderers as module_view_renderers
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+
+    importlib.reload(module_view_renderers)
+    module_views_page = importlib.reload(module_views_page)
+    with patch.object(module_views_page, "list_modules", return_value=[selected_module]), patch.object(
+        module_views_page, "list_module_view_items", return_value=[{"id": "preferences", **current_settings}]
+    ), patch.object(
+        module_views_page,
+        "execute_module_command",
+        return_value={"message": "Preferences saved.", "ui_preferences": current_settings},
     ) as mock_save:
-        import apmatia.interfaces.streamlit.pages.settings as settings_page
-
-        settings_page = importlib.reload(settings_page)
-        settings_page.render()
-        settings_page.render()
+        module_views_page.render()
 
     mock_save.assert_called_once()
-    payload = mock_save.call_args.args[0]
-    assert isinstance(payload, SettingsPayload)
-    assert payload.llama_server_log_dir == "/var/log/llama.cpp"
-    assert payload.gguf_directories == "/models/gguf\n/alt/models/gguf"
-    assert payload.gguf_directory == ""
-    assert payload.auto_scan_gguf_directory is True
-    assert payload.llama_server_executable_path == "/usr/bin/llama-server"
-    assert payload.llama_server_default_args == "--ctx-size 4096\n--host 0.0.0.0"
-    assert payload.workspace_root == "/home/nick/.apmatia/workspace"
-    assert payload.knowledge_root == "/home/nick/.apmatia/knowledge"
-    assert payload.timezone == "America/Phoenix"
-    assert payload.theme == "dark"
-    assert any(c.args[:1] == ("Current local time",) for c in mock_streamlit.metric.call_args_list)
-    assert any(c.args[:1] == ("Current UTC",) for c in mock_streamlit.metric.call_args_list)
-    mock_streamlit.success.assert_called_with("Settings saved.")
+    command_id, = mock_save.call_args.args
+    payload = mock_save.call_args.kwargs
+    assert command_id == "preferences.preferences.save"
+    assert payload["llama_server_log_dir"] == "/var/log/llama.cpp"
+    assert payload["gguf_directories"] == "/models/gguf\n/alt/models/gguf"
+    assert payload["auto_scan_gguf_directory"] is True
+    assert payload["llama_server_executable_path"] == "/usr/bin/llama-server"
+    assert payload["workspace_root"] == "/home/nick/.apmatia/workspace"
+    assert payload["timezone"] == "America/Phoenix"
+    assert payload["theme"] == "dark"
+    mock_streamlit.success.assert_called_with("Preferences saved.")
 
 def test_agent_management_page_loads_creates_and_lists(mock_streamlit):
     """Agent management page uses the API client for CRUD and LLM selection."""
@@ -203,18 +221,18 @@ def test_agent_management_page_loads_creates_and_lists(mock_streamlit):
     ) as mock_update, patch(
         "apmatia.interfaces.streamlit.api_client.delete_agent"
     ) as mock_delete:
-        import apmatia.interfaces.streamlit.pages.agent_management as agent_management_page
+        import apmatia.interfaces.streamlit.module_views.agents as agent_management_page
 
         agent_management_page = importlib.reload(agent_management_page)
-        agent_management_page.render()
+        agent_management_page.render(agents)
 
     mock_create.assert_not_called()
     mock_update.assert_not_called()
     mock_delete.assert_not_called()
     mock_compiled_prompt.assert_called_once_with(17, name="Planner")
-    mock_streamlit.title.assert_called_with("Agent Management")
+    mock_streamlit.title.assert_called_with("Agents")
     mock_streamlit.caption.assert_any_call(
-        "Create, edit, and remove Agent objects through the local API."
+        "Create, edit, clone, and remove agents through the stable agents module API."
     )
 
 def test_agent_management_clone_button_prefills_new_agent_form(mock_streamlit):
@@ -263,10 +281,10 @@ def test_agent_management_clone_button_prefills_new_agent_form(mock_streamlit):
     ) as mock_update, patch(
         "apmatia.interfaces.streamlit.api_client.delete_agent"
     ) as mock_delete:
-        import apmatia.interfaces.streamlit.pages.agent_management as agent_management_page
+        import apmatia.interfaces.streamlit.module_views.agents as agent_management_page
 
         agent_management_page = importlib.reload(agent_management_page)
-        agent_management_page.render()
+        agent_management_page.render(agents)
 
     mock_create.assert_not_called()
     mock_update.assert_not_called()
@@ -313,13 +331,13 @@ def test_agent_management_delete_requires_confirmation(mock_streamlit):
         "apmatia.interfaces.streamlit.api_client.get_compiled_agent_prompt",
         return_value="You are Planner.",
     ), patch(
-        "apmatia.interfaces.streamlit.api_client.delete_agent",
-        return_value=True,
+        "apmatia.interfaces.streamlit.api_client.execute_module_command",
+        return_value={"status": "deleted", "deleted": True},
     ) as mock_delete:
-        import apmatia.interfaces.streamlit.pages.agent_management as agent_management_page
+        import apmatia.interfaces.streamlit.module_views.agents as agent_management_page
 
         agent_management_page = importlib.reload(agent_management_page)
-        agent_management_page.render()
+        agent_management_page.render(agents)
 
     mock_delete.assert_not_called()
     assert mock_streamlit.session_state["agent_delete_target"] == {"id": 1, "name": "Planner"}
@@ -364,15 +382,15 @@ def test_agent_management_confirmed_delete_clears_selected_form_state(mock_strea
         "apmatia.interfaces.streamlit.api_client.get_compiled_agent_prompt",
         return_value="You are Planner.",
     ), patch(
-        "apmatia.interfaces.streamlit.api_client.delete_agent",
-        return_value=True,
+        "apmatia.interfaces.streamlit.api_client.execute_module_command",
+        return_value={"status": "deleted", "deleted": True},
     ) as mock_delete:
-        import apmatia.interfaces.streamlit.pages.agent_management as agent_management_page
+        import apmatia.interfaces.streamlit.module_views.agents as agent_management_page
 
         agent_management_page = importlib.reload(agent_management_page)
-        agent_management_page.render()
+        agent_management_page.render(agents)
 
-    mock_delete.assert_called_once_with(1)
+    mock_delete.assert_called_once_with("agents.agents.delete", item_id=1)
     assert mock_streamlit.session_state["agent_form_values"]["id"] is None
     assert mock_streamlit.session_state["agent_selected_id"] is None
     assert "agent_delete_target" not in mock_streamlit.session_state
@@ -791,9 +809,9 @@ def test_contacts_sidebar_filters_to_selected_group_members_and_highlights_curre
     assert not any(call.args and call.args[0] == "Chloe the Tester" for call in button_calls)
     mock_streamlit.sidebar.caption.assert_any_call("Showing members of DevTeam.")
 
-def test_main_function_authenticated_routes_to_settings(mock_streamlit):
-    """Authenticated users can navigate to settings through the sidebar."""
-    mock_streamlit.sidebar.button.side_effect = lambda label, *args, **kwargs: label == "⚙️ Settings"
+def test_main_function_authenticated_routes_to_preferences(mock_streamlit):
+    """Authenticated users can navigate to Preferences through the module sidebar."""
+    mock_streamlit.sidebar.button.side_effect = lambda label, *args, **kwargs: label == "Preferences"
 
     import apmatia.interfaces.streamlit.app as app
 
@@ -810,13 +828,20 @@ def test_main_function_authenticated_routes_to_settings(mock_streamlit):
     ), patch.object(
         app,
         "list_module_catalog",
-        return_value=[],
+        return_value=[
+            {
+                "module_id": "preferences",
+                "name": "Preferences",
+                "hidden": False,
+                "views": [{"view_id": "preferences.preferences.view", "name": "Preferences", "effective_hidden": False}],
+            }
+        ],
     ), patch.object(
         app,
         "logout",
     ) as mock_logout, patch(
-        "apmatia.interfaces.streamlit.pages.settings.render"
-    ) as mock_settings_render:
+        "apmatia.interfaces.streamlit.pages.module_views.render"
+    ) as mock_preferences_render:
         app.main()
 
     assert Path(app.FAVICON_PATH).is_file()
@@ -828,13 +853,7 @@ def test_main_function_authenticated_routes_to_settings(mock_streamlit):
         "client.showSidebarNavigation", False
     )
     mock_streamlit.sidebar.title.assert_called_once_with("Apmatia")
-    assert mock_streamlit.sidebar.button.call_count == 3
-    mock_streamlit.sidebar.button.assert_any_call(
-        "📦 Modules",
-        key="nav_module_management",
-        use_container_width=True,
-        type="primary",
-    )
+    assert mock_streamlit.sidebar.button.call_count == 1
     mock_streamlit.markdown.assert_called()
     rendered_css = "\n".join(
         call.args[0]
@@ -850,10 +869,12 @@ def test_main_function_authenticated_routes_to_settings(mock_streamlit):
     assert 'div[data-testid="stPopover"]' in rendered_css
     mock_streamlit.popover.assert_called_once_with("⋮", key="apm_header_menu", width=264)
     mock_streamlit.button.assert_any_call(
-        "⚙️ Settings", key="header_settings_button", use_container_width=True
+        "⚙️ Preferences", key="header_preferences_button", use_container_width=True
     )
-    mock_settings_render.assert_called_once()
-    assert mock_streamlit.session_state["selected_page"] == "settings"
+    mock_preferences_render.assert_called_once()
+    assert mock_streamlit.session_state["selected_page"] == "module_view"
+    assert mock_streamlit.session_state["selected_module_id"] == "preferences"
+    assert mock_streamlit.session_state["selected_module_view_id"] == "preferences.preferences.view"
 
 def test_render_sidebar_shows_visible_module_with_active_subpages(mock_streamlit):
     mock_streamlit.session_state["selected_page"] = "module_view"
@@ -1017,9 +1038,15 @@ def test_render_sidebar_shows_agent_loops_contact_roster(mock_streamlit):
     assert "Modules" not in [call.args[0] for call in mock_streamlit.sidebar.subheader.call_args_list if call.args]
     mock_streamlit.rerun.assert_called()
 
-def test_main_function_authenticated_routes_to_agent_management(mock_streamlit):
-    """Authenticated users can navigate to the agent page through the sidebar."""
-    mock_streamlit.sidebar.button.side_effect = lambda label, *args, **kwargs: label == "🤖 Agents"
+def test_main_function_authenticated_routes_to_agents_module(mock_streamlit):
+    """Authenticated users navigate to agents through the module view layer."""
+    mock_streamlit.sidebar.button.side_effect = lambda label, *args, **kwargs: label == "Agents"
+    agents_module = {
+        "module_id": "agents",
+        "name": "Agents",
+        "hidden": False,
+        "views": [{"view_id": "agents.agents.view", "name": "Agents", "effective_hidden": False}],
+    }
 
     with patch(
         "apmatia.interfaces.streamlit.api_client.get_auth_session",
@@ -1028,15 +1055,17 @@ def test_main_function_authenticated_routes_to_agent_management(mock_streamlit):
         "apmatia.interfaces.streamlit.api_client.get_settings",
         return_value={"theme": "dark"},
     ), patch(
-        "apmatia.interfaces.streamlit.pages.agent_management.render"
+        "apmatia.interfaces.streamlit.pages.module_views.render"
     ) as mock_agent_render:
         import apmatia.interfaces.streamlit.app as app
 
         app = importlib.reload(app)
-        app.main()
+        with patch.object(app, "_visible_module_catalog", return_value=[agents_module]):
+            app.main()
 
     mock_agent_render.assert_called_once()
-    assert mock_streamlit.session_state["selected_page"] == "agent_management"
+    assert mock_streamlit.session_state["selected_page"] == "module_view"
+    assert mock_streamlit.session_state["selected_module_id"] == "agents"
 
 def test_main_function_authenticated_routes_to_users_module(mock_streamlit):
     """Authenticated users navigate to users through the module view layer."""
@@ -1198,10 +1227,10 @@ def test_main_function_restarts_shell_when_module_view_detail_changes(mock_strea
     second_generation = int(shell_keys[1].rsplit(":", 1)[-1])
     assert second_generation == first_generation + 1
 
-def test_header_menu_settings_button_selects_settings_page(mock_streamlit):
-    """The top-right menu routes users to settings without a page reload."""
+def test_header_menu_preferences_button_selects_preferences_module(mock_streamlit):
+    """The top-right menu routes users to Preferences without a page reload."""
     mock_streamlit.button.side_effect = (
-        lambda label, *args, **kwargs: label == "⚙️ Settings"
+        lambda label, *args, **kwargs: label == "⚙️ Preferences"
     )
     mock_streamlit.rerun.side_effect = RuntimeError("rerun")
 
@@ -1218,7 +1247,9 @@ def test_header_menu_settings_button_selects_settings_page(mock_streamlit):
         with pytest.raises(RuntimeError, match="rerun"):
             app.main()
 
-    assert mock_streamlit.session_state["selected_page"] == "settings"
+    assert mock_streamlit.session_state["selected_page"] == "module_view"
+    assert mock_streamlit.session_state["selected_module_id"] == "preferences"
+    assert mock_streamlit.session_state["selected_module_view_id"] == "preferences.preferences.view"
     mock_streamlit.rerun.assert_called_once()
     mock_streamlit.sidebar.button.assert_not_called()
 

@@ -24,34 +24,16 @@ from apmatia.interfaces.streamlit.module_views.renderers import render_navigatio
 from apmatia.interfaces.streamlit.page_runtime import sync_page_generation
 from apmatia.interfaces.streamlit.module_views.auth import show_auth_form
 from apmatia.interfaces.streamlit.pages.archive import discussion
-from apmatia.interfaces.streamlit.pages import (
-    settings,
-    module_management,
-    agent_management,
-    module_views,
-)
+from apmatia.interfaces.streamlit.pages import module_views
 from apmatia.lib.persistence.logger import get_logger
 
 FAVICON_PATH = Path(__file__).resolve().parents[4] / "assets" / "favicon.png"
 PAGE_OPTIONS = [
     "discussion",
-    "module_management",
-    "agent_management",
     "module_view",
-    "settings",
 ]
 THEME_OPTIONS = ["dark", "light", "system"]
 LOGGER = get_logger(__name__)
-
-
-def _format_page_label(page: str) -> str:
-    if page == "module_management":
-        return "📦 Modules"
-    if page == "agent_management":
-        return "🤖 Agents"
-    if page == "settings":
-        return "⚙️ Settings"
-    return page.title()
 
 
 def require_auth():
@@ -497,7 +479,7 @@ def render_sidebar():
     """Render the sidebar navigation."""
     visible_modules = _visible_module_catalog()
     if "selected_page" not in st.session_state or st.session_state["selected_page"] not in PAGE_OPTIONS:
-        st.session_state["selected_page"] = "module_view" if visible_modules else "module_management"
+        st.session_state["selected_page"] = "module_view"
         if visible_modules:
             first_module = visible_modules[0]
             st.session_state["selected_module_id"] = str(first_module.get("module_id") or "")
@@ -512,27 +494,11 @@ def render_sidebar():
 
     st.sidebar.title("Apmatia")
 
-    def _nav_button(page: str) -> None:
-        if st.sidebar.button(
-            _format_page_label(page),
-            key=f"nav_{page}",
-            use_container_width=True,
-            type="primary" if st.session_state["selected_page"] == page else "secondary",
-        ):
-            st.session_state["selected_page"] = page
-            st.rerun()
-
     if visible_modules:
         st.sidebar.divider()
         st.sidebar.subheader("Modules")
         for module in visible_modules:
             _render_module_sidebar_section(module)
-    st.sidebar.divider()
-    st.sidebar.subheader("Management")
-    _nav_button("module_management")
-    _nav_button("agent_management")
-    st.sidebar.divider()
-    _nav_button("settings")
     return st.session_state["selected_page"]
 
 
@@ -994,7 +960,9 @@ def _deactivate_agent_loops_shell() -> None:
         "selected_module_view_id",
     ):
         st.session_state.pop(key, None)
-    st.session_state["selected_page"] = "module_management"
+    st.session_state["selected_page"] = "module_view"
+    st.session_state["selected_module_id"] = "module_manager"
+    st.session_state["selected_module_view_id"] = "module_manager.module_manager.view"
 
 
 def _activate_agent_loops_contact(contact: dict[str, object]) -> None:
@@ -1102,8 +1070,10 @@ def _set_theme_preference(theme: str) -> None:
     st.rerun()
 
 
-def _show_settings() -> None:
-    st.session_state["selected_page"] = "settings"
+def _show_preferences() -> None:
+    st.session_state["selected_page"] = "module_view"
+    st.session_state["selected_module_id"] = "preferences"
+    st.session_state["selected_module_view_id"] = "preferences.preferences.view"
     st.rerun()
 
 
@@ -1128,8 +1098,10 @@ def _process_header_actions() -> None:
     nav = st.query_params.get("nav")
     theme = st.query_params.get("theme")
 
-    if nav == "settings":
-        st.session_state["selected_page"] = "settings"
+    if nav in {"settings", "preferences"}:
+        st.session_state["selected_page"] = "module_view"
+        st.session_state["selected_module_id"] = "preferences"
+        st.session_state["selected_module_view_id"] = "preferences.preferences.view"
         _clear_query_params()
         st.rerun()
 
@@ -1165,8 +1137,8 @@ def render_top_bar():
                     _set_theme_preference(value)
 
         st.divider()
-        if st.button("⚙️ Settings", key="header_settings_button", use_container_width=True):
-            _show_settings()
+        if st.button("⚙️ Preferences", key="header_preferences_button", use_container_width=True):
+            _show_preferences()
 
         st.divider()
         st.caption(f"Logged in as: {username}")
@@ -1216,18 +1188,6 @@ def main():
     )
 
     with st.container(key=f"apm-page-shell:{selected_page}:{page_generation}"):
-        if selected_page == "settings":
-            settings.render()
-            return
-
-        if selected_page == "module_management":
-            module_management.render()
-            return
-
-        if selected_page == "agent_management":
-            agent_management.render()
-            return
-
         if selected_page == "module_view":
             module_views.render()
             return

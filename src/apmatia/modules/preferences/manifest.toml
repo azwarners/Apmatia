@@ -1,0 +1,19 @@
+[module]
+module_id = "preferences"
+name = "Preferences"
+version = "0.1.0"
+description = "Configure Apmatia runtime, model discovery, agent roots, time zone, appearance, and terminal preferences."
+author = "Nick"
+status = "stable"
+category = "core"
+default_enabled = true
+tags = ["preferences", "configuration", "appearance", "runtime"]
+
+[metadata]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []

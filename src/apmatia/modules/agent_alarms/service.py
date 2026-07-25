@@ -7,7 +7,7 @@ from pathlib import Path
 from threading import Event, Lock, Thread
 from typing import Any, Protocol
 
-from apmatia.core.agent_management_runtime import get_agent_manager
+from apmatia.modules.agents.runtime import get_agent_manager
 from apmatia.core.model_management_runtime import get_llm_config_manager
 from apmatia.core.runtime_paths import get_data_dir
 from apmatia.lib.apmatia_core.models import utc_now

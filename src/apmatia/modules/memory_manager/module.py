@@ -26,7 +26,7 @@ APMATIA_MEMORY_MANAGER_MODULE = ModuleMetadata(
 
 
 def register(registry: Registry) -> None:
-    from apmatia.core.agent_management_runtime import get_agent_manager
+    from apmatia.modules.agents.runtime import get_agent_manager
     from apmatia.core.memory_management_runtime import get_memory_manager
 
     registry.register_module(APMATIA_MEMORY_MANAGER_MODULE)

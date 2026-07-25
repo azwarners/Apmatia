@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from apmatia.lib.agent_management.models import Agent
-from apmatia.lib.agent_management.services import AgentService
+from apmatia.modules.agents.models import Agent
+from apmatia.modules.agents.services import AgentService
 from apmatia.modules.memory_manager.models import MemoryItem
 from apmatia.modules.memory_manager.manager import MemoryManager
 from apmatia.modules.memory_manager.repositories import MemoryRepository

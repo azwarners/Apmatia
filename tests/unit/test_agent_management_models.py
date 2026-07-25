@@ -4,7 +4,7 @@ import pytest
 from datetime import datetime, timezone
 
 from apmatia.lib.apmatia_core.models import ApmatiaObject
-from apmatia.lib.agent_management.models import Agent
+from apmatia.modules.agents.models import Agent
 
 
 class TestAgent:

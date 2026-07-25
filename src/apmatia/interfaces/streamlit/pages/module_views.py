@@ -31,6 +31,8 @@ from apmatia.interfaces.streamlit.module_views.renderers import (
     render_navigation_pane,
 )
 from apmatia.interfaces.streamlit.module_views import users as users_view
+from apmatia.interfaces.streamlit.module_views import agents as agents_view
+from apmatia.interfaces.streamlit.module_views import module_manager as module_manager_view
 from apmatia.interfaces.streamlit.components.shell_tabs import render_shell_tabs
 from apmatia.interfaces.streamlit.components.terminal_output import render_terminal_block
 from apmatia.interfaces.streamlit.page_runtime import current_page_generation, is_current_page_generation
@@ -109,8 +111,14 @@ def render() -> None:
 
     metadata = selected_view.get("metadata") if isinstance(selected_view.get("metadata"), dict) else {}
     ui = metadata.get("ui") if isinstance(metadata.get("ui"), dict) else {}
+    if str(ui.get("renderer") or "").strip().lower() == "agents":
+        agents_view.render(items)
+        return
     if str(ui.get("renderer") or "").strip().lower() == "users":
         users_view.render(items)
+        return
+    if str(ui.get("renderer") or "").strip().lower() == "module_manager":
+        module_manager_view.render(items)
         return
 
     spec = adapt_module_view(selected_view, items=items)
@@ -212,6 +220,7 @@ def render() -> None:
             except ApiError as error:
                 st.error(f"Unable to save configuration: {error.detail}")
             else:
+                _sync_ui_preferences(result)
                 _display_module_command_result(result, default_success="Configuration saved.")
                 st.rerun()
             return
@@ -563,6 +572,27 @@ def _display_module_command_result(result: object, *, default_success: str) -> N
         st.success(message)
     else:
         st.success(default_success)
+
+
+def _sync_ui_preferences(result: object) -> None:
+    if not isinstance(result, dict):
+        return
+    preferences = result.get("ui_preferences")
+    if not isinstance(preferences, dict):
+        return
+    keys = {
+        "theme": "ui_theme_preference",
+        "font_family": "ui_font_family",
+        "accent_color": "ui_accent_color",
+        "timezone": "ui_timezone",
+        "terminal_background_color": "ui_terminal_background_color",
+        "terminal_text_color": "ui_terminal_text_color",
+        "terminal_border_color": "ui_terminal_border_color",
+        "terminal_muted_color": "ui_terminal_muted_color",
+    }
+    for preference_key, state_key in keys.items():
+        if preference_key in preferences:
+            st.session_state[state_key] = preferences[preference_key]
 
 
 def _delete_target_missing(target: dict[str, object], items: Iterable[object]) -> bool:

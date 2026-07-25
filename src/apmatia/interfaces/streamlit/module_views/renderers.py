@@ -40,9 +40,50 @@ def render_module_view(
         render_agent_config_view(spec, on_intent=emit)
         return intents
 
+    if spec.render_mode == "form":
+        render_form_view(spec, on_intent=emit)
+        return intents
+
     render_view_header(spec, on_intent=emit)
     render_collection_view(spec, on_intent=emit)
     return intents
+
+
+def render_form_view(
+    spec: CollectionViewDescriptor,
+    *,
+    on_intent: Callable[[ModuleViewIntent], None] | None = None,
+) -> None:
+    st.title(spec.title)
+    if spec.caption:
+        st.caption(spec.caption)
+    if spec.description:
+        st.write(spec.description)
+
+    form = spec.edit_form
+    save_action = next((action for action in spec.view_actions if action.intent == "save"), None)
+    if form is None or save_action is None:
+        st.warning("This form view is missing its form schema or save action.")
+        return
+
+    initial_values = spec.items[0] if spec.items and isinstance(spec.items[0], Mapping) else None
+    submitted, _cancelled, payload, _action_key = render_module_view_form(
+        form,
+        form_key=f"module_view_form:{spec.view_id}:{form.key}",
+        initial_values=initial_values,
+    )
+    if submitted and on_intent is not None:
+        on_intent(
+            ModuleViewIntent(
+                view_id=spec.view_id,
+                intent=save_action.intent,
+                action_key=save_action.key,
+                scope=save_action.scope,
+                item_id=None,
+                item=initial_values,
+                payload={**dict(save_action.payload), **payload},
+            )
+        )
 
 
 def render_agent_config_view(
@@ -333,7 +374,11 @@ def render_module_view_form(
     payload: dict[str, Any] = {}
     action_key: str | None = None
     with st.form(form_key):
+        current_section = ""
         for field in form.fields:
+            if field.section and field.section != current_section:
+                st.subheader(field.section)
+                current_section = field.section
             payload[field.key] = _render_form_field(field, initial_value=None if initial_values is None else initial_values.get(field.key))
         if form.actions:
             action_columns = st.columns(len(form.actions))
@@ -453,6 +498,22 @@ def _render_form_field(field: ModuleViewFormFieldDescriptor, *, initial_value: A
         return st.checkbox(
             field.label,
             value=bool(value),
+            help=field.help_text or None,
+        )
+    if field_type == "color":
+        return st.color_picker(
+            field.label,
+            value=_stringify_form_value(value) or "#000000",
+            help=field.help_text or None,
+        )
+    if field_type == "slider":
+        slider_value = value if isinstance(value, (int, float)) else field.default
+        return st.slider(
+            field.label,
+            min_value=field.min_value,
+            max_value=field.max_value,
+            value=slider_value,
+            step=field.step,
             help=field.help_text or None,
         )
     if field_type == "select":

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from apmatia.core.module_view_runtime import ModuleViewContext
 from apmatia.core.registry import Registry
-from apmatia.lib.agent_management.models import Agent
+from apmatia.modules.agents.models import Agent
 from apmatia.modules.agent_config.actions import ACTION_DESCRIPTORS
 from apmatia.modules.agent_config.commands import COMMAND_DESCRIPTORS
 from apmatia.modules.agent_config.module import APMATIA_AGENT_CONFIG_MODULE, register

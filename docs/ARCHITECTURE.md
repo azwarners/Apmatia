@@ -103,7 +103,7 @@ manifest discovery -> maturity/default-enabled filter -> Python import -> regist
 
 In stable-only mode, only stable modules with `default_enabled = true` are imported by bootstrap for registration. Development modules remain discoverable through manifest inspection, but their actions, tools, commands, views, providers, dedicated HTTP functionality, and background services are inactive.
 
-The persisted `ui.show_development_modules` setting can switch the application to all-modules mode. The Module Management page exposes it as "Enable all modules." A change rebuilds the active registry and provider set in each process; module deactivation hooks stop background work when returning to stable-only mode.
+The persisted `ui.show_development_modules` setting can switch the application to all-modules mode. The registry-backed Module Manager view exposes it as "Enable all modules." A change rebuilds the active registry and provider set in each process; module deactivation hooks stop background work when returning to stable-only mode.
 
 ### 3. Core (Orchestration)
 

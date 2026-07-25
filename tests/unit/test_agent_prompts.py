@@ -1,7 +1,7 @@
 import tempfile
 
-from apmatia.lib.agent_management.agent_prompt import AgentPrompt, compile_agent_system_prompt, default_agent_prompt
-from apmatia.lib.agent_management.prompt_repositories import (
+from apmatia.modules.agents.agent_prompt import AgentPrompt, compile_agent_system_prompt, default_agent_prompt
+from apmatia.modules.agents.prompt_repositories import (
     AgentPromptManagementTables,
     SQLiteAgentPromptRepository,
 )

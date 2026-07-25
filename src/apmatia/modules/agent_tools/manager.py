@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
-from apmatia.lib.agent_management.services import AgentService
+from apmatia.modules.agents.services import AgentService
 from apmatia.lib.apmatia_core.models import utc_now
 
 from .executor import ToolExecutor

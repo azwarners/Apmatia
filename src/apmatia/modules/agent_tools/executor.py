@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
-from apmatia.lib.agent_management.services import AgentService
+from apmatia.modules.agents.services import AgentService
 from apmatia.core.modules import (
     InvalidModuleSlugError,
     ModuleAlreadyExistsError,

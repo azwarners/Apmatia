@@ -4,17 +4,40 @@ import importlib
 from unittest.mock import patch
 
 
-def test_module_management_page_lists_modules(mock_streamlit):
-    modules = [
+def _catalog(*modules: dict[str, object], show_development_modules: bool = False) -> list[dict[str, object]]:
+    return [
         {
-            "module_id": "ipe",
-            "name": "Integrated Productivity Environment",
-            "version": "0.1.0",
-            "description": "Personal productivity tools.",
-            "hidden": False,
-            "view_count": 2,
-            "visible_view_count": 1,
-            "views": [
+            "id": "module_catalog",
+            "show_development_modules": show_development_modules,
+            "modules": list(modules),
+        }
+    ]
+
+
+def _module(*, views: list[dict[str, object]] | None = None) -> dict[str, object]:
+    resolved_views = list(views or [])
+    return {
+        "module_id": "ipe",
+        "name": "Integrated Productivity Environment",
+        "version": "0.1.0",
+        "description": "Personal productivity tools.",
+        "hidden": False,
+        "view_count": len(resolved_views),
+        "visible_view_count": sum(not bool(view.get("effective_hidden")) for view in resolved_views),
+        "views": resolved_views,
+    }
+
+
+def _load_renderer():
+    import apmatia.interfaces.streamlit.module_views.module_manager as module_manager_view
+
+    return importlib.reload(module_manager_view)
+
+
+def test_module_manager_view_lists_modules_and_views(mock_streamlit):
+    items = _catalog(
+        _module(
+            views=[
                 {
                     "view_id": "ipe.task.view",
                     "name": "Tasks View",
@@ -29,125 +52,81 @@ def test_module_management_page_lists_modules(mock_streamlit):
                     "hidden": True,
                     "effective_hidden": True,
                 },
-            ],
-        }
-    ]
+            ]
+        )
+    )
 
-    with patch("apmatia.interfaces.streamlit.api_client.get_module_activation", return_value={"show_development_modules": False}), patch(
-        "apmatia.interfaces.streamlit.api_client.list_modules", return_value=modules
-    ):
-        import apmatia.interfaces.streamlit.pages.module_management as module_management_page
+    _load_renderer().render(items)
 
-        module_management_page = importlib.reload(module_management_page)
-        module_management_page.render()
-
-    mock_streamlit.title.assert_called_with("Module Management")
+    mock_streamlit.title.assert_called_with("Module Manager")
     mock_streamlit.subheader.assert_any_call("Integrated Productivity Environment")
     mock_streamlit.write.assert_any_call("Tasks View")
     mock_streamlit.write.assert_any_call("Projects View")
 
 
-def test_module_management_page_toggles_module_visibility(mock_streamlit):
-    modules = [
-        {
-            "module_id": "ipe",
-            "name": "Integrated Productivity Environment",
-            "version": "0.1.0",
-            "description": "",
-            "hidden": False,
-            "view_count": 0,
-            "visible_view_count": 0,
-            "views": [],
-        }
-    ]
+def test_module_manager_view_toggles_module_visibility(mock_streamlit):
     mock_streamlit.button.side_effect = lambda label, **_kwargs: label == "Hide module"
+    renderer = _load_renderer()
 
-    with patch("apmatia.interfaces.streamlit.api_client.get_module_activation", return_value={"show_development_modules": False}), patch(
-        "apmatia.interfaces.streamlit.api_client.list_modules", return_value=modules
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.set_module_visibility"
-    ) as mock_set_module_visibility:
-        import apmatia.interfaces.streamlit.pages.module_management as module_management_page
+    with patch.object(renderer, "execute_module_command") as execute:
+        renderer.render(_catalog(_module()))
 
-        module_management_page = importlib.reload(module_management_page)
-        module_management_page.render()
-
-    mock_set_module_visibility.assert_called_once_with("ipe", hidden=True)
+    execute.assert_called_once_with(
+        "module_manager.module_manager.set_module_visibility",
+        module_id="ipe",
+        hidden=True,
+    )
     mock_streamlit.rerun.assert_called_once()
 
 
-def test_module_management_page_reorders_modules(mock_streamlit):
-    modules = [
-        {"module_id": "ipe", "name": "Integrated Productivity Environment", "version": "0.1.0", "description": "", "hidden": False, "views": []},
-        {"module_id": "worksim", "name": "Worksim", "version": "0.1.0", "description": "", "hidden": False, "views": []},
-    ]
+def test_module_manager_view_reorders_modules(mock_streamlit):
+    second = {**_module(), "module_id": "worksim", "name": "Worksim"}
     mock_streamlit.button.side_effect = lambda label, **kwargs: label == "Move down" and not kwargs.get("disabled", False)
+    renderer = _load_renderer()
 
-    with patch("apmatia.interfaces.streamlit.api_client.get_module_activation", return_value={"show_development_modules": False}), patch(
-        "apmatia.interfaces.streamlit.api_client.list_modules", return_value=modules
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.set_module_order"
-    ) as mock_set_module_order:
-        import apmatia.interfaces.streamlit.pages.module_management as module_management_page
+    with patch.object(renderer, "execute_module_command") as execute:
+        renderer.render(_catalog(_module(), second))
 
-        module_management_page = importlib.reload(module_management_page)
-        module_management_page.render()
-
-    mock_set_module_order.assert_called_once_with("ipe", new_index=1)
+    execute.assert_called_once_with(
+        "module_manager.module_manager.set_module_order",
+        module_id="ipe",
+        new_index=1,
+    )
     mock_streamlit.rerun.assert_called_once()
 
 
-def test_module_management_page_toggles_view_visibility(mock_streamlit):
-    modules = [
-        {
-            "module_id": "ipe",
-            "name": "Integrated Productivity Environment",
-            "version": "0.1.0",
-            "description": "",
-            "hidden": False,
-            "view_count": 1,
-            "visible_view_count": 1,
-            "views": [
-                {
-                    "view_id": "ipe.task.view",
-                    "name": "Tasks View",
-                    "description": "",
-                    "hidden": False,
-                    "effective_hidden": False,
-                }
-            ],
-        }
-    ]
+def test_module_manager_view_toggles_view_visibility(mock_streamlit):
+    view = {
+        "view_id": "ipe.task.view",
+        "name": "Tasks View",
+        "description": "",
+        "hidden": False,
+        "effective_hidden": False,
+    }
     mock_streamlit.button.side_effect = lambda label, **_kwargs: label == "Hide view"
+    renderer = _load_renderer()
 
-    with patch("apmatia.interfaces.streamlit.api_client.get_module_activation", return_value={"show_development_modules": False}), patch(
-        "apmatia.interfaces.streamlit.api_client.list_modules", return_value=modules
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.set_module_view_visibility"
-    ) as mock_set_module_view_visibility:
-        import apmatia.interfaces.streamlit.pages.module_management as module_management_page
+    with patch.object(renderer, "execute_module_command") as execute:
+        renderer.render(_catalog(_module(views=[view])))
 
-        module_management_page = importlib.reload(module_management_page)
-        module_management_page.render()
-
-    mock_set_module_view_visibility.assert_called_once_with("ipe.task.view", hidden=True)
+    execute.assert_called_once_with(
+        "module_manager.module_manager.set_view_visibility",
+        view_id="ipe.task.view",
+        hidden=True,
+    )
     mock_streamlit.rerun.assert_called_once()
 
 
-def test_module_management_page_enables_all_modules(mock_streamlit):
+def test_module_manager_view_enables_all_modules(mock_streamlit):
     mock_streamlit.toggle.side_effect = None
     mock_streamlit.toggle.return_value = True
+    renderer = _load_renderer()
 
-    with patch(
-        "apmatia.interfaces.streamlit.api_client.get_module_activation",
-        return_value={"show_development_modules": False},
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.set_development_modules_enabled"
-    ) as mock_set_development_modules_enabled:
-        import apmatia.interfaces.streamlit.pages.module_management as module_management_page
+    with patch.object(renderer, "execute_module_command") as execute:
+        renderer.render(_catalog())
 
-        module_management_page = importlib.reload(module_management_page)
-        module_management_page.render()
-
-    mock_set_development_modules_enabled.assert_called_once_with(enabled=True)
+    execute.assert_called_once_with(
+        "module_manager.module_manager.set_activation",
+        enabled=True,
+    )
     mock_streamlit.rerun.assert_called_once()

@@ -29,4 +29,4 @@ To render a view from the app, select a visible module from the left navigation 
 views. The page layer now loads the items through the API and passes the resulting view descriptor to
 the adapter automatically.
 
-Only active modules contribute views. Stable-only mode is the default, so development-module view descriptors and providers are absent from the active registry rather than merely hidden in navigation. The Module Management "Enable all modules" toggle rebuilds the registry when development views are intentionally needed.
+Only active modules contribute views. Stable-only mode is the default, so development-module view descriptors and providers are absent from the active registry rather than merely hidden in navigation. The Module Manager view's "Enable all modules" toggle rebuilds the registry when development views are intentionally needed.

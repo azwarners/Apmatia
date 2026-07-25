@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from apmatia.api.internal.agent_management import _agent_to_dict
-from apmatia.core.agent_management_runtime import get_agent_manager
+from apmatia.modules.agents.runtime import get_agent_manager
 from apmatia.core.ipe_runtime import get_ipe_service
 from apmatia.core.tool_management_runtime import get_tool_manager
 

@@ -12,9 +12,12 @@ from apmatia.core.registry import bootstrap
 
 
 STABLE_MODULE_IDS = {
+    "agents",
     "ai_model_manager",
     "contacts_and_discussions",
     "logging",
+    "module_manager",
+    "preferences",
     "users",
 }
 
@@ -27,6 +30,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "agent_config",
         "agent_loops",
         "agent_tools",
+        "agents",
         "ai_host_management",
         "ai_model_executor",
         "ai_model_manager",
@@ -37,7 +41,9 @@ def test_load_bundled_modules_loads_bundled_modules():
         "knowledge_wiki",
         "logging",
         "memory_manager",
+        "module_manager",
         "os_admin",
+        "preferences",
         "users",
         "worksim",
     ]
@@ -45,6 +51,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "agent_alarms.alarms",
         "agent_config.agent_config",
         "agent_tools.agent_tools",
+        "agents.agents",
         "ai_host_management.hosts",
         "ai_host_management.resources",
         "ai_model_executor.capacity",
@@ -66,6 +73,8 @@ def test_load_bundled_modules_loads_bundled_modules():
         "ipe.project",
         "ipe.task",
         "memory_manager.memory",
+        "module_manager.module_manager",
+        "preferences.preferences",
         "users.users",
         "worksim.org_chart_node",
     ]
@@ -79,6 +88,10 @@ def test_load_bundled_modules_loads_bundled_modules():
         "agent_tools.agent_tools.create",
         "agent_tools.agent_tools.edit",
         "agent_tools.agent_tools.list",
+        "agents.agents.create",
+        "agents.agents.delete",
+        "agents.agents.edit",
+        "agents.agents.list",
         "ai_host_management.hosts.create",
         "ai_host_management.hosts.delete",
         "ai_host_management.hosts.disable",
@@ -163,6 +176,12 @@ def test_load_bundled_modules_loads_bundled_modules():
         "memory_manager.memory.delete",
         "memory_manager.memory.edit",
         "memory_manager.memory.list",
+        "module_manager.module_manager.set_activation",
+        "module_manager.module_manager.set_module_order",
+        "module_manager.module_manager.set_module_visibility",
+        "module_manager.module_manager.set_view_order",
+        "module_manager.module_manager.set_view_visibility",
+        "preferences.preferences.save",
         "users.users.add_member",
         "users.users.create_group",
         "users.users.create_user",
@@ -185,6 +204,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "agent_loops.tasks.view",
         "agent_loops.workspace.view",
         "agent_tools.agent_tools.view",
+        "agents.agents.view",
         "ai_host_management.hosts.view",
         "ai_host_management.resources.view",
         "ai_model_executor.capacity.view",
@@ -203,6 +223,8 @@ def test_load_bundled_modules_loads_bundled_modules():
         "ipe.task.view",
         "logging.entries.view",
         "memory_manager.memory.view",
+        "module_manager.module_manager.view",
+        "preferences.preferences.view",
         "users.users.view",
         "worksim.org_chart_node.view",
     ]
@@ -212,9 +234,12 @@ def test_create_application_registry_loads_bundled_modules():
     registry = create_application_registry(include_development=False)
 
     assert [module.module_id for module in registry.list_modules(include_development=True)] == [
+        "agents",
         "ai_model_manager",
         "contacts_and_discussions",
         "logging",
+        "module_manager",
+        "preferences",
         "users",
     ]
     assert registry.list_actions()
@@ -241,8 +266,11 @@ def test_get_application_registry_returns_cached_registry():
 
     assert first is second
     assert [module.module_id for module in first.list_modules(include_development=True)] == [
+        "agents",
         "ai_model_manager",
         "contacts_and_discussions",
         "logging",
+        "module_manager",
+        "preferences",
         "users",
     ]

@@ -168,7 +168,7 @@ Module authors now have a clearer path for UI:
 
 Every module declares first-class `author`, `status`, `category`, `default_enabled`, and `tags` values in both its manifest and runtime registry metadata. Status is deliberately limited to `stable` and `development`; new and uncertain modules stay development until they are ready for ordinary users. The manifest `[metadata]` table is reserved for module-specific extensions.
 
-The application starts in stable-only mode. Development modules remain discoverable but are not activated: their registry contributions, views, dedicated API behavior, providers, and background services stay unavailable. The Module Management page can explicitly enable all modules for development work through the persisted `ui.show_development_modules` setting.
+The application starts in stable-only mode. Development modules remain discoverable but are not activated: their registry contributions, views, dedicated API behavior, providers, and background services stay unavailable. The Module Manager view can explicitly enable all modules for development work through the persisted `ui.show_development_modules` setting.
 
 ## Additional Documentation
 

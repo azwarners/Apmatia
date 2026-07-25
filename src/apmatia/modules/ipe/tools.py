@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from apmatia.lib.agent_management.services import AgentService
+from apmatia.modules.agents.services import AgentService
 from apmatia.core.registry import ToolContribution
 from apmatia.modules.agent_tools.registry import ToolProvider
 

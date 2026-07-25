@@ -5,8 +5,8 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from apmatia.lib.agent_management.module import AgentManager
-from apmatia.lib.agent_management.sqlite_repositories import SQLiteAgentManagementBundle
+from apmatia.modules.agents.manager import AgentManager
+from apmatia.modules.agents.sqlite_repositories import SQLiteAgentManagementBundle
 from apmatia.modules.memory_manager.manager import MemoryManager
 from apmatia.modules.memory_manager.sqlite_repositories import SQLiteMemoryManagementBundle
 from apmatia.modules.memory_manager.tooling import build_memory_tool_providers, memory_tool_definitions

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
-from apmatia.core.agent_management_runtime import get_agent_manager
+from apmatia.modules.agents.runtime import get_agent_manager
 from apmatia.core.app_config import get_config_value
 from apmatia.core.ipe_runtime import get_ipe_service
 from apmatia.core.runtime_paths import get_app_dir, get_data_dir

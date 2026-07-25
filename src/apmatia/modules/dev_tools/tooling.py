@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from apmatia.lib.agent_management.services import AgentService
+from apmatia.modules.agents.services import AgentService
 from apmatia.modules.agent_tools.registry import ToolProvider
 
 DEV_TOOLS_PROVIDER_IDS = {

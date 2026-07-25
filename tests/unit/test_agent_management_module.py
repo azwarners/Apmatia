@@ -4,11 +4,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from apmatia.lib.agent_management.module import AgentManager
-from apmatia.lib.agent_management.models import Agent
-from apmatia.lib.agent_management.repositories import AgentRepository
-from apmatia.lib.agent_management.agent_prompt import default_agent_prompt
-from apmatia.lib.agent_management.prompt_repositories import AgentPromptRepository
+from apmatia.modules.agents.manager import AgentManager
+from apmatia.modules.agents.models import Agent
+from apmatia.modules.agents.repositories import AgentRepository
+from apmatia.modules.agents.agent_prompt import default_agent_prompt
+from apmatia.modules.agents.prompt_repositories import AgentPromptRepository
 
 
 class MockAgentRepository(AgentRepository):

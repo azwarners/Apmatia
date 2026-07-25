@@ -10,7 +10,7 @@ All notable changes to Apmatia are documented in this file.
 - Added first-class module maturity, category, author, default-enabled, and immutable tag metadata to manifests and runtime registry records.
 - Limited maturity to `stable` and `development`, with development as the compatibility-safe default for manifests that omit status.
 - Migrated bundled manifests under `src/apmatia/modules/` so standardized values live in `[module]` and `[metadata]` remains reserved for extensions.
-- Made startup stable-only by default and added the Module Management "Enable all modules" toggle for explicitly activating development modules.
+- Made startup stable-only by default and added the Module Manager "Enable all modules" toggle for explicitly activating development modules.
 - Changed bootstrap to classify manifests before importing module Python packages, keeping inactive development actions, tools, commands, views, providers, dedicated routes, and background services out of the active application.
 
 ## 0.0.1.7 - Module View Adapter and Schema Inference

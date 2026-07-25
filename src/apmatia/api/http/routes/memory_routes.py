@@ -14,7 +14,7 @@ from apmatia.api.internal.memory_management import (
     search_memories,
     update_memory,
 )
-from apmatia.core.agent_management_runtime import get_agent_manager
+from apmatia.modules.agents.runtime import get_agent_manager
 
 from .shared import member_group_ids, payload_fields_set, require_session
 

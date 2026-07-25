@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from apmatia.lib.agent_management.services import AgentService
+from apmatia.modules.agents.services import AgentService
 
 from .services import WikiService
 

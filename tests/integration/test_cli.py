@@ -159,6 +159,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "agent_config",
         "agent_loops",
         "agent_tools",
+        "agents",
         "ai_host_management",
         "ai_model_executor",
         "ai_model_manager",
@@ -169,7 +170,9 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "knowledge_wiki",
         "logging",
         "memory_manager",
+        "module_manager",
         "os_admin",
+        "preferences",
         "users",
         "worksim",
     ]
@@ -264,6 +267,36 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert agent_tools["views"] == []
     assert agent_tools["source"] == "bundled"
     assert agent_tools["is_workspace"] is False
+    agents = payload.pop(1)
+    assert agents["module"] == {
+        "module_id": "agents",
+        "name": "Agents",
+        "version": "0.1.0",
+        "description": "Create, configure, and manage the agents that power Apmatia.",
+        "author": "Nick",
+        "status": "stable",
+        "category": "agent",
+        "default_enabled": True,
+        "tags": ["agents", "prompts", "models", "workspaces", "infrastructure"],
+        "metadata": {},
+        "dependencies": {
+            "python": ">=3.10",
+            "python_packages": [],
+            "system_packages": [],
+            "modules": [],
+            "tools": [],
+        },
+    }
+    assert agents["actions"] == ["agents.agents"]
+    assert agents["commands"] == [
+        "agents.agents.create",
+        "agents.agents.delete",
+        "agents.agents.edit",
+        "agents.agents.list",
+    ]
+    assert agents["views"] == ["agents.agents.view"]
+    assert agents["source"] == "bundled"
+    assert agents["is_workspace"] is False
     assert payload[1]["module"]["name"] == "AI Host Management"
     assert payload[1]["module"]["version"] == "0.1.0"
     assert payload[1]["module"]["description"] == "Track AI-capable hosts and inspect current resource utilization across registered hosts for future model placement."
@@ -470,35 +503,60 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[9]["actions"] == []
     assert payload[9]["commands"] == []
     assert payload[9]["views"] == []
-    assert payload[10]["module"]["module_id"] == "os_admin"
-    assert payload[10]["module"]["name"] == "OS Admin"
+    assert payload[10]["module"]["module_id"] == "module_manager"
+    assert payload[10]["module"]["name"] == "Module Manager"
     assert payload[10]["module"]["version"] == "0.1.0"
-    assert payload[10]["module"]["description"] == "Read-only operating system administration and diagnostic tools."
-    assert payload[10]["module"]["author"] == "Nick"
-    assert payload[10]["module"]["status"] == "development"
-    assert payload[10]["module"]["category"] == "infrastructure"
-    assert payload[10]["module"]["tags"] == ["operating-system", "administration", "diagnostics", "inspection"]
-    assert payload[10]["module"]["metadata"] == {}
-    assert payload[10]["actions"] == []
-    assert payload[10]["commands"] == []
-    assert payload[10]["views"] == []
-    assert payload[11]["module"]["module_id"] == "users"
-    assert payload[11]["module"]["name"] == "Users"
+    assert payload[10]["module"]["status"] == "stable"
+    assert payload[10]["module"]["category"] == "core"
+    assert payload[10]["module"]["default_enabled"] is True
+    assert payload[10]["module"]["tags"] == ["modules", "configuration", "navigation"]
+    assert payload[10]["actions"] == ["module_manager.module_manager"]
+    assert payload[10]["commands"] == [
+        "module_manager.module_manager.set_activation",
+        "module_manager.module_manager.set_module_order",
+        "module_manager.module_manager.set_module_visibility",
+        "module_manager.module_manager.set_view_order",
+        "module_manager.module_manager.set_view_visibility",
+    ]
+    assert payload[10]["views"] == ["module_manager.module_manager.view"]
+    assert payload[11]["module"]["module_id"] == "os_admin"
+    assert payload[11]["module"]["name"] == "OS Admin"
     assert payload[11]["module"]["version"] == "0.1.0"
-    assert payload[11]["module"]["description"] == "Provide authentication plus user, group, and membership management."
+    assert payload[11]["module"]["description"] == "Read-only operating system administration and diagnostic tools."
     assert payload[11]["module"]["author"] == "Nick"
-    assert payload[11]["module"]["status"] == "stable"
+    assert payload[11]["module"]["status"] == "development"
     assert payload[11]["module"]["category"] == "infrastructure"
-    assert payload[11]["module"]["tags"] == [
+    assert payload[11]["module"]["tags"] == ["operating-system", "administration", "diagnostics", "inspection"]
+    assert payload[11]["module"]["metadata"] == {}
+    assert payload[11]["actions"] == []
+    assert payload[11]["commands"] == []
+    assert payload[11]["views"] == []
+    preferences = payload.pop(12)
+    assert preferences["module"]["module_id"] == "preferences"
+    assert preferences["module"]["name"] == "Preferences"
+    assert preferences["module"]["status"] == "stable"
+    assert preferences["module"]["category"] == "core"
+    assert preferences["module"]["default_enabled"] is True
+    assert preferences["actions"] == ["preferences.preferences"]
+    assert preferences["commands"] == ["preferences.preferences.save"]
+    assert preferences["views"] == ["preferences.preferences.view"]
+    assert payload[12]["module"]["module_id"] == "users"
+    assert payload[12]["module"]["name"] == "Users"
+    assert payload[12]["module"]["version"] == "0.1.0"
+    assert payload[12]["module"]["description"] == "Provide authentication plus user, group, and membership management."
+    assert payload[12]["module"]["author"] == "Nick"
+    assert payload[12]["module"]["status"] == "stable"
+    assert payload[12]["module"]["category"] == "infrastructure"
+    assert payload[12]["module"]["tags"] == [
         "authentication",
         "users",
         "groups",
         "memberships",
         "access-control",
     ]
-    assert payload[11]["module"]["metadata"] == {}
-    assert payload[11]["actions"] == ["users.users"]
-    assert payload[11]["commands"] == [
+    assert payload[12]["module"]["metadata"] == {}
+    assert payload[12]["actions"] == ["users.users"]
+    assert payload[12]["commands"] == [
         "users.users.add_member",
         "users.users.create_group",
         "users.users.create_user",
@@ -509,19 +567,19 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "users.users.list",
         "users.users.set_membership_enabled",
     ]
-    assert payload[11]["views"] == ["users.users.view"]
-    assert payload[12]["module"]["module_id"] == "worksim"
-    assert payload[12]["module"]["name"] == "Worksim"
-    assert payload[12]["module"]["version"] == "0.1.0"
-    assert payload[12]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
-    assert payload[12]["module"]["author"] == "Nick"
-    assert payload[12]["module"]["status"] == "development"
-    assert payload[12]["module"]["category"] == "feature"
-    assert payload[12]["module"]["tags"] == ["wiki", "org-chart", "agents", "teams", "simulation"]
-    assert payload[12]["module"]["metadata"] == {}
-    assert payload[12]["actions"] == []
-    assert payload[12]["commands"] == []
-    assert payload[12]["views"] == []
+    assert payload[12]["views"] == ["users.users.view"]
+    assert payload[13]["module"]["module_id"] == "worksim"
+    assert payload[13]["module"]["name"] == "Worksim"
+    assert payload[13]["module"]["version"] == "0.1.0"
+    assert payload[13]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
+    assert payload[13]["module"]["author"] == "Nick"
+    assert payload[13]["module"]["status"] == "development"
+    assert payload[13]["module"]["category"] == "feature"
+    assert payload[13]["module"]["tags"] == ["wiki", "org-chart", "agents", "teams", "simulation"]
+    assert payload[13]["module"]["metadata"] == {}
+    assert payload[13]["actions"] == []
+    assert payload[13]["commands"] == []
+    assert payload[13]["views"] == []
 
 
 def test_cli_module_show_displays_worksim_module_details(capsys):

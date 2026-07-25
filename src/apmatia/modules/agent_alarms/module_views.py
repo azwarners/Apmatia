@@ -4,7 +4,7 @@ from collections.abc import Callable, Mapping
 from datetime import date, datetime, time
 from typing import Any
 
-from apmatia.core.agent_management_runtime import get_agent_manager
+from apmatia.modules.agents.runtime import get_agent_manager
 from apmatia.core.model_management_runtime import get_llm_config_manager
 from apmatia.core.settings_service import resolve_timezone
 from apmatia.core.module_view_runtime import ModuleViewContext

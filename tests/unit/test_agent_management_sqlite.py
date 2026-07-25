@@ -4,8 +4,8 @@ import tempfile
 
 import pytest
 
-from apmatia.lib.agent_management.models import Agent
-from apmatia.lib.agent_management.sqlite_repositories import (
+from apmatia.modules.agents.models import Agent
+from apmatia.modules.agents.sqlite_repositories import (
     SQLiteAgentRepository,
     SQLiteAgentManagementBundle,
     AgentManagementTables,

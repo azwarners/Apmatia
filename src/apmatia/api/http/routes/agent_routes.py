@@ -9,8 +9,8 @@ from apmatia.api.internal.agent_management import (
     delete_agent,
     list_agents,
 )
-from apmatia.core.agent_management_runtime import get_agent_manager
-from apmatia.lib.agent_management.module import DEFAULT_AGENT_MODE
+from apmatia.modules.agents.runtime import get_agent_manager
+from apmatia.modules.agents.manager import DEFAULT_AGENT_MODE
 from apmatia.lib.apmatia_core.permissions import can_write
 
 from .shared import member_group_ids, require_session

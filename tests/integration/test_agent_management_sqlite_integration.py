@@ -10,9 +10,9 @@ try:
 except ModuleNotFoundError:
     from apmatia.lib.persistence.persistence import SQLiteStore
 
-from apmatia.lib.agent_management.models import Agent
-from apmatia.lib.agent_management.module import AgentManager
-from apmatia.lib.agent_management.sqlite_repositories import (
+from apmatia.modules.agents.models import Agent
+from apmatia.modules.agents.manager import AgentManager
+from apmatia.modules.agents.sqlite_repositories import (
     SQLiteAgentRepository,
     AgentManagementTables,
     SQLiteAgentManagementBundle,

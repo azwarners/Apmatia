@@ -4,8 +4,8 @@ from dataclasses import replace
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Iterable
 
-from apmatia.lib.agent_management.models import Agent
-from apmatia.lib.agent_management.services import AgentService
+from apmatia.modules.agents.models import Agent
+from apmatia.modules.agents.services import AgentService
 from apmatia.lib.apmatia_core.models import utc_now
 from apmatia.core.workspaces import resolve_project_workspace_root
 

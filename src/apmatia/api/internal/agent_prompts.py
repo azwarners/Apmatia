@@ -1,6 +1,6 @@
 from dataclasses import asdict
 
-from apmatia.core.agent_management_runtime import get_agent_manager
+from apmatia.modules.agents.runtime import get_agent_manager
 
 
 def create_agent_prompt(**kwargs) -> dict:
@@ -25,7 +25,7 @@ def update_agent_prompt(prompt_id: int, **updates) -> dict:
 
 def compile_agent_prompt(name: str, **kwargs) -> str:
     manager = get_agent_manager()
-    from apmatia.lib.agent_management.agent_prompt import AgentPrompt
+    from apmatia.modules.agents.agent_prompt import AgentPrompt
 
     return manager.compile_agent_system_prompt(name, AgentPrompt(**kwargs))
 

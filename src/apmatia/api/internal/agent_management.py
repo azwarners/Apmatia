@@ -1,6 +1,6 @@
 """Internal API for agent management."""
 
-from apmatia.core.agent_management_runtime import get_agent_manager
+from apmatia.modules.agents.runtime import get_agent_manager
 
 
 # Agent CRUD

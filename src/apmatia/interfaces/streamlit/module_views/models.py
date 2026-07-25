@@ -55,6 +55,7 @@ class ModuleViewFormFieldDescriptor:
     max_value: int | float | None = None
     step: int | float | None = None
     options: tuple[Any, ...] = ()
+    section: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,6 +97,7 @@ class CollectionViewDescriptor:
     nav_pane: ModuleViewNavigationPaneDescriptor | None = None
     items: tuple[Any, ...] = ()
     unsupported_reason: str | None = None
+    render_mode: str = "collection"
 
     @property
     def is_supported(self) -> bool:

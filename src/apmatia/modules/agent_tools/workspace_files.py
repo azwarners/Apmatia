@@ -14,7 +14,7 @@ from apmatia.core.modules import (
     WorkspaceRootPermissionError,
 )
 from apmatia.core.workspaces import resolve_agent_workspace_root
-from apmatia.lib.agent_management.services import AgentService
+from apmatia.modules.agents.services import AgentService
 from apmatia.modules.agent_tools.registry import ToolProvider
 
 

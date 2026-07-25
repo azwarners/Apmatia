@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime, timezone
 
-from apmatia.lib.agent_management.models import Agent
+from apmatia.modules.agents.models import Agent
 from apmatia.modules.ipe.models import CalendarEvent, CapturedIdea, Habit, IpeTask
 from apmatia.modules.ipe.services import ApmatiaIpeService
 from apmatia.modules.ipe.sqlite_repositories import SQLiteIpeBundle

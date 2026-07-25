@@ -112,7 +112,7 @@ Tags are stored as an immutable tuple at runtime. The `[metadata]` table remains
 
 The application starts with `ui.show_development_modules = false`. Bootstrap reads manifests before importing module Python code for registration and activates only modules that are both stable and default-enabled. Inactive development modules do not register functionality, views, actions, commands, tools, providers, dedicated HTTP behavior, or background services.
 
-The Module Management page has an "Enable all modules" toggle for development work. Turning it on persists the setting and rebuilds the active registry. Turning it off restores the release-safe stable-only set. A module that starts background work must expose a `deactivate()` hook and stop that work when disabled.
+The Module Manager view has an "Enable all modules" toggle for development work. Turning it on persists the setting and rebuilds the active registry. Turning it off restores the release-safe stable-only set. A module that starts background work must expose a `deactivate()` hook and stop that work when disabled.
 
 For module views, prefer a small schema-first description over handwritten interface code. The
 Streamlit adapter can infer list columns and basic create forms from module metadata when the view

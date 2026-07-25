@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from apmatia.lib.agent_management.models import Agent
-from apmatia.lib.agent_management.services import AgentService
+from apmatia.modules.agents.models import Agent
+from apmatia.modules.agents.services import AgentService
 from apmatia.modules.agent_tools.models import ToolDefinition
 from apmatia.modules.agent_tools.sqlite_repositories import SQLiteToolManagementBundle
 from apmatia.core.registry import Registry
@@ -111,7 +111,7 @@ class InMemoryAgentService(AgentService):
         payload = self._prompts.get(prompt_id)
         if payload is None:
             return None
-        from apmatia.lib.agent_management.agent_prompt import AgentPrompt
+        from apmatia.modules.agents.agent_prompt import AgentPrompt
 
         return AgentPrompt(**payload)
 

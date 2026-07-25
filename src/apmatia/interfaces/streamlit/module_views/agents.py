@@ -1,7 +1,8 @@
-"""Agent management page for CRUD operations on Agent objects."""
+"""Schema-selected Streamlit renderer for the stable agents module view."""
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
 
 import streamlit as st
@@ -9,16 +10,15 @@ import streamlit as st
 from apmatia.interfaces.streamlit.api_client import (
     ApiError,
     create_agent_prompt,
-    create_agent,
-    delete_agent,
+    execute_module_command,
     get_agent_prompt,
     get_compiled_agent_prompt,
-    list_agents,
     list_llm_configs,
-    list_groups,
     update_agent_prompt,
-    update_agent,
 )
+
+
+COMMAND_PREFIX = "agents.agents"
 
 
 def _empty_form_values() -> dict[str, object]:
@@ -190,29 +190,19 @@ def _delete_confirmation_target() -> dict[str, object] | None:
     return target if isinstance(target, dict) else None
 
 
-def render() -> None:
+def render(items: Iterable[dict[str, object]]) -> None:
+    agents = [dict(item) for item in items if isinstance(item, dict)]
     try:
-        agents = list_agents()
         model_configs = list_llm_configs()
     except ApiError as error:
         st.error(f"Unable to load agent data: {error.detail}")
         return
-    try:
-        groups = list_groups()
-    except ApiError:
-        groups = []
 
-    st.title("Agent Management")
-    st.caption("Create, edit, and remove Agent objects through the local API.")
+    st.title("Agents")
+    st.caption("Create, edit, clone, and remove agents through the stable agents module API.")
 
     model_options = [{"id": None, "user_alias": "None", "provider_name": ""}] + model_configs
-    current_user_id = _authenticated_user_id()
-    visible_group_ids = {
-        int(group.get("id"))
-        for group in groups
-        if isinstance(group, dict) and group.get("id") is not None
-    }
-    visible_agents = [agent for agent in agents if _visible_agent(agent, current_user_id, visible_group_ids)]
+    visible_agents = agents
 
     if "agent_selected_id" not in st.session_state:
         st.session_state["agent_selected_id"] = visible_agents[0].get("id") if visible_agents else None
@@ -333,7 +323,10 @@ def render() -> None:
                 with confirm_col:
                     if st.button("Delete", key=f"confirm_delete_agent_{selected_agent.get('id')}", width="content", type="primary"):
                         try:
-                            delete_agent(int(selected_agent.get("id")))
+                            execute_module_command(
+                                f"{COMMAND_PREFIX}.delete",
+                                item_id=int(selected_agent.get("id")),
+                            )
                         except ApiError as error:
                             st.error(f"Unable to delete agent: {error.detail}")
                         else:
@@ -510,7 +503,7 @@ def render() -> None:
                 if current_id is None:
                     prompt = create_agent_prompt(**prompt_payload)
                     payload["prompt_id"] = prompt["id"]
-                    create_agent(**payload)
+                    execute_module_command(f"{COMMAND_PREFIX}.create", **payload)
                 else:
                     prompt_id = int(form_values.get("prompt_id") or 0)
                     if prompt_id:
@@ -519,10 +512,11 @@ def render() -> None:
                     else:
                         prompt = create_agent_prompt(**prompt_payload)
                         payload["prompt_id"] = prompt["id"]
-                    if current_id is None:
-                        create_agent(**payload)
-                    else:
-                        update_agent(int(current_id), **payload)
+                    execute_module_command(
+                        f"{COMMAND_PREFIX}.edit",
+                        item_id=int(current_id),
+                        **payload,
+                    )
             except ApiError as error:
                 st.error(f"Unable to save agent: {error.detail}")
             else:

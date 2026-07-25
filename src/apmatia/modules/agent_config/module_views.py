@@ -4,11 +4,11 @@ import os
 from pathlib import Path
 from typing import Any, Mapping
 
-from apmatia.core.agent_management_runtime import get_agent_manager
+from apmatia.modules.agents.runtime import get_agent_manager
 from apmatia.core.module_view_runtime import ModuleViewContext
 from apmatia.core.registry import CommandContribution, ViewContribution
 
-from apmatia.lib.agent_management.models import Agent
+from apmatia.modules.agents.models import Agent
 
 
 class ApmatiaAgentConfigModuleViewProvider:

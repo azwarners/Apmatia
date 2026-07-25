@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 
 from apmatia.core import tool_management_runtime
-from apmatia.lib.agent_management.models import Agent
-from apmatia.lib.agent_management.services import AgentService
+from apmatia.modules.agents.models import Agent
+from apmatia.modules.agents.services import AgentService
 from apmatia.modules.agent_tools import (
     ToolCall,
     ToolManager,

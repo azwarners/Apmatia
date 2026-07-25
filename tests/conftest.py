@@ -71,6 +71,7 @@ def mock_streamlit(monkeypatch):
     mock_st.selectbox = MagicMock(side_effect=lambda _label, options, index=0, **_kwargs: options[index])
     mock_st.multiselect = MagicMock(return_value=[])
     mock_st.checkbox = MagicMock(side_effect=lambda _label, value=False, **_kwargs: value)
+    mock_st.toggle = MagicMock(side_effect=lambda _label, value=False, **_kwargs: value)
     mock_st.number_input = MagicMock(side_effect=lambda _label, value=0, **_kwargs: value)
     mock_st.slider = MagicMock(side_effect=lambda _label, value=0, **_kwargs: value)
     mock_st.set_page_config = MagicMock()

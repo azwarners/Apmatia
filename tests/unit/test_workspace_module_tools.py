@@ -312,7 +312,11 @@ def test_validate_workspace_module_returns_structured_validation_results(workspa
     assert result.result["module_slug"] == "productivity"
     assert result.result["passed"] is True
     assert result.result["manifest"]["module_id"] == "productivity"
-    assert result.result["manifest"]["metadata"] == {"category": "", "tags": []}
+    assert result.result["manifest"]["status"] == "development"
+    assert result.result["manifest"]["category"] == "feature"
+    assert result.result["manifest"]["default_enabled"] is True
+    assert result.result["manifest"]["tags"] == []
+    assert result.result["manifest"]["metadata"] == {}
     assert result.result["manifest"]["dependencies"] == {
         "python": "",
         "python_packages": [],

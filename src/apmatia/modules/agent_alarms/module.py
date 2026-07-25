@@ -7,16 +7,20 @@ from .actions import ACTION_DESCRIPTORS
 from .commands import COMMAND_DESCRIPTORS
 from .module_views import AgentAlarmsModuleViewProvider
 from .service import get_agent_alarm_service
+from .service import shutdown_agent_alarm_service
 from .views import VIEW_DESCRIPTORS
 
 AGENT_ALARMS_MODULE = ModuleMetadata(
     module_id="agent_alarms",
     name="Agent Alarms",
     version="0.1.0",
-    description="An experimental alarm scheduler that dispatches due prompts to Agent Loops.",
+    description="An experimental alarm scheduler that dispatches prompts to Agent Loops.",
+    author="Nick",
+    status="development",
+    category="agent",
+    default_enabled=True,
+    tags=("alarms", "scheduler", "agent-loops", "automation"),
     metadata={
-        "category": "automation",
-        "tags": ["alarms", "scheduler", "agent-loops", "automation"],
     },
 )
 
@@ -31,3 +35,7 @@ def register(registry: Registry) -> None:
         registry.register_command(command)
     for view in VIEW_DESCRIPTORS:
         registry.register_view(view)
+
+
+def deactivate() -> None:
+    shutdown_agent_alarm_service()

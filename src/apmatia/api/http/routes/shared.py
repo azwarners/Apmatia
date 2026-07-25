@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from apmatia.api.internal.auth import get_session, has_any_users
 from apmatia.api.internal.group_access import enabled_group_ids
 from apmatia.api.internal.user_management import list_user_groups
+from apmatia.core.registry import get_application_registry
 
 
 def _safe_int(value, default=0):
@@ -149,6 +150,18 @@ def require_session(request: Request):
     if session is None:
         raise HTTPException(status_code=401, detail="Authentication required.")
     return session
+
+
+def require_active_module(module_id: str):
+    def dependency() -> None:
+        active_module_ids = {
+            module.module_id
+            for module in get_application_registry().list_modules(include_development=True)
+        }
+        if module_id not in active_module_ids:
+            raise HTTPException(status_code=404, detail=f"Module is not active: {module_id}")
+
+    return dependency
 
 
 def member_group_ids(user_id: int) -> set[int]:

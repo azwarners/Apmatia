@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException, Path, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Request
 from pydantic import BaseModel, ConfigDict
 
 from apmatia.api.internal.ai_host_management import (
@@ -14,9 +14,12 @@ from apmatia.api.internal.ai_host_management import (
     validate_ai_host,
 )
 
-from .shared import require_session
+from .shared import require_active_module, require_session
 
-router = APIRouter(tags=["ai-host-management"])
+router = APIRouter(
+    tags=["ai-host-management"],
+    dependencies=[Depends(require_active_module("ai_host_management"))],
+)
 
 
 class AIHostCreatePayload(BaseModel):

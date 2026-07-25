@@ -942,7 +942,8 @@ def _render_contacts_shell() -> None:
     username = _authenticated_username()
     agent_name = contact_label
     if not bool(snapshot.get("is_streaming")):
-        _render_bulk_message_delete_controls(snapshot, username=username, agent_name=agent_name)
+        if st.toggle("Show Bulk Delete", key="discussion-show-bulk-delete-toggle", value=False):
+            _render_bulk_message_delete_controls(snapshot, username=username, agent_name=agent_name)
 
     initial_is_streaming = bool(snapshot.get("is_streaming"))
     if initial_is_streaming:
@@ -1463,7 +1464,8 @@ def render() -> None:
         st.info("No discussions for this agent yet. Start a new discussion to begin.")
         return
     if not bool(snapshot.get("is_streaming")):
-        _render_bulk_message_delete_controls(snapshot, username=username, agent_name=agent_name)
+        if st.toggle("Show Bulk Delete", key="discussion-show-bulk-delete-toggle", value=False):
+            _render_bulk_message_delete_controls(snapshot, username=username, agent_name=agent_name)
     tail_start_key = f"discussion-stream-tail-start-{selected_discussion_id}"
     initial_is_streaming = bool(snapshot.get("is_streaming"))
     is_chat_paused = bool(snapshot.get("chat_is_paused"))

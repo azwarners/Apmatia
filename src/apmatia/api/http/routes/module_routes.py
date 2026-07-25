@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Path, Request
+from fastapi import APIRouter, HTTPException, Path, Query, Request
 from pydantic import BaseModel, Field
 
 from apmatia.api.internal.module_management import (
     list_modules,
+    get_module_activation_state,
     update_module_visibility,
     update_view_visibility,
     update_view_order,
     update_module_order,
+    update_development_modules,
 )
 from apmatia.api.internal.module_views import get_module_view_items, run_module_command
 
@@ -29,10 +31,29 @@ class ModuleCommandPayload(BaseModel):
     payload: dict = Field(default_factory=dict)
 
 
-@router.get("/modules", response_model=list[dict])
-def get_modules(request: Request) -> list[dict]:
+class DevelopmentModulesPayload(BaseModel):
+    enabled: bool
+
+
+@router.get("/modules/activation", response_model=dict)
+def get_modules_activation(request: Request) -> dict:
     require_session(request)
-    return list_modules()
+    return get_module_activation_state()
+
+
+@router.put("/modules/activation", response_model=dict)
+def put_modules_activation(request: Request, payload: DevelopmentModulesPayload) -> dict:
+    require_session(request)
+    return update_development_modules(enabled=payload.enabled)
+
+
+@router.get("/modules", response_model=list[dict])
+def get_modules(
+    request: Request,
+    include_development: bool = Query(False, description="Include development modules in the listing"),
+) -> list[dict]:
+    require_session(request)
+    return list_modules(include_development=include_development)
 
 
 @router.patch("/modules/{module_id}/visibility", response_model=dict)

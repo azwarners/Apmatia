@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, Field
 
 from apmatia.api.internal.ai_model_executor import (
@@ -14,9 +14,12 @@ from apmatia.api.internal.ai_model_executor import (
     dispatch_ai_work,
 )
 
-from .shared import require_session
+from .shared import require_active_module, require_session
 
-router = APIRouter(tags=["ai-model-executor"])
+router = APIRouter(
+    tags=["ai-model-executor"],
+    dependencies=[Depends(require_active_module("ai_model_executor"))],
+)
 
 
 class ModelExecutionStartPayload(BaseModel):

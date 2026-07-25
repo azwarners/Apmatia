@@ -4,10 +4,12 @@ name = "AI Model Manager"
 version = "0.1.0"
 description = "Local GGUF model metadata management with size estimates and task routing preferences."
 author = "Nick"
+status = "stable"
+category = "tool"
+default_enabled = true
+tags = ["gguf", "models", "preferences", "scanning", "estimates"]
 
 [metadata]
-category = "models"
-tags = ["gguf", "models", "preferences", "scanning", "estimates"]
 
 [dependencies]
 python = ">=3.10"

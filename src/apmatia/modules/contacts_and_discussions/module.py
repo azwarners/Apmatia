@@ -14,9 +14,12 @@ APMATIA_CONTACTS_AND_DISCUSSIONS_MODULE = ModuleMetadata(
     name="Contacts and Discussions",
     version="0.1.0",
     description="A topic-centered discussion system for organizing work, conversations, summaries, and chat targets.",
+    author="Nick",
+    status="stable",
+    category="feature",
+    default_enabled=True,
+    tags=("topics", "discussions", "summaries", "chat-targets", "turns", "migration"),
     metadata={
-        "category": "knowledge-work",
-        "tags": ["topics", "discussions", "summaries", "chat-targets", "turns", "migration"],
     },
 )
 

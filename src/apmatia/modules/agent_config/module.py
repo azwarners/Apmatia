@@ -14,9 +14,12 @@ APMATIA_AGENT_CONFIG_MODULE = ModuleMetadata(
     name="Agent Config",
     version="0.1.0",
     description="Configure and inspect agent workspace and knowledge directories.",
+    author="Nick",
+    status="development",
+    category="agent",
+    default_enabled=True,
+    tags=("agent-config", "knowledge", "workspace", "directories"),
     metadata={
-        "category": "agent-config",
-        "tags": ["agent-config", "knowledge", "workspace", "directories"],
         "provider_ids": sorted(AGENT_CONFIG_PROVIDER_IDS.values()),
     },
 )

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from fastapi import APIRouter, Body, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, Field
 
 from apmatia.api.internal.agent_loops import (
@@ -14,9 +14,13 @@ from apmatia.api.internal.agent_loops import (
     wait_for_loop_task,
 )
 
-from .shared import member_group_ids, require_session
+from .shared import member_group_ids, require_active_module, require_session
 
-router = APIRouter(prefix="/agent-loops", tags=["agent-loops"])
+router = APIRouter(
+    prefix="/agent-loops",
+    tags=["agent-loops"],
+    dependencies=[Depends(require_active_module("agent_loops"))],
+)
 
 
 class LoopTaskStartPayload(BaseModel):

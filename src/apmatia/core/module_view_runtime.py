@@ -40,6 +40,10 @@ def register_module_view_provider(module_id: str, provider: ModuleViewProvider) 
     _providers[normalized_module_id] = provider
 
 
+def clear_module_view_providers() -> None:
+    _providers.clear()
+
+
 def list_module_view_items(
     view_id: str,
     *,

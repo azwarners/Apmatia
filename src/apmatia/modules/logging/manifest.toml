@@ -4,10 +4,12 @@ name = "Logging"
 version = "0.1.0"
 description = "Structured runtime logging and a browsable log viewer for Apmatia."
 author = "Nick"
+status = "stable"
+category = "core"
+default_enabled = true
+tags = ["logging", "debugging", "observability", "diagnostics", "runtime"]
 
 [metadata]
-category = "developer-tools"
-tags = ["logging", "debugging", "observability", "diagnostics", "runtime"]
 
 [dependencies]
 python = ">=3.10"

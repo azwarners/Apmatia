@@ -5,7 +5,9 @@ import streamlit as st
 
 from apmatia.interfaces.streamlit.api_client import (
     ApiError,
+    get_module_activation,
     list_modules,
+    set_development_modules_enabled,
     set_module_order,
     set_module_visibility,
     set_module_view_order,
@@ -22,17 +24,43 @@ def _view_toggle_label(view: dict[str, object]) -> str:
 
 
 def render() -> None:
+    st.title("Module Management")
+
     try:
-        modules = list_modules()
+        activation = get_module_activation()
+    except ApiError as error:
+        st.error(f"Unable to load module activation settings: {error.detail}")
+        return
+
+    show_development_modules = bool(activation.get("show_development_modules", False))
+    enable_all_modules = st.toggle(
+        "Enable all modules",
+        value=show_development_modules,
+        help=(
+            "Off activates only stable, default-enabled modules. On also activates development modules, "
+            "including their views, tools, commands, and background services."
+        ),
+    )
+    if enable_all_modules != show_development_modules:
+        try:
+            set_development_modules_enabled(enabled=enable_all_modules)
+        except ApiError as error:
+            st.error(f"Unable to update module activation: {error.detail}")
+        else:
+            st.success("All modules enabled." if enable_all_modules else "Stable modules only enabled.")
+            st.rerun()
+        return
+
+    st.caption(
+        "Stable-only mode is the release-safe default. Development modules are not loaded, so their "
+        "functionality, views, tools, commands, and background services remain inactive."
+    )
+
+    try:
+        modules = list_modules(include_development=show_development_modules)
     except ApiError as error:
         st.error(f"Unable to load module catalog: {error.detail}")
         return
-
-    st.title("Module Management")
-    st.caption(
-        "Hide or reorder modules, reorder module views, or hide individual views through the local API. "
-        "These orders control the left navigation."
-    )
 
     if not modules:
         st.info("No modules are registered yet.")

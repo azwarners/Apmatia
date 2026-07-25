@@ -14,9 +14,12 @@ APMATIA_AGENT_LOOPS_MODULE = ModuleMetadata(
     name="Agent Loops",
     version="0.1.0",
     description="A long-running workspace for autonomous contact-driven task loops and run history.",
+    author="Nick",
+    status="development",
+    category="agent",
+    default_enabled=True,
+    tags=("agents", "groups", "loops", "tasks", "workspace", "runs"),
     metadata={
-        "category": "knowledge-work",
-        "tags": ["agents", "groups", "loops", "tasks", "workspace", "runs"],
     },
 )
 

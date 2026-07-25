@@ -13,9 +13,12 @@ APMATIA_AI_HOST_MANAGEMENT_MODULE = ModuleMetadata(
     name="AI Host Management",
     version="0.1.0",
     description="Track AI-capable hosts and inspect current resource utilization across registered hosts for future model placement.",
+    author="Nick",
+    status="development",
+    category="infrastructure",
+    default_enabled=True,
+    tags=("hosts", "resources", "ssh", "local", "inventory"),
     metadata={
-        "category": "infrastructure",
-        "tags": ["hosts", "resources", "ssh", "local", "inventory"],
     },
 )
 

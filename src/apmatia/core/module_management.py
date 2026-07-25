@@ -5,10 +5,10 @@ from collections.abc import Iterable
 from typing import Any
 
 from apmatia.core.app_config import get_config_value, set_config_value
-from apmatia.core.registry import get_application_registry
+from apmatia.core.registry import get_application_registry, refresh_application_registry
 
 
-def list_module_catalog() -> list[dict[str, Any]]:
+def list_module_catalog(*, include_development: bool = False) -> list[dict[str, Any]]:
     registry = get_application_registry()
     hidden_module_ids = _hidden_identifier_set(get_config_value("ui", "hidden_module_ids", default=[]))
     hidden_view_ids = _hidden_identifier_set(get_config_value("ui", "hidden_view_ids", default=[]))
@@ -31,7 +31,7 @@ def list_module_catalog() -> list[dict[str, Any]]:
         )
 
     catalog: list[dict[str, Any]] = []
-    modules = _ordered_modules(registry.list_modules(), module_orders)
+    modules = _ordered_modules(registry.list_modules(include_development=include_development), module_orders)
     for module_index, module in enumerate(modules):
         metadata = dict(getattr(module, "metadata", {}) or {})
         module_hidden = module.module_id in hidden_module_ids
@@ -51,6 +51,11 @@ def list_module_catalog() -> list[dict[str, Any]]:
                 "name": module.name,
                 "version": module.version,
                 "description": module.description,
+                "author": module.author,
+                "status": module.status.value,
+                "category": module.category.value,
+                "default_enabled": module.default_enabled,
+                "tags": list(module.tags),
                 "metadata": metadata,
                 "hidden": module_hidden,
                 "sort_order": module_index,
@@ -62,17 +67,35 @@ def list_module_catalog() -> list[dict[str, Any]]:
     return catalog
 
 
+def get_module_activation() -> dict[str, Any]:
+    show_development_modules = bool(
+        get_config_value("ui", "show_development_modules", default=False)
+    )
+    active_modules = get_application_registry().list_modules(include_development=True)
+    return {
+        "show_development_modules": show_development_modules,
+        "active_module_ids": [module.module_id for module in active_modules],
+    }
+
+
+def set_development_modules_enabled(enabled: bool) -> dict[str, Any]:
+    normalized_enabled = bool(enabled)
+    set_config_value("ui", "show_development_modules", value=normalized_enabled)
+    refresh_application_registry()
+    return get_module_activation()
+
+
 def set_module_order(module_id: str, *, new_index: int) -> dict[str, Any]:
     normalized_module_id = _require_known_module(module_id)
     if new_index < 0:
         raise ValueError("Module order cannot be negative.")
 
     current_orders = _module_order_list()
-    known_module_ids = [module.module_id for module in get_application_registry().list_modules()]
+    known_module_ids = [module.module_id for module in get_application_registry().list_modules(include_development=True)]
     current_module_ids = [module_id for module_id in _ordered_identifier_list(current_orders) if module_id in known_module_ids]
     current_module_ids.extend(
         module.module_id
-        for module in get_application_registry().list_modules()
+        for module in get_application_registry().list_modules(include_development=True)
         if module.module_id not in current_module_ids
     )
     ordered_module_ids = _apply_identifier_order(current_module_ids, normalized_module_id, new_index)
@@ -247,7 +270,7 @@ def _require_known_module(module_id: str) -> str:
     normalized_module_id = str(module_id or "").strip()
     if not normalized_module_id:
         raise ValueError("Module ID cannot be empty.")
-    known_module_ids = {module.module_id for module in get_application_registry().list_modules()}
+    known_module_ids = {module.module_id for module in get_application_registry().list_modules(include_development=True)}
     if normalized_module_id not in known_module_ids:
         raise ValueError(f"Unknown module: {module_id}")
     return normalized_module_id

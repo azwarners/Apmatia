@@ -14,9 +14,12 @@ APMATIA_IPE_MODULE = ModuleMetadata(
     name="Integrated Productivity Environment",
     version="0.1.0",
     description="An integrated workspace for ideas, tasks, projects, habits, and calendar planning.",
+    author="Nick",
+    status="development",
+    category="feature",
+    default_enabled=True,
+    tags=("ideas", "tasks", "projects", "habits", "calendar", "assistant"),
     metadata={
-        "category": "productivity",
-        "tags": ["ideas", "tasks", "projects", "habits", "calendar", "assistant"],
     },
 )
 

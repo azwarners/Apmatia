@@ -167,13 +167,13 @@ def validate_module(
                     fresh_registry = Registry()
                     module.register(fresh_registry)
                     registered = {
-                        "modules": [item.module_id for item in fresh_registry.list_modules()],
+                        "modules": [item.module_id for item in fresh_registry.list_modules(include_development=True)],
                         "actions": [item.action_id for item in fresh_registry.list_actions()],
                         "tools": [item.tool_id for item in fresh_registry.list_tools()],
                         "commands": [item.command_id for item in fresh_registry.list_commands()],
                         "views": [item.view_id for item in fresh_registry.list_views()],
                     }
-                    if fresh_registry.list_modules():
+                    if fresh_registry.list_modules(include_development=True):
                         checks.append(ModuleValidationCheck(name="register(registry) succeeds", passed=True))
                         checks.append(ModuleValidationCheck(name="registry contributions are valid", passed=True))
                     else:
@@ -254,6 +254,10 @@ def _manifest_to_dict(manifest: ModuleManifest | None) -> dict[str, Any] | None:
         "description": manifest.description,
         "author": manifest.author,
         "metadata": dict(manifest.metadata),
+        "status": manifest.status.value,
+        "category": manifest.category.value,
+        "default_enabled": manifest.default_enabled,
+        "tags": list(manifest.tags),
         "dependencies": dict(manifest.dependencies),
     }
 
@@ -271,8 +275,10 @@ def _validate_manifest_metadata(manifest: ModuleManifest) -> _ManifestValidation
     metadata = manifest.metadata if isinstance(manifest.metadata, dict) else {}
     dependencies = manifest.dependencies if isinstance(manifest.dependencies, dict) else {}
 
-    checks.extend(_validate_optional_string(metadata, "metadata.category", errors))
-    checks.extend(_validate_optional_string_list(metadata, "metadata.tags", errors))
+    checks.append(ModuleValidationCheck(name="module.status is valid", passed=True))
+    checks.append(ModuleValidationCheck(name="module.category is valid", passed=True))
+    checks.append(ModuleValidationCheck(name="module.tags is a tuple", passed=isinstance(manifest.tags, tuple)))
+    checks.append(ModuleValidationCheck(name="module.default_enabled is a boolean", passed=isinstance(manifest.default_enabled, bool)))
     checks.extend(_validate_optional_string(dependencies, "dependencies.python", errors))
     checks.extend(_validate_optional_string_list(dependencies, "dependencies.python_packages", errors))
     checks.extend(_validate_optional_string_list(dependencies, "dependencies.system_packages", errors))

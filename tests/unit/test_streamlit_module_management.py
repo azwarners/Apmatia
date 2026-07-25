@@ -33,7 +33,9 @@ def test_module_management_page_lists_modules(mock_streamlit):
         }
     ]
 
-    with patch("apmatia.interfaces.streamlit.api_client.list_modules", return_value=modules):
+    with patch("apmatia.interfaces.streamlit.api_client.get_module_activation", return_value={"show_development_modules": False}), patch(
+        "apmatia.interfaces.streamlit.api_client.list_modules", return_value=modules
+    ):
         import apmatia.interfaces.streamlit.pages.module_management as module_management_page
 
         module_management_page = importlib.reload(module_management_page)
@@ -60,7 +62,9 @@ def test_module_management_page_toggles_module_visibility(mock_streamlit):
     ]
     mock_streamlit.button.side_effect = lambda label, **_kwargs: label == "Hide module"
 
-    with patch("apmatia.interfaces.streamlit.api_client.list_modules", return_value=modules), patch(
+    with patch("apmatia.interfaces.streamlit.api_client.get_module_activation", return_value={"show_development_modules": False}), patch(
+        "apmatia.interfaces.streamlit.api_client.list_modules", return_value=modules
+    ), patch(
         "apmatia.interfaces.streamlit.api_client.set_module_visibility"
     ) as mock_set_module_visibility:
         import apmatia.interfaces.streamlit.pages.module_management as module_management_page
@@ -79,7 +83,9 @@ def test_module_management_page_reorders_modules(mock_streamlit):
     ]
     mock_streamlit.button.side_effect = lambda label, **kwargs: label == "Move down" and not kwargs.get("disabled", False)
 
-    with patch("apmatia.interfaces.streamlit.api_client.list_modules", return_value=modules), patch(
+    with patch("apmatia.interfaces.streamlit.api_client.get_module_activation", return_value={"show_development_modules": False}), patch(
+        "apmatia.interfaces.streamlit.api_client.list_modules", return_value=modules
+    ), patch(
         "apmatia.interfaces.streamlit.api_client.set_module_order"
     ) as mock_set_module_order:
         import apmatia.interfaces.streamlit.pages.module_management as module_management_page
@@ -114,7 +120,9 @@ def test_module_management_page_toggles_view_visibility(mock_streamlit):
     ]
     mock_streamlit.button.side_effect = lambda label, **_kwargs: label == "Hide view"
 
-    with patch("apmatia.interfaces.streamlit.api_client.list_modules", return_value=modules), patch(
+    with patch("apmatia.interfaces.streamlit.api_client.get_module_activation", return_value={"show_development_modules": False}), patch(
+        "apmatia.interfaces.streamlit.api_client.list_modules", return_value=modules
+    ), patch(
         "apmatia.interfaces.streamlit.api_client.set_module_view_visibility"
     ) as mock_set_module_view_visibility:
         import apmatia.interfaces.streamlit.pages.module_management as module_management_page
@@ -123,4 +131,23 @@ def test_module_management_page_toggles_view_visibility(mock_streamlit):
         module_management_page.render()
 
     mock_set_module_view_visibility.assert_called_once_with("ipe.task.view", hidden=True)
+    mock_streamlit.rerun.assert_called_once()
+
+
+def test_module_management_page_enables_all_modules(mock_streamlit):
+    mock_streamlit.toggle.side_effect = None
+    mock_streamlit.toggle.return_value = True
+
+    with patch(
+        "apmatia.interfaces.streamlit.api_client.get_module_activation",
+        return_value={"show_development_modules": False},
+    ), patch(
+        "apmatia.interfaces.streamlit.api_client.set_development_modules_enabled"
+    ) as mock_set_development_modules_enabled:
+        import apmatia.interfaces.streamlit.pages.module_management as module_management_page
+
+        module_management_page = importlib.reload(module_management_page)
+        module_management_page.render()
+
+    mock_set_development_modules_enabled.assert_called_once_with(enabled=True)
     mock_streamlit.rerun.assert_called_once()

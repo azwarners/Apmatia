@@ -54,8 +54,11 @@ class Registry:
         self._views[record.view_id] = record
         return record
 
-    def list_modules(self) -> list[ModuleMetadata]:
-        return [self._modules[module_id] for module_id in sorted(self._modules)]
+    def list_modules(self, *, include_development: bool = False) -> list[ModuleMetadata]:
+        modules = [self._modules[module_id] for module_id in sorted(self._modules)]
+        if include_development:
+            return modules
+        return [module for module in modules if module.is_visible_by_default]
 
     def list_actions(self) -> list[ActionContribution]:
         return [self._actions[action_id] for action_id in sorted(self._actions)]

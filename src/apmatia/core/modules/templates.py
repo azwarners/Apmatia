@@ -47,10 +47,12 @@ def render_manifest_toml(context: ModuleTemplateContext) -> str:
         'version = "0.1.0"',
         f"description = {json.dumps(context.description)}",
         f"author = {json.dumps(context.author)}",
+        'status = "development"',
+        'category = "feature"',
+        "default_enabled = true",
+        "tags = []",
         "",
         "[metadata]",
-        'category = ""',
-        "tags = []",
         "",
         "[dependencies]",
         'python = ""',
@@ -72,10 +74,9 @@ def render_module_py(context: ModuleTemplateContext) -> str:
         f"    name={json.dumps(context.display_name)},\n"
         '    version="0.1.0",\n'
         f"    description={json.dumps(context.description)},\n"
-        "    metadata={\n"
-        '        "category": "",\n'
-        '        "tags": [],\n'
-        "    },\n"
+        "    status=\"development\",\n"
+        "    category=\"feature\",\n"
+        "    tags=(),\n"
         ")\n\n\n"
         "def register(registry):\n"
         f"    registry.register_module({context.class_name.upper()}_MODULE)\n"

@@ -24,7 +24,7 @@ def test_ipe_module_registers_module_metadata():
 
     register(registry)
 
-    assert registry.list_modules() == [APMATIA_IPE_MODULE]
+    assert registry.list_modules(include_development=True) == [APMATIA_IPE_MODULE]
     assert [action.action_id for action in registry.list_actions()] == sorted(
         action.action_id for action in ACTION_DESCRIPTORS
     )

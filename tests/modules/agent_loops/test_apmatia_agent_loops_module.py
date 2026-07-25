@@ -102,7 +102,7 @@ def test_module_registers_registry_metadata_and_views():
 
     register(registry)
 
-    assert registry.list_modules() == [APMATIA_AGENT_LOOPS_MODULE]
+    assert registry.list_modules(include_development=True) == [APMATIA_AGENT_LOOPS_MODULE]
     assert [command.command_id for command in registry.list_commands()] == [
         command.command_id for command in COMMAND_DESCRIPTORS
     ]

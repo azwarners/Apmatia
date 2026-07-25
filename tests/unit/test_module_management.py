@@ -4,8 +4,15 @@ from unittest.mock import patch
 
 import pytest
 
-from apmatia.core.module_management import list_module_catalog, set_module_hidden, set_module_order, set_view_hidden
-from apmatia.core.registry import ModuleMetadata, Registry, ViewContribution
+from apmatia.core.module_management import (
+    get_module_activation,
+    list_module_catalog,
+    set_development_modules_enabled,
+    set_module_hidden,
+    set_module_order,
+    set_view_hidden,
+)
+from apmatia.core.registry import ModuleMetadata, ModuleStatus, Registry, ViewContribution
 
 
 def _registry_with_modules() -> Registry:
@@ -16,6 +23,7 @@ def _registry_with_modules() -> Registry:
             name="Integrated Productivity Environment",
             version="0.1.0",
             description="Personal productivity tools.",
+            status=ModuleStatus.STABLE,
         )
     )
     registry.register_module(
@@ -24,6 +32,7 @@ def _registry_with_modules() -> Registry:
             name="Worksim",
             version="0.1.0",
             description="A workplace simulation module centered on a persistent org chart wiki.",
+            status=ModuleStatus.STABLE,
         )
     )
     registry.register_view(
@@ -74,6 +83,32 @@ def test_list_module_catalog_combines_registry_and_hidden_settings():
     assert ipe_module["views"][0]["effective_hidden"] is True
     assert ipe_module["views"][1]["hidden"] is False
     assert ipe_module["views"][1]["effective_hidden"] is True
+
+
+def test_module_activation_defaults_to_stable_only():
+    with patch("apmatia.core.module_management.get_config_value", return_value=False), patch(
+        "apmatia.core.module_management.get_application_registry", return_value=_registry_with_modules()
+    ):
+        activation = get_module_activation()
+
+    assert activation == {
+        "show_development_modules": False,
+        "active_module_ids": ["ipe", "worksim"],
+    }
+
+
+def test_enabling_development_modules_persists_and_refreshes_registry():
+    with patch("apmatia.core.module_management.set_config_value") as mock_set_config_value, patch(
+        "apmatia.core.module_management.refresh_application_registry"
+    ) as mock_refresh_registry, patch(
+        "apmatia.core.module_management.get_module_activation",
+        return_value={"show_development_modules": True, "active_module_ids": ["example"]},
+    ):
+        activation = set_development_modules_enabled(True)
+
+    mock_set_config_value.assert_called_once_with("ui", "show_development_modules", value=True)
+    mock_refresh_registry.assert_called_once_with()
+    assert activation["show_development_modules"] is True
 
 
 def test_set_module_hidden_persists_sorted_unique_hidden_module_ids():

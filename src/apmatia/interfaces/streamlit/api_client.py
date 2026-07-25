@@ -347,8 +347,16 @@ def stop_ai_model_execution(model_id: int, **payload: Any) -> dict[str, Any]:
     return _request("POST", f"/ai-model-executor/stop/{model_id}", json=payload)
 
 
-def list_modules() -> list[dict[str, Any]]:
-    return _request("GET", "/modules")
+def list_modules(*, include_development: bool = False) -> list[dict[str, Any]]:
+    return _request("GET", "/modules", params={"include_development": include_development})
+
+
+def get_module_activation() -> dict[str, Any]:
+    return _request("GET", "/modules/activation")
+
+
+def set_development_modules_enabled(*, enabled: bool) -> dict[str, Any]:
+    return _request("PUT", "/modules/activation", json={"enabled": enabled})
 
 
 def set_module_visibility(module_id: str, *, hidden: bool) -> dict[str, Any]:

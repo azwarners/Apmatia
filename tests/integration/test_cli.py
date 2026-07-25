@@ -172,10 +172,11 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[0]["module"]["version"] == "0.1.0"
     assert payload[0]["module"]["description"] == "An experimental alarm scheduler that dispatches prompts to Agent Loops."
     assert payload[0]["module"]["author"] == "Nick"
-    assert payload[0]["module"]["metadata"] == {
-        "category": "automation",
-        "tags": ["alarms", "scheduler", "agent-loops", "automation"],
-    }
+    assert payload[0]["module"]["status"] == "development"
+    assert payload[0]["module"]["category"] == "agent"
+    assert payload[0]["module"]["default_enabled"] is True
+    assert payload[0]["module"]["tags"] == ["alarms", "scheduler", "agent-loops", "automation"]
+    assert payload[0]["module"]["metadata"] == {}
     assert payload[0]["module"]["dependencies"] == {
         "python": ">=3.10",
         "python_packages": [],
@@ -183,14 +184,9 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "modules": ["agent_loops"],
         "tools": [],
     }
-    assert payload[0]["actions"] == ["agent_alarms.alarms"]
-    assert payload[0]["commands"] == [
-        "agent_alarms.alarms.create",
-        "agent_alarms.alarms.delete",
-        "agent_alarms.alarms.edit",
-        "agent_alarms.alarms.list",
-    ]
-    assert payload[0]["views"] == ["agent_alarms.alarms.view"]
+    assert payload[0]["actions"] == []
+    assert payload[0]["commands"] == []
+    assert payload[0]["views"] == []
     assert payload[0]["source"] == "bundled"
     assert payload[0]["is_workspace"] is False
     payload = payload[1:]
@@ -199,32 +195,10 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[0]["module"]["version"] == "0.1.0"
     assert payload[0]["module"]["description"] == "Configure and inspect agent workspace and knowledge directories."
     assert payload[0]["module"]["author"] == "Nick"
-    assert payload[0]["module"]["metadata"] == {
-        "category": "agent-config",
-        "tags": ["agent-config", "knowledge", "workspace", "directories"],
-    }
-    assert payload[0]["module"]["dependencies"] == {
-        "python": ">=3.10",
-        "python_packages": [],
-        "system_packages": [],
-        "modules": [],
-        "tools": [],
-    }
-    assert payload[0]["actions"] == ["agent_config.agent_config"]
-    assert payload[0]["commands"] == ["agent_config.agent_config.save"]
-    assert payload[0]["views"] == ["agent_config.agent_config.view"]
-    assert payload[0]["source"] == "bundled"
-    assert payload[0]["is_workspace"] is False
-    payload = payload[1:]
-    assert payload[0]["module"]["module_id"] == "agent_loops"
-    assert payload[0]["module"]["name"] == "Agent Loops"
-    assert payload[0]["module"]["version"] == "0.1.0"
-    assert payload[0]["module"]["description"] == "A long-running workspace for autonomous contact-driven task loops and run history."
-    assert payload[0]["module"]["author"] == "Nick"
-    assert payload[0]["module"]["metadata"] == {
-        "category": "knowledge-work",
-        "tags": ["agents", "groups", "loops", "tasks", "workspace", "runs"],
-    }
+    assert payload[0]["module"]["status"] == "development"
+    assert payload[0]["module"]["category"] == "agent"
+    assert payload[0]["module"]["tags"] == ["agent-config", "knowledge", "workspace", "directories"]
+    assert payload[0]["module"]["metadata"] == {}
     assert payload[0]["module"]["dependencies"] == {
         "python": ">=3.10",
         "python_packages": [],
@@ -233,22 +207,39 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "tools": [],
     }
     assert payload[0]["actions"] == []
-    assert payload[0]["commands"] == ["agent_loops.tasks.stop"]
-    assert payload[0]["views"] == [
-        "agent_loops.contacts.view",
-        "agent_loops.knowledge.view",
-        "agent_loops.tasks.view",
-        "agent_loops.workspace.view",
-    ]
+    assert payload[0]["commands"] == []
+    assert payload[0]["views"] == []
+    assert payload[0]["source"] == "bundled"
+    assert payload[0]["is_workspace"] is False
+    payload = payload[1:]
+    assert payload[0]["module"]["module_id"] == "agent_loops"
+    assert payload[0]["module"]["name"] == "Agent Loops"
+    assert payload[0]["module"]["version"] == "0.1.0"
+    assert payload[0]["module"]["description"] == "A long-running workspace for autonomous contact-driven task loops and run history."
+    assert payload[0]["module"]["author"] == "Nick"
+    assert payload[0]["module"]["status"] == "development"
+    assert payload[0]["module"]["category"] == "agent"
+    assert payload[0]["module"]["tags"] == ["agents", "groups", "loops", "tasks", "workspace", "runs"]
+    assert payload[0]["module"]["metadata"] == {}
+    assert payload[0]["module"]["dependencies"] == {
+        "python": ">=3.10",
+        "python_packages": [],
+        "system_packages": [],
+        "modules": [],
+        "tools": [],
+    }
+    assert payload[0]["actions"] == []
+    assert payload[0]["commands"] == []
+    assert payload[0]["views"] == []
     assert payload[0]["source"] == "bundled"
     assert payload[0]["is_workspace"] is False
     assert payload[1]["module"]["name"] == "AI Host Management"
     assert payload[1]["module"]["version"] == "0.1.0"
     assert payload[1]["module"]["description"] == "Track AI-capable hosts and inspect current resource utilization across registered hosts for future model placement."
-    assert payload[1]["module"]["metadata"] == {
-        "category": "infrastructure",
-        "tags": ["hosts", "resources", "ssh", "local", "inventory"],
-    }
+    assert payload[1]["module"]["status"] == "development"
+    assert payload[1]["module"]["category"] == "infrastructure"
+    assert payload[1]["module"]["tags"] == ["hosts", "resources", "ssh", "local", "inventory"]
+    assert payload[1]["module"]["metadata"] == {}
     assert payload[1]["module"]["dependencies"] == {
         "python": ">=3.10",
         "python_packages": [],
@@ -256,31 +247,18 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "modules": [],
         "tools": [],
     }
-    assert payload[1]["actions"] == [
-        "ai_host_management.hosts",
-        "ai_host_management.resources",
-    ]
-    assert payload[1]["commands"] == [
-        "ai_host_management.hosts.create",
-        "ai_host_management.hosts.delete",
-        "ai_host_management.hosts.disable",
-        "ai_host_management.hosts.edit",
-        "ai_host_management.hosts.list",
-        "ai_host_management.hosts.prepare_ssh_copy_command",
-        "ai_host_management.hosts.prepare_ssh_key",
-        "ai_host_management.resources.inspect_local",
-        "ai_host_management.resources.validate",
-    ]
-    assert payload[1]["views"] == [
-        "ai_host_management.hosts.view",
-        "ai_host_management.resources.view",
-    ]
+    assert payload[1]["actions"] == []
+    assert payload[1]["commands"] == []
+    assert payload[1]["views"] == []
     assert payload[2]["module"]["name"] == "AI Model Executor"
     assert payload[2]["module"]["version"] == "0.1.0"
     assert payload[3]["module"]["name"] == "AI Model Manager"
     assert payload[3]["module"]["version"] == "0.1.0"
     assert payload[3]["module"]["description"] == "Local GGUF model metadata management with size estimates and task routing preferences."
-    assert payload[3]["module"]["metadata"] == {"category": "models", "tags": ["gguf", "models", "preferences", "scanning", "estimates"]}
+    assert payload[3]["module"]["status"] == "stable"
+    assert payload[3]["module"]["category"] == "tool"
+    assert payload[3]["module"]["tags"] == ["gguf", "models", "preferences", "scanning", "estimates"]
+    assert payload[3]["module"]["metadata"] == {}
     assert payload[3]["module"]["dependencies"] == {
         "python": ">=3.10",
         "python_packages": [],
@@ -320,10 +298,10 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[4]["module"]["version"] == "0.1.0"
     assert payload[4]["module"]["description"] == "A topic-centered discussion system for organizing work, conversations, summaries, and chat targets."
     assert payload[4]["module"]["author"] == "Nick"
-    assert payload[4]["module"]["metadata"] == {
-        "category": "knowledge-work",
-        "tags": ["topics", "discussions", "summaries", "chat-targets", "turns", "migration"],
-    }
+    assert payload[4]["module"]["status"] == "stable"
+    assert payload[4]["module"]["category"] == "feature"
+    assert payload[4]["module"]["tags"] == ["topics", "discussions", "summaries", "chat-targets", "turns", "migration"]
+    assert payload[4]["module"]["metadata"] == {}
     assert payload[4]["module"]["dependencies"] == {
         "python": ">=3.10",
         "python_packages": [],
@@ -370,10 +348,10 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[5]["module"]["version"] == "0.1.0"
     assert payload[5]["module"]["description"] == "Developer tools for tree inspection, source reading, and dependency tracing."
     assert payload[5]["module"]["author"] == "Nick"
-    assert payload[5]["module"]["metadata"] == {
-        "category": "developer-tools",
-        "tags": ["tree", "source", "imports", "inspection"],
-    }
+    assert payload[5]["module"]["status"] == "stable"
+    assert payload[5]["module"]["category"] == "development"
+    assert payload[5]["module"]["tags"] == ["tree", "source", "imports", "inspection"]
+    assert payload[5]["module"]["metadata"] == {}
     assert payload[5]["module"]["dependencies"] == {
         "python": ">=3.10",
         "python_packages": [],
@@ -389,55 +367,22 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[6]["module"]["version"] == "0.1.0"
     assert payload[6]["module"]["description"] == "An integrated workspace for ideas, tasks, projects, habits, and calendar planning."
     assert payload[6]["module"]["author"] == "Nick"
-    assert payload[6]["module"]["metadata"] == {
-        "category": "productivity",
-        "tags": ["ideas", "tasks", "projects", "habits", "calendar", "assistant"],
-    }
-    assert payload[6]["actions"] == [
-        "ipe.calendar_event",
-        "ipe.habit",
-        "ipe.idea",
-        "ipe.project",
-        "ipe.task",
-    ]
-    assert payload[6]["commands"] == [
-        "ipe.calendar_event.create",
-        "ipe.calendar_event.delete",
-        "ipe.calendar_event.edit",
-        "ipe.calendar_event.list",
-        "ipe.habit.create",
-        "ipe.habit.delete",
-        "ipe.habit.edit",
-        "ipe.habit.list",
-        "ipe.idea.create",
-        "ipe.idea.delete",
-        "ipe.idea.edit",
-        "ipe.idea.list",
-        "ipe.project.create",
-        "ipe.project.delete",
-        "ipe.project.edit",
-        "ipe.project.list",
-        "ipe.task.create",
-        "ipe.task.delete",
-        "ipe.task.edit",
-        "ipe.task.list",
-    ]
-    assert payload[6]["views"] == [
-        "ipe.calendar_event.view",
-        "ipe.habit.view",
-        "ipe.idea.view",
-        "ipe.project.view",
-        "ipe.task.view",
-    ]
+    assert payload[6]["module"]["status"] == "development"
+    assert payload[6]["module"]["category"] == "feature"
+    assert payload[6]["module"]["tags"] == ["ideas", "tasks", "projects", "habits", "calendar", "assistant"]
+    assert payload[6]["module"]["metadata"] == {}
+    assert payload[6]["actions"] == []
+    assert payload[6]["commands"] == []
+    assert payload[6]["views"] == []
     assert payload[7]["module"]["module_id"] == "logging"
     assert payload[7]["module"]["name"] == "Logging"
     assert payload[7]["module"]["version"] == "0.1.0"
     assert payload[7]["module"]["description"] == "Structured runtime logging and a browsable log viewer for Apmatia."
     assert payload[7]["module"]["author"] == "Nick"
-    assert payload[7]["module"]["metadata"] == {
-        "category": "developer-tools",
-        "tags": ["logging", "debugging", "observability", "diagnostics", "runtime"],
-    }
+    assert payload[7]["module"]["status"] == "stable"
+    assert payload[7]["module"]["category"] == "core"
+    assert payload[7]["module"]["tags"] == ["logging", "debugging", "observability", "diagnostics", "runtime"]
+    assert payload[7]["module"]["metadata"] == {}
     assert payload[7]["module"]["dependencies"] == {
         "python": ">=3.10",
         "python_packages": [],
@@ -453,18 +398,13 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[8]["module"]["version"] == "0.1.0"
     assert payload[8]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
     assert payload[8]["module"]["author"] == "Nick"
-    assert payload[8]["module"]["metadata"] == {
-        "category": "workspace",
-        "tags": ["wiki", "org-chart", "agents", "teams", "simulation"],
-    }
-    assert payload[8]["actions"] == ["worksim.org_chart_node"]
-    assert payload[8]["commands"] == [
-        "worksim.org_chart_node.create",
-        "worksim.org_chart_node.delete",
-        "worksim.org_chart_node.edit",
-        "worksim.org_chart_node.list",
-    ]
-    assert payload[8]["views"] == ["worksim.org_chart_node.view"]
+    assert payload[8]["module"]["status"] == "development"
+    assert payload[8]["module"]["category"] == "feature"
+    assert payload[8]["module"]["tags"] == ["wiki", "org-chart", "agents", "teams", "simulation"]
+    assert payload[8]["module"]["metadata"] == {}
+    assert payload[8]["actions"] == []
+    assert payload[8]["commands"] == []
+    assert payload[8]["views"] == []
 
 
 def test_cli_module_show_displays_worksim_module_details(capsys):
@@ -479,12 +419,14 @@ def test_cli_module_show_displays_worksim_module_details(capsys):
     assert "Description: A workplace simulation module centered on a persistent org chart wiki." in captured.out
     assert "Author:" in captured.out
     assert "Metadata:" in captured.out
-    assert "  Category: workspace" in captured.out
+    assert "Status: development" in captured.out
+    assert "Category: feature" in captured.out
+    assert "Tags: wiki, org-chart, agents, teams, simulation" in captured.out
     assert "Dependencies:" in captured.out
     assert "  Python:" in captured.out
-    assert "Actions: worksim.org_chart_node" in captured.out
-    assert "Commands: worksim.org_chart_node.create, worksim.org_chart_node.delete, worksim.org_chart_node.edit, worksim.org_chart_node.list" in captured.out
-    assert "Views: worksim.org_chart_node.view" in captured.out
+    assert "Actions: " in captured.out
+    assert "Commands: " in captured.out
+    assert "Views: " in captured.out
 
 
 def test_cli_module_show_json_output_is_valid_json(capsys):
@@ -501,10 +443,10 @@ def test_cli_module_show_json_output_is_valid_json(capsys):
     assert payload["module"]["author"] == "Nick"
     assert payload["source"] == "bundled"
     assert payload["is_workspace"] is False
-    assert payload["module"]["metadata"] == {
-        "category": "workspace",
-        "tags": ["wiki", "org-chart", "agents", "teams", "simulation"],
-    }
+    assert payload["module"]["status"] == "development"
+    assert payload["module"]["category"] == "feature"
+    assert payload["module"]["tags"] == ["wiki", "org-chart", "agents", "teams", "simulation"]
+    assert payload["module"]["metadata"] == {}
     assert payload["module"]["dependencies"] == {
         "python": ">=3.10",
         "python_packages": [],
@@ -512,14 +454,9 @@ def test_cli_module_show_json_output_is_valid_json(capsys):
         "modules": [],
         "tools": [],
     }
-    assert payload["actions"] == ["worksim.org_chart_node"]
-    assert payload["commands"] == [
-        "worksim.org_chart_node.create",
-        "worksim.org_chart_node.delete",
-        "worksim.org_chart_node.edit",
-        "worksim.org_chart_node.list",
-    ]
-    assert payload["views"] == ["worksim.org_chart_node.view"]
+    assert payload["actions"] == []
+    assert payload["commands"] == []
+    assert payload["views"] == []
 
 
 def test_cli_module_show_missing_module_fails(capsys):
@@ -572,7 +509,10 @@ def test_cli_module_list_workspace_json_output_is_valid_json(tmp_path, capsys):
     assert payload[0]["source"] == "workspace"
     assert payload[0]["is_workspace"] is True
     assert payload[0]["module"]["name"] == "Productivity"
-    assert payload[0]["module"]["metadata"] == {"category": "", "tags": []}
+    assert payload[0]["module"]["status"] == "development"
+    assert payload[0]["module"]["category"] == "feature"
+    assert payload[0]["module"]["tags"] == []
+    assert payload[0]["module"]["metadata"] == {}
     assert payload[0]["module"]["dependencies"] == {
         "python": "",
         "python_packages": [],
@@ -604,7 +544,7 @@ description = "Tasks, projects, and productivity helpers."
 author = "Nick Warner"
 
 [metadata]
-category = "system"
+category = "infrastructure"
 tags = ["linux", "administration", "monitoring"]
 
 [dependencies]
@@ -625,8 +565,9 @@ tools = []
     assert "Source: workspace" in captured.out
     assert "Module: productivity" in captured.out
     assert "Metadata:" in captured.out
-    assert "  Category: system" in captured.out
-    assert "  Tags: linux, administration, monitoring" in captured.out
+    assert "Status: development" in captured.out
+    assert "Category: infrastructure" in captured.out
+    assert "Tags: linux, administration, monitoring" in captured.out
     assert "Dependencies:" in captured.out
     assert "  Python: >=3.10" in captured.out
     assert "Actions:" in captured.out

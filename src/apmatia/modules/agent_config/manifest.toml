@@ -4,10 +4,12 @@ name = "Agent Config"
 version = "0.1.0"
 description = "Configure and inspect agent workspace and knowledge directories."
 author = "Nick"
+status = "development"
+category = "agent"
+default_enabled = true
+tags = ["agent-config", "knowledge", "workspace", "directories"]
 
 [metadata]
-category = "agent-config"
-tags = ["agent-config", "knowledge", "workspace", "directories"]
 
 [dependencies]
 python = ">=3.10"

@@ -12,10 +12,13 @@ APMATIA_AI_MODEL_EXECUTOR_MODULE = ModuleMetadata(
     module_id="ai_model_executor",
     name="AI Model Executor",
     version="0.1.0",
-    description="Local llama.cpp execution control with feasibility checks, process tracking, queue management, and seat reservations.",
+    description="Local llama.cpp execution control with feasibility checks and process tracking.",
+    author="Nick",
+    status="development",
+    category="integration",
+    default_enabled=True,
+    tags=("llama.cpp", "execution", "resources", "gpu", "processes"),
     metadata={
-        "category": "models",
-        "tags": ["llama.cpp", "execution", "resources", "processes", "gpu", "queue", "reservations", "capacity"],
     },
 )
 

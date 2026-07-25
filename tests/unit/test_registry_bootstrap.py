@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from apmatia.core.registry import (
     create_application_registry,
     get_application_registry,
@@ -9,10 +11,18 @@ from apmatia.core.registry import (
 from apmatia.core.registry import bootstrap
 
 
-def test_load_bundled_modules_loads_bundled_modules():
-    registry = load_bundled_modules(Registry())
+STABLE_MODULE_IDS = {
+    "ai_model_manager",
+    "contacts_and_discussions",
+    "dev_tools",
+    "logging",
+}
 
-    assert [module.module_id for module in registry.list_modules()] == [
+
+def test_load_bundled_modules_loads_bundled_modules():
+    registry = load_bundled_modules(Registry(), include_development=True)
+
+    assert [module.module_id for module in registry.list_modules(include_development=True)] == [
         "agent_alarms",
         "agent_config",
         "agent_loops",
@@ -171,31 +181,40 @@ def test_load_bundled_modules_loads_bundled_modules():
 
 
 def test_create_application_registry_loads_bundled_modules():
-    registry = create_application_registry()
+    registry = create_application_registry(include_development=False)
 
-    assert registry.list_modules()
+    assert [module.module_id for module in registry.list_modules(include_development=True)] == [
+        "ai_model_manager",
+        "contacts_and_discussions",
+        "dev_tools",
+        "logging",
+    ]
     assert registry.list_actions()
     assert registry.list_commands()
     assert registry.list_views()
 
 
+def test_stable_registry_excludes_all_development_contributions():
+    registry = create_application_registry(include_development=False)
+
+    assert {module.module_id for module in registry.list_modules(include_development=True)} == STABLE_MODULE_IDS
+    assert {action.module_id for action in registry.list_actions()} <= STABLE_MODULE_IDS
+    assert {tool.module_id for tool in registry.list_tools()} <= STABLE_MODULE_IDS
+    assert {command.module_id for command in registry.list_commands()} <= STABLE_MODULE_IDS
+    assert {view.module_id for view in registry.list_views()} <= STABLE_MODULE_IDS
+
+
 def test_get_application_registry_returns_cached_registry():
     bootstrap.get_application_registry.cache_clear()
 
-    first = get_application_registry()
-    second = get_application_registry()
+    with patch("apmatia.core.registry.bootstrap.get_config_value", return_value=False):
+        first = get_application_registry()
+        second = get_application_registry()
 
     assert first is second
-    assert [module.module_id for module in first.list_modules()] == [
-        "agent_alarms",
-        "agent_config",
-        "agent_loops",
-        "ai_host_management",
-        "ai_model_executor",
+    assert [module.module_id for module in first.list_modules(include_development=True)] == [
         "ai_model_manager",
         "contacts_and_discussions",
         "dev_tools",
-        "ipe",
         "logging",
-        "worksim",
     ]

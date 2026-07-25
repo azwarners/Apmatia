@@ -110,7 +110,7 @@ description = "Tasks, projects, and productivity helpers."
 author = "Nick Warner"
 
 [metadata]
-category = "system"
+category = "infrastructure"
 tags = ["linux", "administration"]
 
 [dependencies]
@@ -135,7 +135,9 @@ tools = []
     assert inspection.manifest.name == "Productivity"
     assert inspection.manifest.description == "Tasks, projects, and productivity helpers."
     assert inspection.manifest.author == "Nick Warner"
-    assert inspection.manifest.metadata == {"category": "system", "tags": ["linux", "administration"]}
+    assert inspection.manifest.category.value == "infrastructure"
+    assert inspection.manifest.tags == ("linux", "administration")
+    assert inspection.manifest.metadata == {}
     assert inspection.manifest.dependencies == {
         "python": ">=3.10",
         "python_packages": [],
@@ -168,7 +170,11 @@ def test_workspace_inspection_json_shape_includes_source(tmp_path: Path):
     assert payload["is_workspace"] is True
     assert payload["module"]["module_id"] == "productivity"
     assert payload["module"]["name"] == "Productivity"
-    assert payload["module"]["metadata"] == {"category": "", "tags": []}
+    assert payload["module"]["status"] == "development"
+    assert payload["module"]["category"] == "feature"
+    assert payload["module"]["default_enabled"] is True
+    assert payload["module"]["tags"] == []
+    assert payload["module"]["metadata"] == {}
     assert payload["module"]["dependencies"] == {
         "python": "",
         "python_packages": [],

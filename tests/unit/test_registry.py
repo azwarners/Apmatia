@@ -3,7 +3,7 @@ from __future__ import annotations
 import subprocess
 import sys
 
-from apmatia.core.registry import ActionContribution, CommandContribution, ModuleMetadata, Registry, ViewContribution
+from apmatia.core.registry import ActionContribution, CommandContribution, ModuleCategory, ModuleMetadata, ModuleStatus, Registry, ViewContribution
 from apmatia.modules.worksim.module import register as register_worksim_module
 
 
@@ -13,7 +13,8 @@ def test_registry_registers_and_lists_module():
 
     registry.register_module(module)
 
-    assert registry.list_modules() == [module]
+    assert registry.list_modules() == []
+    assert registry.list_modules(include_development=True) == [module]
 
 
 def test_registry_registers_and_lists_action():
@@ -62,16 +63,18 @@ def test_worksim_module_registers_into_registry():
 
     register_worksim_module(registry)
 
-    assert registry.list_modules() == [
+    assert registry.list_modules() == []
+    assert registry.list_modules(include_development=True) == [
         ModuleMetadata(
             module_id="worksim",
             name="Worksim",
             version="0.1.0",
             description="A workplace simulation module centered on a persistent org chart wiki.",
-            metadata={
-                "category": "workspace",
-                "tags": ["wiki", "org-chart", "agents", "teams", "simulation"],
-            },
+            author="Nick",
+            status=ModuleStatus.DEVELOPMENT,
+            category=ModuleCategory.FEATURE,
+            default_enabled=True,
+            tags=("wiki", "org-chart", "agents", "teams", "simulation"),
         )
     ]
     assert [action.action_id for action in registry.list_actions()] == ["worksim.org_chart_node"]

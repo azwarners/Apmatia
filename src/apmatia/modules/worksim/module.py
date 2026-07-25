@@ -14,9 +14,12 @@ APMATIA_WORKSIM_MODULE = ModuleMetadata(
     name="Worksim",
     version="0.1.0",
     description="A workplace simulation module centered on a persistent org chart wiki.",
+    author="Nick",
+    status="development",
+    category="feature",
+    default_enabled=True,
+    tags=("wiki", "org-chart", "agents", "teams", "simulation"),
     metadata={
-        "category": "workspace",
-        "tags": ["wiki", "org-chart", "agents", "teams", "simulation"],
     },
 )
 

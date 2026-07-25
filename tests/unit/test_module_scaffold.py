@@ -81,7 +81,11 @@ def test_generated_manifest_is_parseable(tmp_path: Path):
     assert manifest["module"]["module_id"] == "productivity"
     assert manifest["module"]["name"] == "Productivity"
     assert manifest["module"]["author"] == "Nick"
-    assert manifest["metadata"] == {"category": "", "tags": []}
+    assert manifest["module"]["status"] == "development"
+    assert manifest["module"]["category"] == "feature"
+    assert manifest["module"]["default_enabled"] is True
+    assert manifest["module"]["tags"] == []
+    assert manifest["metadata"] == {}
     assert manifest["dependencies"] == {
         "python": "",
         "python_packages": [],

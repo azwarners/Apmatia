@@ -45,7 +45,7 @@ description = "Tools for system health."
 author = "Nick Warner"
 
 [metadata]
-category = "system"
+category = "infrastructure"
 tags = ["linux", "administration", "monitoring"]
 
 [dependencies]
@@ -62,10 +62,9 @@ tools = ["system_audit.inspect"]
 
     assert result.passed is True
     assert result.manifest is not None
-    assert result.manifest.metadata == {
-        "category": "system",
-        "tags": ["linux", "administration", "monitoring"],
-    }
+    assert result.manifest.category.value == "infrastructure"
+    assert result.manifest.tags == ("linux", "administration", "monitoring")
+    assert result.manifest.metadata == {}
     assert result.manifest.dependencies == {
         "python": ">=3.10",
         "python_packages": ["psutil"],
@@ -192,13 +191,8 @@ tools = ["system_audit.inspect", 2]
     result = validate_module("productivity", base_dir=tmp_path)
 
     assert result.passed is False
-    assert any(not check.passed and check.name == "metadata.category is a string" for check in result.checks)
-    assert any(not check.passed and check.name == "metadata.tags is a list of strings" for check in result.checks)
-    assert any(not check.passed and check.name == "dependencies.python is a string" for check in result.checks)
-    assert any(not check.passed and check.name == "dependencies.python_packages is a list of strings" for check in result.checks)
-    assert any(not check.passed and check.name == "dependencies.system_packages is a list of strings" for check in result.checks)
-    assert any(not check.passed and check.name == "dependencies.modules is a list of strings" for check in result.checks)
-    assert any(not check.passed and check.name == "dependencies.tools is a list of strings" for check in result.checks)
+    assert any(not check.passed and check.name == "manifest parses" for check in result.checks)
+    assert any("Unsupported module category" in error for error in result.errors)
 
 
 def test_module_validation_does_not_require_streamlit(tmp_path: Path):

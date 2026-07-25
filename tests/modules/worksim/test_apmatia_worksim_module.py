@@ -19,7 +19,7 @@ def test_worksim_module_registers_module_metadata_and_views():
 
     register(registry)
 
-    assert registry.list_modules() == [APMATIA_WORKSIM_MODULE]
+    assert registry.list_modules(include_development=True) == [APMATIA_WORKSIM_MODULE]
     assert [action.action_id for action in registry.list_actions()] == sorted(
         action.action_id for action in ACTION_DESCRIPTORS
     )

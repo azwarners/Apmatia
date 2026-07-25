@@ -12,9 +12,12 @@ APMATIA_LOGGING_MODULE = ModuleMetadata(
     name="Logging",
     version="0.1.0",
     description="Structured runtime logging and a browsable log viewer for Apmatia.",
+    author="Nick",
+    status="stable",
+    category="core",
+    default_enabled=True,
+    tags=("logging", "debugging", "observability", "diagnostics", "runtime"),
     metadata={
-        "category": "developer-tools",
-        "tags": ["logging", "debugging", "observability", "diagnostics", "runtime"],
     },
 )
 

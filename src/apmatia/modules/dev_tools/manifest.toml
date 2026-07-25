@@ -4,10 +4,12 @@ name = "Dev Tools"
 version = "0.1.0"
 description = "Developer tools for tree inspection, source reading, and dependency tracing."
 author = "Nick"
+status = "development"
+category = "development"
+default_enabled = true
+tags = ["tree", "source", "imports", "inspection"]
 
 [metadata]
-category = "developer-tools"
-tags = ["tree", "source", "imports", "inspection"]
 
 [dependencies]
 python = ">=3.10"

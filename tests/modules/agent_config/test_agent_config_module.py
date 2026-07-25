@@ -35,7 +35,7 @@ def test_agent_config_module_registers_agent_config_view():
 
     register(registry)
 
-    assert registry.list_modules() == [APMATIA_AGENT_CONFIG_MODULE]
+    assert registry.list_modules(include_development=True) == [APMATIA_AGENT_CONFIG_MODULE]
     assert [action.action_id for action in registry.list_actions()] == [action.action_id for action in ACTION_DESCRIPTORS]
     assert [command.command_id for command in registry.list_commands()] == [command.command_id for command in COMMAND_DESCRIPTORS]
     assert [view.view_id for view in registry.list_views()] == [view.view_id for view in VIEW_DESCRIPTORS]

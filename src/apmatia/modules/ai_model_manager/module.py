@@ -13,9 +13,12 @@ APMATIA_AI_MODEL_MANAGER_MODULE = ModuleMetadata(
     name="AI Model Manager",
     version="0.1.0",
     description="Local GGUF model metadata management with size estimates and task routing preferences.",
+    author="Nick",
+    status="stable",
+    category="tool",
+    default_enabled=True,
+    tags=("gguf", "models", "preferences", "scanning", "estimates"),
     metadata={
-        "category": "models",
-        "tags": ["gguf", "models", "preferences", "scanning", "estimates"],
     },
 )
 

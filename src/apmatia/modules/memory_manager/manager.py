@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from apmatia.lib.apmatia_core.models import utc_now
-from apmatia.lib.apmatia_core.permissions import can_read, can_write
+from apmatia.core.models import utc_now
+from apmatia.core.permissions import can_read, can_write
 
 from .models import MemoryItem
 from .repositories import MemoryRepository

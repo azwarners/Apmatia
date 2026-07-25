@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
 
-from apmatia.lib.apmatia_core.models import ApmatiaObject
+from apmatia.core.models import ApmatiaObject
 
 
 def new_tool_call_id() -> str:

@@ -1,13 +1,13 @@
 # Architecture
 
-Apmatia is built around a strict, API-first layered architecture. Business logic lives in small libraries, feature packages live in modules, the application layer stays thin, and every interface reaches the system through the API boundary.
+Apmatia is built around a strict, API-first layered architecture. Business logic lives in focused modules, foundational primitives and orchestration live in core, the application layer stays thin, and every interface reaches the system through the API boundary.
 
 ## Core Principle
 
 All functionality flows in one direction:
 
 ```text
-Libraries -> Modules -> Core -> API (internal) -> Interfaces
+Modules/Core -> API (internal) -> Interfaces
 ```
 
 No layer is allowed to bypass another.
@@ -17,66 +17,36 @@ No layer is allowed to bypass another.
 All interactive usage follows the same path:
 
 ```text
-Interface -> API (internal) -> Core -> Library -> External Service
+Interface -> API (internal) -> Core/Module -> External Service
 ```
 
 For HTTP callers, the transport layer sits in front of the same internal contract:
 
 ```text
-HTTP -> API (http) -> API (internal) -> Core -> Library
+HTTP -> API (http) -> API (internal) -> Core/Module
 ```
 
 This keeps behavior consistent across the CLI, the FastAPI surface, and the Streamlit application.
 
 ## Layers
 
-### 1. Libraries (Business Logic)
-
-**Location:** `src/apmatia/lib/`
-
-Libraries contain the real domain behavior for Apmatia. They implement features, encapsulate persistence details, integrate with model backends, and stay reusable outside the main application.
-
-They do not know about HTTP, FastAPI, Streamlit, or the CLI.
-
-Top-level libraries in `src/apmatia/lib/` currently include:
-
-- `agent_management`
-
-  Provides the agent domain model, repository interfaces, SQLite-backed repositories, and lifecycle services for creating, updating, listing, and deleting agents. This is the business layer behind the agent management screen and API endpoints.
-
-- `apmatia_core`
-
-  Provides the shared object and permission primitives used across Apmatia. In practice this is the common foundation for UID/GID-style ownership and access checks that other libraries and orchestration code build on.
-
-- `discussions`
-
-  Provides discussion-oriented logic, including prompt construction, discussion templating helpers, and the bridge from a saved discussion state to an LLM request. This is the library that turns a user prompt plus context into an executable model interaction.
-
-- `model_management`
-
-  Provides CRUD behavior for saved LLM configurations. It normalizes model records and persists reusable backend definitions into shared application configuration so discussions and agents can select models consistently.
-
-- the stable `ysparr` infrastructure module (and the new Seat-based concurrency infrastructure)
-
-  Provides the underlying generative execution engine used by Apmatia to talk to text-generation backends. It supplies modality-specific execution, backend adapters such as KoboldCpp and OpenAI-compatible endpoints, and output persistence for model runs.
-
-### 2. Modules (Feature Packages)
+### 1. Modules (Business Logic and Feature Packages)
 
 **Location:** `src/apmatia/modules/` for bundled modules, `workspace/modules/` for draft modules
 
-Modules package application features. They register application metadata, actions, tools, commands, and views into the registry. Modules are the preferred place for new feature work when the feature can be isolated cleanly.
+Modules contain Apmatia's domain behavior. They implement features, encapsulate persistence details, integrate with model backends, and register application metadata, actions, tools, commands, and views.
+
+They do not know about Streamlit or the CLI and should not own transport concerns.
 
 The stable `persistence` infrastructure module owns shared SQLite document storage, JSON/YAML configuration persistence, persistence descriptors, and structured log-file storage. Other bundled modules declare it as a module dependency and import its APIs from `apmatia.modules.persistence`.
 
-The stable `users` infrastructure module owns authentication plus the user, group, and membership
-domain. Its registry-backed Users view is the Streamlit management surface, while HTTP and internal
-API routes use the same module runtime, managers, and repositories.
+The stable `users` infrastructure module owns authentication plus the user, group, and membership domain. Its registry-backed Users view is the Streamlit management surface, while HTTP and internal API routes use the same module runtime, managers, and repositories.
 
 Module rules:
 
 - bundled modules ship under `src/apmatia/modules/`
 - draft, agent-assisted, or user-created work stays in `workspace/modules/`
-- modules may depend on libraries and core helpers, but they should not own transport concerns
+- modules may depend on other declared modules and core helpers
 - modules register capabilities into the registry instead of talking directly to interfaces
 
 #### Module metadata contract
@@ -103,31 +73,31 @@ In stable-only mode, only stable modules with `default_enabled = true` are impor
 
 The persisted `ui.show_development_modules` setting can switch the application to all-modules mode. The registry-backed Module Manager view exposes it as "Enable all modules." A change rebuilds the active registry and provider set in each process; module deactivation hooks stop background work when returning to stable-only mode.
 
-### 3. Core (Orchestration)
+### 2. Core (Foundation and Orchestration)
 
 **Location:** `src/apmatia/core/`
 
-Core coordinates one or more libraries into application behavior. It loads config, wires repositories and services together, applies app-specific rules, and shapes library behavior into complete workflows.
+Core provides primitives that must exist independently of module activation, including shared object ownership and permission checks. It also loads config, bootstraps modules, wires repositories and services together, and applies application-wide rules.
 
 It does not expose interfaces or own transport details.
 
-### 4. API (Internal)
+### 3. API (Internal)
 
 **Location:** `src/apmatia/api/internal/`
 
-This is the canonical programmatic interface for Apmatia. Interfaces and transports use this layer instead of reaching into core or libraries directly.
+This is the canonical programmatic interface for Apmatia. Interfaces and transports use this layer instead of reaching into core or modules directly.
 
 It exposes application capabilities as stable functions and keeps the rest of the system behind a single contract.
 
-### 5. API (HTTP)
+### 4. API (HTTP)
 
 **Location:** `src/apmatia/api/http/`
 
 This layer exposes the internal API over FastAPI. It defines routes, request models, response shapes, session requirements, and serialization concerns.
 
-It does not implement business logic or call libraries directly.
+It does not implement business logic or bypass the internal API.
 
-### 6. Interfaces
+### 5. Interfaces
 
 **Location:** `src/apmatia/interfaces/`
 
@@ -142,21 +112,20 @@ The Streamlit app is organized as a small interface client:
 - `api_client.py` is the interface-side adapter that talks to the FastAPI app contract.
 - `pages/` contains focused UI pages for discussion, model management, agent management, login, and settings.
 
-The key architectural point is that the Streamlit interface stays thin. It renders controls and state, but the actual application behavior still flows through the API and then into core and libraries.
+The key architectural point is that the Streamlit interface stays thin. It renders controls and state, but the actual application behavior still flows through the API and then into core and modules.
 
 ## Rules
 
-- Core is only called by the internal API.
-- Libraries are only called by core.
-- Interfaces never call core or libraries directly.
-- The HTTP layer never calls libraries directly.
+- Application-facing core workflows are only called by the internal API; modules may import foundational models, permission checks, registry contracts, and other documented core helpers.
+- Interfaces never call core or modules directly.
+- The HTTP layer uses the internal API rather than calling modules directly.
 
 ## Configuration Flow
 
 Configuration is loaded from the persistent config store first, with environment variables acting as bootstrap defaults when needed.
 
 ```text
-config.json (~/.config/apmatia/config.json) -> core/api -> lib/interfaces
+config.json (~/.config/apmatia/config.json) -> core/api -> modules/interfaces
                 ^
           optional env bootstrap
 ```
@@ -191,15 +160,14 @@ Practical guidance:
 
 To add a new feature:
 
-1. Create or extend a library in `src/apmatia/lib/` if the logic is reusable.
-2. Decide whether the feature belongs in a library or a module.
-3. Package the feature in a module under `src/apmatia/modules/` or `workspace/modules/`.
-4. Add orchestration in `src/apmatia/core/`.
-5. Expose it through `src/apmatia/api/internal/`.
-6. Optionally surface it through FastAPI, Streamlit, the CLI, or another interface.
+1. Create or extend a module under `src/apmatia/modules/` or `workspace/modules/`.
+2. Keep module-specific domain models, services, persistence, and helpers inside that module.
+3. Add only genuinely application-wide primitives or orchestration to `src/apmatia/core/`.
+4. Expose the capability through `src/apmatia/api/internal/`.
+5. Optionally surface it through FastAPI, Streamlit, the CLI, or another interface.
 
 That sequence preserves the API-first boundary and keeps interfaces thin.
 
 ## Summary
 
-Apmatia scales by keeping logic in focused libraries, feature packages in modules, orchestration in core, and presentation in interface clients. The UI layer remains thin because interfaces consume the API rather than the core directly.
+Apmatia scales by keeping domain logic in focused modules, shared foundations and orchestration in core, and presentation in interface clients. The UI layer remains thin because interfaces consume the API rather than core or modules directly.

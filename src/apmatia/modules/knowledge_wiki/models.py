@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
 
-from apmatia.lib.apmatia_core.models import ApmatiaObject
+from apmatia.core.models import ApmatiaObject
 
 
 WIKI_NODE_TYPES = {"branch", "leaf"}

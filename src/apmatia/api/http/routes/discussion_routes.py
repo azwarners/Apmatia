@@ -12,7 +12,7 @@ from apmatia.modules.contacts_and_discussions.services import (
     CONTACTS_AND_DISCUSSIONS_DB,
 )
 from apmatia.modules.contacts_and_discussions.models import DiscussionTurn
-from apmatia.lib.apmatia_core.models import utc_now
+from apmatia.core.models import utc_now
 from apmatia.api.internal.agent_management import get_agent
 from apmatia.api.internal.agent_prompts import get_agent_system_prompt
 from apmatia.api.internal.group_access import is_group_member
@@ -272,7 +272,7 @@ def discussion_prompt(request: Request, payload: PromptPayload):
     if discussion_id and discussion_id.strip():
         try:
             from apmatia.modules.contacts_and_discussions.models import DiscussionTurn
-            from apmatia.lib.apmatia_core.models import utc_now
+            from apmatia.core.models import utc_now
 
             turn_bundle = TopicManagementBundle(CONTACTS_AND_DISCUSSIONS_DB)
             existing_turns = turn_bundle.turns.list_by_discussion(discussion_id.strip())
@@ -345,7 +345,7 @@ def discussion_prompt(request: Request, payload: PromptPayload):
     if turn_bundle is not None and user_turn_index is not None:
         try:
             from apmatia.modules.contacts_and_discussions.models import DiscussionTurn
-            from apmatia.lib.apmatia_core.models import utc_now
+            from apmatia.core.models import utc_now
 
             assistant_turn = DiscussionTurn(
                 topic_id=None,

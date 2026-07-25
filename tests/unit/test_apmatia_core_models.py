@@ -2,8 +2,8 @@
 
 import pytest
 
-from apmatia.lib.apmatia_core.models import ApmatiaObject
-from apmatia.lib.apmatia_core.permissions import can_execute, can_read, can_write
+from apmatia.core.models import ApmatiaObject
+from apmatia.core.permissions import can_execute, can_read, can_write
 
 
 class TestApmatiaObject:

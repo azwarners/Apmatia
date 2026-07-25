@@ -5,7 +5,7 @@ from typing import Any
 
 from apmatia.core.module_view_runtime import ModuleViewContext
 from apmatia.core.registry import CommandContribution, ViewContribution
-from apmatia.lib.apmatia_core.permissions import can_write
+from apmatia.core.permissions import can_write
 
 from .manager import DEFAULT_AGENT_MODE, AgentManager
 from .models import Agent

@@ -11,7 +11,7 @@ from apmatia.api.internal.agent_management import (
 )
 from apmatia.modules.agents.runtime import get_agent_manager
 from apmatia.modules.agents.manager import DEFAULT_AGENT_MODE
-from apmatia.lib.apmatia_core.permissions import can_write
+from apmatia.core.permissions import can_write
 
 from .shared import member_group_ids, require_session
 

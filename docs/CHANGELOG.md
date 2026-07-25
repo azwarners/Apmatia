@@ -4,6 +4,7 @@ All notable changes to Apmatia are documented in this file.
 
 ## Unreleased - Module Metadata and Stable-Only Activation
 
+- Moved the final shared library, `apmatia_core`, into the always-available core package and updated all object-model and permission imports, completing the library-to-module/core migration.
 - Migrated the shared persistence library into the stable `persistence` infrastructure module and rewired all SQLite, configuration, descriptor, and structured logging consumers to its module API.
 - Migrated authentication plus user, group, and membership management from the legacy
   `lib/user_management` package and dedicated Streamlit pages into the stable `users`

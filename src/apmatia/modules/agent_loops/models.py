@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Any
 from uuid import uuid4
 
-from apmatia.lib.apmatia_core.models import ApmatiaObject, utc_now
+from apmatia.core.models import ApmatiaObject, utc_now
 
 
 class TaskStatus(str, Enum):

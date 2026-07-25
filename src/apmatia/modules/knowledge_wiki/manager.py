@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import replace
 
-from apmatia.lib.apmatia_core.models import utc_now
-from apmatia.lib.apmatia_core.permissions import can_read, can_write
+from apmatia.core.models import utc_now
+from apmatia.core.permissions import can_read, can_write
 
 from .models import Wiki, WikiNode, new_wiki_id, new_wiki_node_id
 from .repositories import WikiNodeRepository, WikiRepository

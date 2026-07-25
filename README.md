@@ -1,11 +1,11 @@
 # Apmatia
 
-Apmatia is an API-first, self-hosted application framework for modular AI workflows. It is built from small Python libraries, keeps orchestration in a thin core layer, and serves both programmatic and interactive use through the same API boundary.
+Apmatia is an API-first, self-hosted application framework for modular AI workflows. It packages capabilities as focused modules, keeps shared primitives and orchestration in a thin core layer, and serves both programmatic and interactive use through the same API boundary.
 
 Apmatia is moving toward a module-first architecture:
 
-- reusable capability code should live in libraries
-- feature packages should live in modules
+- reusable capability code should live in modules
+- foundational primitives required before module bootstrap should live in core
 - new feature work should generally start as a module when it fits the problem
 - bundled modules live in `src/apmatia/modules/`
 - draft and agent-assisted modules live in `~/.apmatia/workspace/modules/`
@@ -21,12 +21,12 @@ Apmatia is designed to make AI features feel like application features instead o
 Its architecture enforces a single path:
 
 ```text
-Interface -> API (internal) -> Core -> Library -> External Service
+Interface -> API (internal) -> Core/Module -> External Service
 ```
 
 That gives the project a few important properties:
 
-- business logic lives in reusable libraries under `src/apmatia/lib/`
+- business logic lives in focused modules under `src/apmatia/modules/`
 - interfaces stay thin and do not call core directly
 - the CLI, HTTP API, and Streamlit UI all share the same behavior
 
@@ -38,9 +38,9 @@ That gives the project a few important properties:
 
 ## Current Capabilities
 
-- discussion workflows backed by reusable libraries
+- discussion workflows backed by focused modules
 - saved LLM configurations for OpenAI-compatible and KoboldCpp backends
-- agent management backed by a dedicated library
+- agent management backed by a dedicated module
 - model runtime concurrency (seats) managed by a persistent work queue and dispatcher
 - model runtime concurrency (seats) managed by a persistent work queue and dispatcher
 - user, group, and session-backed authentication flows
@@ -59,32 +59,23 @@ src/
     ├── api/
     │   ├── http/        # FastAPI transport layer
     │   └── internal/    # canonical application interface
-    ├── core/            # orchestration and runtime wiring
+    ├── core/            # shared primitives, orchestration, and runtime wiring
     │   └── modules/     # module scaffolding, planning, validation, workspace tools
     ├── interfaces/
     │   ├── cli/
     │   └── streamlit/
-    ├── lib/             # reusable business logic libraries
     └── modules/         # bundled feature modules
 ```
 
 The most important rule is simple: interfaces use the API, and only the API talks to the core.
 
-Modules are the preferred home for new feature packages when the feature can be isolated cleanly. Libraries provide reusable implementation details; modules package those capabilities and register actions, tools, commands, views, and module metadata.
+Modules are the home for feature and infrastructure packages. They own their implementation details and register actions, tools, commands, views, and module metadata. Shared primitives that cannot participate in module activation live in core.
 
-## Libraries
+## Modules and Core
 
-Top-level libraries in `src/apmatia/lib/` currently include:
+Bundled modules in `src/apmatia/modules/` include agents, discussions, model management, persistence, users, and YsParr. Modules may be stable infrastructure or activatable features, but each owns its domain implementation.
 
-- `agent_management` for agent lifecycle operations and persistence contracts
-- `apmatia_core` for shared object and permission primitives
-- `discussions` for prompt shaping and discussion-oriented model execution
-- `model_management` for saved LLM configuration records
-- the stable `persistence` infrastructure module for SQLite, config-file, and structured-log storage helpers
-- the stable `ysparr` infrastructure module for backend-agnostic generative execution
-
-The stable `users` infrastructure module under `src/apmatia/modules/users/` owns users, groups,
-memberships, authentication sessions, persistence, and the registry-backed Users view.
+The core package in `src/apmatia/core/` owns application-wide primitives such as `ApmatiaObject` and permission checks, plus configuration, module bootstrap, registry, and runtime orchestration. These facilities are always available and are not controlled by module activation.
 
 ## Configuration
 

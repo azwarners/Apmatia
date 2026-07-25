@@ -33,7 +33,7 @@ def get_ai_work_queue_status() -> dict:
 def enqueue_ai_work(payload: dict, priority: int = 0, runtime_id: str | None = None) -> dict:
     from apmatia.modules.ai_model_executor.queue import WorkQueue
     from apmatia.modules.ai_model_executor.models import WorkItem, TextGenerationWorkPayload
-    from apmatia.lib.apmatia_core.models import utc_now
+    from apmatia.core.models import utc_now
 
     queue = WorkQueue(work_repository=None)
     work_item = WorkItem(

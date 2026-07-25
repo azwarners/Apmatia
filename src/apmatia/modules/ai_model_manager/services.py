@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from apmatia.core.app_config import get_config_value, load_app_config, save_app_config
-from apmatia.lib.apmatia_core.models import utc_now
+from apmatia.core.models import utc_now
 
 from .models import GGUFModelRecord, LLMConfig, TaskSizePreference
 

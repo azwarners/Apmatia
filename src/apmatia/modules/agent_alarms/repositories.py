@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol
 
-from apmatia.lib.apmatia_core.models import utc_now
+from apmatia.core.models import utc_now
 
 from .models import AlarmStatus, AgentAlarm
 

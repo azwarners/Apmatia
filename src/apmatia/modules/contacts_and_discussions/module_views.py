@@ -7,7 +7,7 @@ from typing import Any
 
 from apmatia.core.module_view_runtime import ModuleViewContext
 from apmatia.core.registry import CommandContribution, ViewContribution
-from apmatia.lib.apmatia_core.models import utc_now
+from apmatia.core.models import utc_now
 from apmatia.core.model_management_runtime import get_llm_config_manager
 
 from .models import Discussion, DiscussionParticipant, DiscussionTurn, Topic, TopicSummary

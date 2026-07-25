@@ -6,7 +6,7 @@ from typing import Any
 
 from apmatia.core.module_view_runtime import ModuleViewContext
 from apmatia.core.registry import CommandContribution, ViewContribution
-from apmatia.lib.apmatia_core.models import utc_now
+from apmatia.core.models import utc_now
 
 from .models import CalendarEvent, CapturedIdea, Habit, IpeProject, IpeTask
 from .services import ApmatiaIpeService

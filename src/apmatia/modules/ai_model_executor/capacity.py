@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from apmatia.lib.apmatia_core.models import utc_now
+from apmatia.core.models import utc_now
 from apmatia.modules.ai_model_executor.models import ModelRuntime, SeatLease
 
 

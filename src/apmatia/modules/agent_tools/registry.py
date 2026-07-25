@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Protocol
 
-from apmatia.lib.apmatia_core.models import utc_now
+from apmatia.core.models import utc_now
 
 
 class ToolProvider(Protocol):

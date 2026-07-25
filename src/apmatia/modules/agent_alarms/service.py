@@ -10,7 +10,7 @@ from typing import Any, Protocol
 from apmatia.modules.agents.runtime import get_agent_manager
 from apmatia.core.model_management_runtime import get_llm_config_manager
 from apmatia.core.runtime_paths import get_data_dir
-from apmatia.lib.apmatia_core.models import utc_now
+from apmatia.core.models import utc_now
 from apmatia.modules.agent_loops import get_agent_loop_run, start_agent_loop
 
 from .models import AlarmStatus, AgentAlarm

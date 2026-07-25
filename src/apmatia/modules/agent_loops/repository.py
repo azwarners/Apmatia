@@ -5,7 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from apmatia.lib.apmatia_core.models import utc_now
+from apmatia.core.models import utc_now
 
 from .models import AgentLoopTask, LoopEvent
 from .ports import AgentLoopTaskRepository

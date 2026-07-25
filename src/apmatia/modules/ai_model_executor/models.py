@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from apmatia.lib.apmatia_core.models import ApmatiaObject, utc_now
+from apmatia.core.models import ApmatiaObject, utc_now
 
 
 @dataclass(slots=True)

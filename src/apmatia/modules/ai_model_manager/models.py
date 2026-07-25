@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from apmatia.lib.apmatia_core.models import ApmatiaObject
+from apmatia.core.models import ApmatiaObject
 
 
 @dataclass(slots=True)

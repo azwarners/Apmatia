@@ -8,7 +8,7 @@ from typing import Any
 
 from apmatia.modules.persistence import SQLiteStore
 
-from apmatia.lib.apmatia_core.models import utc_now
+from apmatia.core.models import utc_now
 
 from .models import CalendarEvent, CapturedIdea, Habit, IpeProject, IpeTask
 from .repositories import (

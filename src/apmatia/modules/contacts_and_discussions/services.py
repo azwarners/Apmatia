@@ -7,7 +7,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Sequence
 
-from apmatia.lib.apmatia_core.models import utc_now
+from apmatia.core.models import utc_now
 
 from .models import (
     Discussion,

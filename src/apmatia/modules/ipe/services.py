@@ -6,7 +6,7 @@ from typing import Any, Iterable
 
 from apmatia.modules.agents.models import Agent
 from apmatia.modules.agents.services import AgentService
-from apmatia.lib.apmatia_core.models import utc_now
+from apmatia.core.models import utc_now
 from apmatia.core.workspaces import resolve_project_workspace_root
 
 from .models import CalendarEvent, CapturedIdea, Habit, IpeProject, IpeTask

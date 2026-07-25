@@ -3,7 +3,7 @@
 import pytest
 from datetime import datetime, timezone
 
-from apmatia.lib.apmatia_core.models import ApmatiaObject
+from apmatia.core.models import ApmatiaObject
 from apmatia.modules.agents.models import Agent
 
 

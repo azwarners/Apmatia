@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-from apmatia.lib.apmatia_core.models import ApmatiaObject
+from apmatia.core.models import ApmatiaObject
 
 
 @dataclass(slots=True)

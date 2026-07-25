@@ -4,7 +4,7 @@ from dataclasses import replace
 from typing import Any
 
 from apmatia.core.workspaces import resolve_agent_workspace_root
-from apmatia.lib.apmatia_core.models import utc_now
+from apmatia.core.models import utc_now
 
 from .agent_prompt import AgentPrompt, compile_agent_system_prompt, default_agent_prompt
 from .models import Agent

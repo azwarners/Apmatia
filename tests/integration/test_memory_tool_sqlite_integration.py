@@ -10,9 +10,9 @@ from apmatia.lib.agent_management.sqlite_repositories import SQLiteAgentManageme
 from apmatia.modules.memory_manager.manager import MemoryManager
 from apmatia.modules.memory_manager.sqlite_repositories import SQLiteMemoryManagementBundle
 from apmatia.modules.memory_manager.tooling import build_memory_tool_providers, memory_tool_definitions
-from apmatia.lib.tool_management.module import ToolManager
-from apmatia.lib.tool_management.models import ToolCall
-from apmatia.lib.tool_management.sqlite_repositories import SQLiteToolManagementBundle
+from apmatia.modules.agent_tools.manager import ToolManager
+from apmatia.modules.agent_tools.models import ToolCall
+from apmatia.modules.agent_tools.sqlite_repositories import SQLiteToolManagementBundle
 
 
 def _temp_db_path() -> str:

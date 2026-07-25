@@ -15,7 +15,7 @@ from apmatia.core.modules import (
 )
 from apmatia.core.workspaces import resolve_agent_workspace_root
 from apmatia.lib.agent_management.services import AgentService
-from apmatia.lib.tool_management.registry import ToolProvider
+from apmatia.modules.agent_tools.registry import ToolProvider
 
 
 WORKSPACE_FILE_PROVIDER_IDS = {
@@ -41,7 +41,7 @@ def workspace_file_tool_definitions() -> list[dict[str, Any]]:
             "enabled": True,
             "confirmation_required": False,
             "read_only": True,
-            "metadata": {"builtin": True, "library": "workspace_files", "workspace": True, "tool": "list_files"},
+            "metadata": {"builtin": True, "module": "agent_tools", "workspace": True, "tool": "list_files"},
         },
         {
             "name": "workspace_read_file",
@@ -59,7 +59,7 @@ def workspace_file_tool_definitions() -> list[dict[str, Any]]:
             "enabled": True,
             "confirmation_required": False,
             "read_only": True,
-            "metadata": {"builtin": True, "library": "workspace_files", "workspace": True, "tool": "read_file"},
+            "metadata": {"builtin": True, "module": "agent_tools", "workspace": True, "tool": "read_file"},
         },
         {
             "name": "workspace_write_file",
@@ -78,7 +78,7 @@ def workspace_file_tool_definitions() -> list[dict[str, Any]]:
             "enabled": True,
             "confirmation_required": False,
             "read_only": False,
-            "metadata": {"builtin": True, "library": "workspace_files", "workspace": True, "tool": "write_file"},
+            "metadata": {"builtin": True, "module": "agent_tools", "workspace": True, "tool": "write_file"},
         },
         {
             "name": "workspace_delete_file",
@@ -96,7 +96,7 @@ def workspace_file_tool_definitions() -> list[dict[str, Any]]:
             "enabled": True,
             "confirmation_required": False,
             "read_only": False,
-            "metadata": {"builtin": True, "library": "workspace_files", "workspace": True, "tool": "delete_file"},
+            "metadata": {"builtin": True, "module": "agent_tools", "workspace": True, "tool": "delete_file"},
         },
     ]
 

@@ -7,7 +7,7 @@ from typing import Any
 
 from apmatia.core.agent_management_runtime import get_agent_manager
 from apmatia.core.module_view_runtime import ModuleViewContext
-from apmatia.core.user_management_runtime import get_group_manager
+from apmatia.modules.users.runtime import get_group_manager
 from apmatia.core.registry import CommandContribution, ViewContribution
 
 from .commands import COMMAND_DESCRIPTORS

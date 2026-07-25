@@ -1,6 +1,6 @@
-# Core User Management
+# Users Module
 
-This package is the reusable user/group domain and persistence layer.
+This stable infrastructure module owns Apmatia's user/group domain and persistence layer.
 
 ## Goals
 
@@ -14,14 +14,14 @@ This package is the reusable user/group domain and persistence layer.
 - `models.py`: domain entities and enums.
 - `repositories.py`: persistence-facing contracts.
 - `services.py`: use-case-facing contracts.
-- `module.py`: core orchestration entrypoints (`UserManager`, `GroupManager`, `AccessController`).
+- `manager.py`: orchestration entrypoints (`UserManager`, `GroupManager`, `AccessController`).
 - `sqlite_repositories.py`: SQLite adapter wired to `persistence.SQLiteStore`.
 
 ## Planned Flow
 
-`API (internal)` -> `src/core/user_management_runtime.py` -> `lib.user_management` managers -> repository interfaces -> SQLite adapter
+`API (internal)` -> `modules.users.runtime` -> users-module managers -> repository interfaces -> SQLite adapter
 
 ## Notes
 
 - This package already uses package-relative imports to stay portable across package roots.
-- Apmatia-specific env/path/runtime state (`APMATIA_HOME`, `APMATIA_DATA_DIR`, DB location) lives in `src/core/user_management_runtime.py`.
+- Apmatia-specific env/path/runtime state (`APMATIA_HOME`, `APMATIA_DATA_DIR`, DB location) lives in `runtime.py`.

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from apmatia.lib.agent_management.services import AgentService
-from apmatia.lib.tool_management.registry import ToolProvider
+from apmatia.modules.agent_tools.registry import ToolProvider
 
 DEV_TOOLS_PROVIDER_IDS = {
     "tree": "builtin.apmatia_tree",

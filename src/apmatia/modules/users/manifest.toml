@@ -1,0 +1,19 @@
+[module]
+module_id = "users"
+name = "Users"
+version = "0.1.0"
+description = "Provide authentication plus user, group, and membership management."
+author = "Nick"
+status = "stable"
+category = "infrastructure"
+default_enabled = true
+tags = ["authentication", "users", "groups", "memberships", "access-control"]
+
+[metadata]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []

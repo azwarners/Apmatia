@@ -12,9 +12,9 @@ from apmatia.modules.memory_manager.models import MemoryItem
 from apmatia.modules.memory_manager.manager import MemoryManager
 from apmatia.modules.memory_manager.repositories import MemoryRepository
 from apmatia.modules.memory_manager.tooling import build_memory_tool_providers, memory_tool_definitions
-from apmatia.lib.tool_management.models import ToolCall
-from apmatia.lib.tool_management.module import ToolManager
-from apmatia.lib.tool_management.repositories import AgentToolAssignmentRepository, ToolDefinitionRepository
+from apmatia.modules.agent_tools.models import ToolCall
+from apmatia.modules.agent_tools.manager import ToolManager
+from apmatia.modules.agent_tools.repositories import AgentToolAssignmentRepository, ToolDefinitionRepository
 from apmatia.modules.knowledge_wiki.manager import WikiManager
 from apmatia.modules.knowledge_wiki.repositories import WikiNodeRepository, WikiRepository
 from apmatia.modules.knowledge_wiki.tooling import build_wiki_tool_providers, wiki_tool_definitions

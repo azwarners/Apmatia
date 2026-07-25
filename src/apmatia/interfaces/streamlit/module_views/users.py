@@ -1,4 +1,4 @@
-"""User and group management page for Apmatia."""
+"""Schema-selected Streamlit renderer for the stable users module view."""
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -7,19 +7,12 @@ import streamlit as st
 
 from apmatia.interfaces.streamlit.api_client import (
     ApiError,
-    add_group_member,
-    create_group,
-    create_user,
-    delete_group,
-    delete_user,
+    execute_module_command,
     list_agents,
-    list_group_members,
-    list_groups,
-    list_users,
-    set_group_membership_enabled,
-    update_group,
-    update_user,
+    logout,
 )
+
+COMMAND_PREFIX = "users.users"
 
 
 def _safe_int(value: object) -> int | None:
@@ -77,13 +70,6 @@ def _group_form_defaults(group: dict[str, object] | None) -> dict[str, object]:
     }
 
 
-def _list_group_members_safe(group_id: int) -> list[dict[str, object]]:
-    try:
-        return list_group_members(group_id)
-    except ApiError:
-        return []
-
-
 def _current_user(users: Iterable[dict[str, object]]) -> dict[str, object] | None:
     user_id = _current_user_id()
     if user_id is None:
@@ -107,14 +93,12 @@ def _agent_by_id(agents: Iterable[dict[str, object]], agent_id: int | None) -> d
     return None
 
 
-def render() -> None:
-    """Render the user and group management page."""
-    try:
-        users = list_users()
-        groups = list_groups()
-    except ApiError as error:
-        st.error(f"Unable to load user management data: {error.detail}")
-        return
+def render(items: Iterable[dict[str, object]]) -> None:
+    """Render users-module items using its schema-selected view."""
+    resolved_items = [item for item in items if isinstance(item, dict)]
+    users = [item for item in resolved_items if item.get("item_kind") == "user"]
+    groups = [item for item in resolved_items if item.get("item_kind") == "group"]
+    memberships = [item for item in resolved_items if item.get("item_kind") == "membership"]
     try:
         agents = list_agents()
     except ApiError:
@@ -122,15 +106,15 @@ def render() -> None:
 
     current_user_id = _current_user_id()
 
-    st.title("User Management")
-    st.caption("Create users, edit your account, and manage the groups you own through the local API.")
+    st.title("Users")
+    st.caption("Create users, edit your account, and manage the groups you own through the users module API.")
 
-    if "user_management_user_form" not in st.session_state:
-        st.session_state["user_management_user_form"] = _user_form_defaults(None)
-    if "user_management_group_form" not in st.session_state:
-        st.session_state["user_management_group_form"] = _group_form_defaults(None)
-    if "user_management_selected_group_id" not in st.session_state:
-        st.session_state["user_management_selected_group_id"] = None
+    if "users_user_form" not in st.session_state:
+        st.session_state["users_user_form"] = _user_form_defaults(None)
+    if "users_group_form" not in st.session_state:
+        st.session_state["users_group_form"] = _group_form_defaults(None)
+    if "users_selected_group_id" not in st.session_state:
+        st.session_state["users_selected_group_id"] = None
 
     users_tab, groups_tab = st.tabs(["Users", "Groups"])
 
@@ -144,7 +128,7 @@ def render() -> None:
                 submitted = st.form_submit_button("Create user")
             if submitted:
                 try:
-                    create_user(username=username, password=password)
+                    execute_module_command(f"{COMMAND_PREFIX}.create_user", username=username, password=password)
                 except ApiError as error:
                     st.error(f"Unable to create user: {error.detail}")
                 else:
@@ -170,7 +154,11 @@ def render() -> None:
                     if password.strip():
                         payload["password"] = password
                     try:
-                        update_user(int(current_user["id"]), **payload)
+                        execute_module_command(
+                            f"{COMMAND_PREFIX}.edit_user",
+                            item_id=int(current_user["id"]),
+                            **payload,
+                        )
                     except ApiError as error:
                         st.error(f"Unable to save account: {error.detail}")
                     else:
@@ -178,7 +166,11 @@ def render() -> None:
                         st.rerun()
                 if st.button("Delete my account", key="delete_current_user", use_container_width=True):
                     try:
-                        delete_user(int(current_user["id"]))
+                        execute_module_command(
+                            f"{COMMAND_PREFIX}.delete_user",
+                            item_id=int(current_user["id"]),
+                        )
+                        logout()
                     except ApiError as error:
                         st.error(f"Unable to delete account: {error.detail}")
                     else:
@@ -210,9 +202,9 @@ def render() -> None:
         group_left, group_right = st.columns([1.2, 1])
         with group_left:
             st.subheader("Create group")
-            editing_group_id = _safe_int(st.session_state["user_management_group_form"].get("id"))
+            editing_group_id = _safe_int(st.session_state["users_group_form"].get("id"))
             with st.form("apmatia_group_form"):
-                defaults = st.session_state["user_management_group_form"]
+                defaults = st.session_state["users_group_form"]
                 name = st.text_input("Group name", value=str(defaults["name"]))
                 description = st.text_area("Description", value=str(defaults["description"]), height=120)
                 submitted = st.form_submit_button("Save group")
@@ -220,19 +212,23 @@ def render() -> None:
                 payload = {"name": name, "description": description}
                 try:
                     if editing_group_id is None:
-                        create_group(**payload)
+                        execute_module_command(f"{COMMAND_PREFIX}.create_group", **payload)
                     else:
-                        update_group(editing_group_id, **payload)
+                        execute_module_command(
+                            f"{COMMAND_PREFIX}.edit_group",
+                            item_id=editing_group_id,
+                            **payload,
+                        )
                 except ApiError as error:
                     st.error(f"Unable to save group: {error.detail}")
                 else:
                     st.success("Group saved.")
-                    st.session_state["user_management_group_form"] = _group_form_defaults(None)
-                    st.session_state["user_management_selected_group_id"] = None
+                    st.session_state["users_group_form"] = _group_form_defaults(None)
+                    st.session_state["users_selected_group_id"] = None
                     st.rerun()
         with group_right:
             st.subheader("Selected group")
-            selected_group_id = _safe_int(st.session_state.get("user_management_selected_group_id"))
+            selected_group_id = _safe_int(st.session_state.get("users_selected_group_id"))
             selected_group = next(
                 (
                     group
@@ -254,23 +250,27 @@ def render() -> None:
                 st.write(selected_group.get("description") or "")
                 if _group_is_owned_by_current_user(selected_group, current_user_id):
                     if st.button("Edit selected group", key=f"edit_group_{selected_group.get('id')}"):
-                        st.session_state["user_management_group_form"] = _group_form_defaults(selected_group)
+                        st.session_state["users_group_form"] = _group_form_defaults(selected_group)
                         st.rerun()
                     if st.button("Delete selected group", key=f"delete_group_{selected_group.get('id')}"):
                         try:
-                            delete_group(int(selected_group["id"]))
+                            execute_module_command(
+                                f"{COMMAND_PREFIX}.delete_group",
+                                item_id=int(selected_group["id"]),
+                            )
                         except ApiError as error:
                             st.error(f"Unable to delete group: {error.detail}")
                         else:
-                            if _safe_int(st.session_state.get("user_management_selected_group_id")) == _safe_int(
+                            if _safe_int(st.session_state.get("users_selected_group_id")) == _safe_int(
                                 selected_group.get("id")
                             ):
-                                st.session_state["user_management_selected_group_id"] = None
+                                st.session_state["users_selected_group_id"] = None
                             st.success("Group deleted.")
                             st.rerun()
 
                 try:
-                    members = _list_group_members_safe(int(selected_group["id"]))
+                    group_id = int(selected_group["id"])
+                    members = [member for member in memberships if _safe_int(member.get("group_id")) == group_id]
                 except (TypeError, ValueError):
                     members = []
 
@@ -323,9 +323,10 @@ def render() -> None:
                                         use_container_width=True,
                                     ):
                                         try:
-                                            set_group_membership_enabled(
-                                                int(selected_group["id"]),
-                                                int(membership["id"]),
+                                            execute_module_command(
+                                                f"{COMMAND_PREFIX}.set_membership_enabled",
+                                                group_id=int(selected_group["id"]),
+                                                membership_id=int(membership["id"]),
                                                 enabled=not bool(membership.get("is_enabled", True)),
                                             )
                                         except ApiError as error:
@@ -387,7 +388,11 @@ def render() -> None:
                                 payload["agent_id"] = int(chosen_member_id)
                             else:
                                 payload["user_id"] = int(chosen_member_id)
-                            add_group_member(int(selected_group["id"]), **payload)
+                            execute_module_command(
+                                f"{COMMAND_PREFIX}.add_member",
+                                group_id=int(selected_group["id"]),
+                                **payload,
+                            )
                         except ApiError as error:
                             st.error(f"Unable to add member: {error.detail}")
                         else:
@@ -414,5 +419,5 @@ def render() -> None:
                     if description:
                         st.write(description)
                     if st.button("Open", key=f"open_group_{group.get('id')}", use_container_width=True):
-                        st.session_state["user_management_selected_group_id"] = group.get("id")
+                        st.session_state["users_selected_group_id"] = group.get("id")
                         st.rerun()

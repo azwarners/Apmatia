@@ -15,10 +15,10 @@ def test_show_auth_form_returns_true_when_api_session_is_authenticated(mock_stre
         "apmatia.interfaces.streamlit.api_client.get_auth_session",
         return_value={"authenticated": True, "username": "testuser"},
     ):
-        import apmatia.interfaces.streamlit.pages.login as login_page
+        import apmatia.interfaces.streamlit.module_views.auth as auth_view
 
-        login_page = importlib.reload(login_page)
-        result = login_page.show_auth_form()
+        auth_view = importlib.reload(auth_view)
+        result = auth_view.show_auth_form()
 
     assert result is True
     assert mock_streamlit.session_state["auth_token"] == "api-session"
@@ -38,10 +38,10 @@ def test_show_auth_form_logs_in_via_api(mock_streamlit):
         "apmatia.interfaces.streamlit.api_client.login",
         return_value={"status": "authenticated", "username": "testuser"},
     ) as mock_login:
-        import apmatia.interfaces.streamlit.pages.login as login_page
+        import apmatia.interfaces.streamlit.module_views.auth as auth_view
 
-        login_page = importlib.reload(login_page)
-        result = login_page.show_auth_form()
+        auth_view = importlib.reload(auth_view)
+        result = auth_view.show_auth_form()
 
     assert result is False
     mock_streamlit.form.assert_any_call("apmatia_signin_form")
@@ -379,251 +379,6 @@ def test_agent_management_confirmed_delete_clears_selected_form_state(mock_strea
     mock_streamlit.success.assert_any_call("Agent deleted.")
     mock_streamlit.rerun.assert_called()
 
-def test_tool_management_page_executes_safe_tool_calls(mock_streamlit):
-    """Tool management page loads definitions and executes a selected safe tool through the API."""
-    agents = [{"id": 7, "name": "Planner"}]
-    tools = [
-        {
-            "id": 0,
-            "name": "apmatia_create_agent",
-            "description": "Create a new Apmatia agent",
-            "provider_id": "builtin.apmatia_create_agent",
-            "enabled": True,
-            "confirmation_required": False,
-            "read_only": False,
-            "input_schema": {"type": "object"},
-            "output_schema": {"type": "object"},
-            "metadata": {"builtin": True},
-        },
-        {
-            "id": 1,
-            "name": "echo",
-            "description": "Echo tool",
-            "provider_id": "builtin.echo",
-            "enabled": True,
-            "confirmation_required": False,
-            "read_only": True,
-            "input_schema": {"type": "object"},
-            "output_schema": {"type": "object"},
-            "metadata": {"builtin": True},
-        }
-    ]
-    assignments = [
-        {
-            "id": 10,
-            "agent_id": 7,
-            "tool_id": 1,
-            "enabled": True,
-            "confirmation_required": None,
-            "read_only": None,
-        }
-    ]
-
-    def selectbox_side_effect(label, options, index=0, **_kwargs):
-        if label == "Tool group":
-            return "Tool management"
-        if label == "Available tool":
-            return next(option for option in options if option.get("provider_id") == "builtin.echo")
-        return options[index]
-
-    mock_streamlit.selectbox.side_effect = selectbox_side_effect
-    mock_streamlit.text_input.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.text_area.side_effect = lambda label, value="", **_kwargs: (
-        '{"text": "Hello from Apmatia"}' if label == "Arguments (JSON object)" else value
-    )
-    mock_streamlit.checkbox.side_effect = lambda _label, value=False, **_kwargs: value
-    mock_streamlit.form_submit_button.side_effect = [False, False, True]
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_tool_definitions", return_value=tools
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.list_agent_tool_assignments", return_value=assignments
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.list_tools_available_to_agent", return_value=tools
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.create_tool_definition"
-    ) as mock_create, patch(
-        "apmatia.interfaces.streamlit.api_client.assign_tool_to_agent"
-    ) as mock_assign, patch(
-        "apmatia.interfaces.streamlit.api_client.unassign_tool_from_agent"
-    ) as mock_unassign, patch(
-        "apmatia.interfaces.streamlit.api_client.execute_tool_call",
-        return_value={"call_id": "call_123", "status": "success", "result": {"text": "Hello from Apmatia"}, "error": None, "metadata": {"tool_id": 1}},
-    ) as mock_execute:
-        import apmatia.interfaces.streamlit.pages.tool_management as tool_management_page
-
-        tool_management_page = importlib.reload(tool_management_page)
-        tool_management_page.render()
-
-    mock_create.assert_not_called()
-    mock_assign.assert_not_called()
-    mock_unassign.assert_not_called()
-    mock_execute.assert_called_once_with(
-        1,
-        requester_agent_id=7,
-        arguments={"text": "Hello from Apmatia"},
-        discussion_id=None,
-        approval_granted=False,
-    )
-    assert mock_streamlit.subheader.call_args_list[0] == call("Agent access")
-    mock_streamlit.write.assert_any_call("**Apmatia administration**")
-    mock_streamlit.write.assert_any_call("**Tool management**")
-    mock_streamlit.title.assert_called_with("Tool Management")
-    mock_streamlit.caption.assert_any_call(
-        "Create tool definitions, grant them to agents, and run safe demo calls through the local API."
-    )
-
-def test_tool_management_page_grants_multiple_tools_with_checklists(mock_streamlit):
-    """Tool management page can grant several tools at once using checklist controls."""
-    agents = [{"id": 7, "name": "Planner"}]
-    tools = [
-        {
-            "id": 0,
-            "name": "apmatia_create_agent",
-            "description": "Create a new Apmatia agent",
-            "provider_id": "builtin.apmatia_create_agent",
-            "enabled": True,
-            "confirmation_required": False,
-            "read_only": False,
-            "input_schema": {"type": "object"},
-            "output_schema": {"type": "object"},
-            "metadata": {"builtin": True},
-        },
-        {
-            "id": 1,
-            "name": "memory_create",
-            "description": "Create memory",
-            "provider_id": "builtin.memory_create",
-            "enabled": True,
-            "confirmation_required": False,
-            "read_only": False,
-            "input_schema": {"type": "object"},
-            "output_schema": {"type": "object"},
-            "metadata": {"builtin": True},
-        },
-        {
-            "id": 2,
-            "name": "wiki_search",
-            "description": "Search wiki",
-            "provider_id": "builtin.wiki_search",
-            "enabled": True,
-            "confirmation_required": False,
-            "read_only": True,
-            "input_schema": {"type": "object"},
-            "output_schema": {"type": "object"},
-            "metadata": {"builtin": True},
-        },
-        {
-            "id": 3,
-            "name": "echo",
-            "description": "Echo tool",
-            "provider_id": "builtin.echo",
-            "enabled": True,
-            "confirmation_required": False,
-            "read_only": True,
-            "input_schema": {"type": "object"},
-            "output_schema": {"type": "object"},
-            "metadata": {"builtin": True},
-        },
-    ]
-    assignments = []
-
-    def checkbox_side_effect(label, value=False, **_kwargs):
-        return label in {
-            "memory_create (ID 1, builtin.memory_create)",
-            "wiki_search (ID 2, builtin.wiki_search)",
-        } or value
-
-    mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
-    mock_streamlit.text_input.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.text_area.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.checkbox.side_effect = checkbox_side_effect
-    mock_streamlit.form_submit_button.side_effect = [True, False, False]
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_tool_definitions", return_value=tools
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.list_agent_tool_assignments", return_value=assignments
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.list_tools_available_to_agent", return_value=tools
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.assign_tool_to_agent",
-        side_effect=[
-            {**tools[0], "agent_id": 7, "tool_id": 1},
-            {**tools[1], "agent_id": 7, "tool_id": 2},
-        ],
-    ) as mock_assign, patch(
-        "apmatia.interfaces.streamlit.api_client.execute_tool_call"
-    ) as mock_execute:
-        import apmatia.interfaces.streamlit.pages.tool_management as tool_management_page
-
-        tool_management_page = importlib.reload(tool_management_page)
-        tool_management_page.render()
-
-    mock_assign.assert_has_calls(
-        [
-            call(7, 2, enabled=True, confirmation_required=None, read_only=None),
-            call(7, 1, enabled=True, confirmation_required=None, read_only=None),
-        ]
-    )
-    mock_execute.assert_not_called()
-
-def test_tool_management_page_updates_existing_tool(mock_streamlit):
-    """Tool management page can edit an existing tool definition without creating a new one."""
-    agents = [{"id": 7, "name": "Planner"}]
-    tools = [
-        {
-            "id": 1,
-            "name": "echo",
-            "description": "Echo tool",
-            "provider_id": "builtin.echo",
-            "enabled": True,
-            "confirmation_required": False,
-            "read_only": True,
-            "input_schema": {"type": "object"},
-            "output_schema": {"type": "object"},
-            "metadata": {"builtin": True},
-        }
-    ]
-    mock_streamlit.session_state["tool_editing_id"] = 1
-    mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
-    mock_streamlit.text_input.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.text_area.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.checkbox.side_effect = lambda label, value=False, **_kwargs: (False if label == "Enabled" else value)
-    mock_streamlit.form_submit_button.side_effect = [False, True, False]
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_tool_definitions", return_value=tools
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.list_agent_tool_assignments", return_value=[]
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.list_tools_available_to_agent", return_value=[]
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.update_tool_definition",
-        return_value={**tools[0], "enabled": False},
-    ) as mock_update, patch(
-        "apmatia.interfaces.streamlit.api_client.create_tool_definition"
-    ) as mock_create:
-        import apmatia.interfaces.streamlit.pages.tool_management as tool_management_page
-
-        tool_management_page = importlib.reload(tool_management_page)
-        tool_management_page.render()
-
-    mock_create.assert_not_called()
-    mock_update.assert_called_once_with(
-        1,
-        name="echo",
-        description="Echo tool",
-        provider_id="builtin.echo",
-        input_schema={"type": "object"},
-        output_schema={"type": "object"},
-        enabled=False,
-        confirmation_required=False,
-        read_only=True,
-        metadata={"builtin": True},
-    )
-    mock_streamlit.success.assert_any_call("Updated tool definition echo (ID 1).")
-
 def test_ai_model_manager_module_view_shows_saved_model_url():
     """The migrated module view returns the saved model URL for its API URL column."""
     from apmatia.core.module_view_runtime import ModuleViewContext
@@ -685,10 +440,10 @@ def test_ai_model_manager_module_view_uses_ai_model_labels():
         "delete": "ai_model_manager.llm_configs.delete",
     }
 
-def test_user_management_page_loads_and_manages_groups(mock_streamlit):
-    """User management uses the API client for users, groups, and membership updates."""
+def test_users_module_view_loads_and_manages_groups(mock_streamlit):
+    """The Users view executes registry-backed API commands."""
     mock_streamlit.session_state["authenticated_user"] = {"user_id": 1, "username": "nick"}
-    mock_streamlit.session_state["user_management_selected_group_id"] = 10
+    mock_streamlit.session_state["users_selected_group_id"] = 10
     mock_streamlit.form_submit_button.side_effect = [True, False, False, False, False]
     mock_streamlit.text_input.side_effect = ["newuser", "newpass", "nick", "", "team"]
     mock_streamlit.text_area.return_value = "Team description"
@@ -707,67 +462,42 @@ def test_user_management_page_loads_and_manages_groups(mock_streamlit):
     mock_streamlit.selectbox.side_effect = selectbox_side_effect
 
     users = [
-        {"id": 1, "username": "nick", "is_enabled": True},
-        {"id": 2, "username": "alice", "is_enabled": False},
+        {"item_kind": "user", "id": 1, "username": "nick", "is_enabled": True},
+        {"item_kind": "user", "id": 2, "username": "alice", "is_enabled": False},
     ]
     agents = [{"id": 77, "name": "Planner"}]
     groups = [
-        {"id": 10, "name": "team", "description": "Team description", "created_by_user_id": 1},
-        {"id": 11, "name": "other", "description": "", "created_by_user_id": 2},
+        {"item_kind": "group", "id": 10, "name": "team", "description": "Team description", "created_by_user_id": 1},
+        {"item_kind": "group", "id": 11, "name": "other", "description": "", "created_by_user_id": 2},
     ]
     memberships = [
-        {"id": 100, "group_id": 10, "user_id": 1, "role": "owner", "is_enabled": True},
-        {"id": 101, "group_id": 10, "user_id": 2, "role": "member", "is_enabled": True},
-        {"id": 102, "group_id": 10, "agent_id": 77, "member_kind": "agent", "role": "member", "is_enabled": True},
+        {"item_kind": "membership", "id": 100, "group_id": 10, "user_id": 1, "role": "owner", "is_enabled": True},
+        {"item_kind": "membership", "id": 101, "group_id": 10, "user_id": 2, "role": "member", "is_enabled": True},
+        {"item_kind": "membership", "id": 102, "group_id": 10, "agent_id": 77, "member_kind": "agent", "role": "member", "is_enabled": True},
     ]
 
-    with patch("apmatia.interfaces.streamlit.api_client.list_users", return_value=users), patch(
-        "apmatia.interfaces.streamlit.api_client.list_groups", return_value=groups
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.create_user"
-    ) as mock_create_user, patch(
-        "apmatia.interfaces.streamlit.api_client.update_user"
-    ) as mock_update_user, patch(
-        "apmatia.interfaces.streamlit.api_client.delete_user"
-    ) as mock_delete_user, patch(
-        "apmatia.interfaces.streamlit.api_client.create_group"
-    ) as mock_create_group, patch(
-        "apmatia.interfaces.streamlit.api_client.update_group"
-    ) as mock_update_group, patch(
-        "apmatia.interfaces.streamlit.api_client.delete_group"
-    ) as mock_delete_group, patch(
-        "apmatia.interfaces.streamlit.api_client.list_group_members",
-        return_value=memberships,
-    ) as mock_list_group_members, patch(
-        "apmatia.interfaces.streamlit.api_client.add_group_member"
-    ) as mock_add_group_member, patch(
-        "apmatia.interfaces.streamlit.api_client.set_group_membership_enabled"
-    ) as mock_set_membership_enabled:
-        import apmatia.interfaces.streamlit.pages.user_management as user_management_page
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.execute_module_command"
+    ) as mock_execute:
+        import apmatia.interfaces.streamlit.module_views.users as users_view
 
-        user_management_page = importlib.reload(user_management_page)
-        user_management_page.render()
+        users_view = importlib.reload(users_view)
+        users_view.render([*users, *groups, *memberships])
 
-    mock_create_user.assert_called_once_with(username="newuser", password="newpass")
-    mock_update_user.assert_not_called()
-    mock_delete_user.assert_not_called()
-    mock_create_group.assert_not_called()
-    mock_update_group.assert_not_called()
-    mock_delete_group.assert_not_called()
-    mock_list_group_members.assert_called_once_with(10)
-    mock_add_group_member.assert_not_called()
-    mock_set_membership_enabled.assert_not_called()
-    mock_streamlit.title.assert_called_with("User Management")
+    mock_execute.assert_called_once_with(
+        "users.users.create_user",
+        username="newuser",
+        password="newpass",
+    )
+    mock_streamlit.title.assert_called_with("Users")
     mock_streamlit.caption.assert_any_call(
-        "Create users, edit your account, and manage the groups you own through the local API."
+        "Create users, edit your account, and manage the groups you own through the users module API."
     )
 
-def test_user_management_page_allows_adding_agent_members(mock_streamlit):
+def test_users_module_view_allows_adding_agent_members(mock_streamlit):
     """Group member selection should switch to agents and submit an agent payload."""
     mock_streamlit.session_state["authenticated_user"] = {"user_id": 1, "username": "nick"}
-    mock_streamlit.session_state["user_management_selected_group_id"] = 10
+    mock_streamlit.session_state["users_selected_group_id"] = 10
     mock_streamlit.form_submit_button.side_effect = [False, False, False, True]
     mock_streamlit.text_input.return_value = ""
     mock_streamlit.text_area.return_value = ""
@@ -785,42 +515,22 @@ def test_user_management_page_allows_adding_agent_members(mock_streamlit):
 
     mock_streamlit.selectbox.side_effect = selectbox_side_effect
 
-    users = [{"id": 1, "username": "nick", "is_enabled": True}]
+    users = [{"item_kind": "user", "id": 1, "username": "nick", "is_enabled": True}]
     agents = [{"id": 77, "name": "Planner"}]
-    groups = [{"id": 10, "name": "team", "description": "Team description", "created_by_user_id": 1}]
-    memberships = [{"id": 100, "group_id": 10, "user_id": 1, "role": "owner", "is_enabled": True}]
+    groups = [{"item_kind": "group", "id": 10, "name": "team", "description": "Team description", "created_by_user_id": 1}]
+    memberships = [{"item_kind": "membership", "id": 100, "group_id": 10, "user_id": 1, "role": "owner", "is_enabled": True}]
 
-    with patch("apmatia.interfaces.streamlit.api_client.list_users", return_value=users), patch(
-        "apmatia.interfaces.streamlit.api_client.list_groups", return_value=groups
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.create_user"
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.update_user"
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.delete_user"
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.create_group"
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.update_group"
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.delete_group"
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.list_group_members",
-        return_value=memberships,
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.add_group_member"
-    ) as mock_add_group_member, patch(
-        "apmatia.interfaces.streamlit.api_client.set_group_membership_enabled"
-    ):
-        import apmatia.interfaces.streamlit.pages.user_management as user_management_page
+    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
+        "apmatia.interfaces.streamlit.api_client.execute_module_command"
+    ) as mock_execute:
+        import apmatia.interfaces.streamlit.module_views.users as users_view
 
-        user_management_page = importlib.reload(user_management_page)
-        user_management_page.render()
+        users_view = importlib.reload(users_view)
+        users_view.render([*users, *groups, *memberships])
 
-    mock_add_group_member.assert_called_once_with(
-        10,
+    mock_execute.assert_called_once_with(
+        "users.users.add_member",
+        group_id=10,
         member_kind="agent",
         role="member",
         agent_id=77,
@@ -1118,7 +828,7 @@ def test_main_function_authenticated_routes_to_settings(mock_streamlit):
         "client.showSidebarNavigation", False
     )
     mock_streamlit.sidebar.title.assert_called_once_with("Apmatia")
-    assert mock_streamlit.sidebar.button.call_count == 5
+    assert mock_streamlit.sidebar.button.call_count == 3
     mock_streamlit.sidebar.button.assert_any_call(
         "📦 Modules",
         key="nav_module_management",
@@ -1328,9 +1038,15 @@ def test_main_function_authenticated_routes_to_agent_management(mock_streamlit):
     mock_agent_render.assert_called_once()
     assert mock_streamlit.session_state["selected_page"] == "agent_management"
 
-def test_main_function_authenticated_routes_to_user_management(mock_streamlit):
-    """Authenticated users can navigate to the user management page through the sidebar."""
-    mock_streamlit.sidebar.button.side_effect = lambda label, *args, **kwargs: label == "👥 Users & Groups"
+def test_main_function_authenticated_routes_to_users_module(mock_streamlit):
+    """Authenticated users navigate to users through the module view layer."""
+    mock_streamlit.sidebar.button.side_effect = lambda label, *args, **kwargs: label == "Users"
+    users_module = {
+        "module_id": "users",
+        "name": "Users",
+        "hidden": False,
+        "views": [{"view_id": "users.users.view", "name": "Users", "effective_hidden": False}],
+    }
 
     with patch(
         "apmatia.interfaces.streamlit.api_client.get_auth_session",
@@ -1339,15 +1055,20 @@ def test_main_function_authenticated_routes_to_user_management(mock_streamlit):
         "apmatia.interfaces.streamlit.api_client.get_settings",
         return_value={"theme": "dark"},
     ), patch(
-        "apmatia.interfaces.streamlit.pages.user_management.render"
-    ) as mock_user_render:
+        "apmatia.interfaces.streamlit.app._visible_module_catalog",
+        return_value=[users_module],
+    ), patch(
+        "apmatia.interfaces.streamlit.pages.module_views.render"
+    ) as mock_users_render:
         import apmatia.interfaces.streamlit.app as app
 
         app = importlib.reload(app)
-        app.main()
+        with patch.object(app, "_visible_module_catalog", return_value=[users_module]):
+            app.main()
 
-    mock_user_render.assert_called_once()
-    assert mock_streamlit.session_state["selected_page"] == "user_management"
+    mock_users_render.assert_called_once()
+    assert mock_streamlit.session_state["selected_page"] == "module_view"
+    assert mock_streamlit.session_state["selected_module_id"] == "users"
 
 def test_main_function_reuses_generation_for_same_module_view(mock_streamlit):
     """Rendering the same module view keeps its generation-scoped shell stable."""
@@ -1507,7 +1228,7 @@ def test_main_function_shows_auth_when_unauthenticated(mock_streamlit):
         "apmatia.interfaces.streamlit.api_client.get_auth_session",
         return_value={"authenticated": False, "username": None},
     ), patch(
-        "apmatia.interfaces.streamlit.pages.login.show_auth_form"
+        "apmatia.interfaces.streamlit.module_views.auth.show_auth_form"
     ) as mock_show_auth_form:
         import apmatia.interfaces.streamlit.app as app
 

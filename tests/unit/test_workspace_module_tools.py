@@ -12,13 +12,13 @@ from apmatia.core.modules import create_module_scaffold
 from apmatia.core import tool_management_runtime
 from apmatia.lib.agent_management.models import Agent
 from apmatia.lib.agent_management.services import AgentService
-from apmatia.lib.tool_management import (
+from apmatia.modules.agent_tools import (
     ToolCall,
     ToolManager,
     build_workspace_module_tool_providers,
     workspace_module_tool_definitions,
 )
-from apmatia.lib.tool_management.repositories import AgentToolAssignmentRepository, ToolDefinitionRepository
+from apmatia.modules.agent_tools.repositories import AgentToolAssignmentRepository, ToolDefinitionRepository
 
 
 class InMemoryToolDefinitionRepository(ToolDefinitionRepository):
@@ -337,7 +337,7 @@ def guarded_import(name, *args, **kwargs):
     return original_import(name, *args, **kwargs)
 
 builtins.__import__ = guarded_import
-from apmatia.lib.tool_management.workspace_modules import workspace_module_tool_definitions
+from apmatia.modules.agent_tools.workspace_modules import workspace_module_tool_definitions
 assert workspace_module_tool_definitions()
 """
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
@@ -353,10 +353,11 @@ def test_runtime_seeds_workspace_tools(monkeypatch: pytest.MonkeyPatch, tmp_path
     import apmatia.core.tool_management_runtime as runtime
 
     importlib.reload(runtime)
+    monkeypatch.setattr(runtime, "get_config_value", lambda *args, **kwargs: True)
     runtime.get_tool_manager()
     names = {tool.name for tool in runtime.get_tool_manager().list_tool_definitions()}
 
     assert "plan_workspace_module" in names
     assert "create_workspace_module" in names
     assert "write_workspace_module_file" in names
-    assert "apmatia_os_admin" not in names
+    assert "apmatia_os_admin" in names

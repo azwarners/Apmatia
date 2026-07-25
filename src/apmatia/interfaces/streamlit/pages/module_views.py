@@ -30,6 +30,7 @@ from apmatia.interfaces.streamlit.module_views.renderers import (
     render_module_view_form,
     render_navigation_pane,
 )
+from apmatia.interfaces.streamlit.module_views import users as users_view
 from apmatia.interfaces.streamlit.components.shell_tabs import render_shell_tabs
 from apmatia.interfaces.streamlit.components.terminal_output import render_terminal_block
 from apmatia.interfaces.streamlit.page_runtime import current_page_generation, is_current_page_generation
@@ -105,6 +106,12 @@ def render() -> None:
     except ApiError as error:
         st.error(f"Unable to load module view items: {error.detail}")
         items = []
+
+    metadata = selected_view.get("metadata") if isinstance(selected_view.get("metadata"), dict) else {}
+    ui = metadata.get("ui") if isinstance(metadata.get("ui"), dict) else {}
+    if str(ui.get("renderer") or "").strip().lower() == "users":
+        users_view.render(items)
+        return
 
     spec = adapt_module_view(selected_view, items=items)
     spec = _enrich_participant_view(spec, selected_view)

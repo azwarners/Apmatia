@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from apmatia.lib.user_management.auth import SessionManager
+from .auth import SessionManager
 from apmatia.core.runtime_paths import get_app_dir, get_data_dir
-from apmatia.lib.user_management.module import GroupManager, UserManager
+from .manager import GroupManager, UserManager
 
 if TYPE_CHECKING:
-    from apmatia.lib.user_management.sqlite_repositories import SQLiteUserManagementBundle
+    from .sqlite_repositories import SQLiteUserManagementBundle
 
 
 APP_DIR = get_app_dir()
@@ -33,7 +33,7 @@ def _ensure_runtime() -> None:
     global _session_manager
 
     if _bundle is None:
-        from apmatia.lib.user_management.sqlite_repositories import SQLiteUserManagementBundle
+        from .sqlite_repositories import SQLiteUserManagementBundle
 
         app_dir = APP_DIR if APP_DIR != _DEFAULT_APP_DIR else get_app_dir()
         data_dir = DATA_DIR if DATA_DIR != _DEFAULT_DATA_DIR else get_data_dir()

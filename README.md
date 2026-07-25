@@ -81,8 +81,10 @@ Top-level libraries in `src/apmatia/lib/` currently include:
 - `discussions` for prompt shaping and discussion-oriented model execution
 - `model_management` for saved LLM configuration records
 - `persistence` for lightweight SQLite-oriented storage helpers
-- `user_management` for users, groups, memberships, and authentication
 - `ysparr` for backend-agnostic generative execution
+
+The stable `users` infrastructure module under `src/apmatia/modules/users/` owns users, groups,
+memberships, authentication sessions, persistence, and the registry-backed Users view.
 
 ## Configuration
 

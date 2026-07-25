@@ -1,6 +1,6 @@
-from apmatia.lib.user_management.models import GroupMemberKind, GroupRole
-from apmatia.lib.user_management.module import AccessController, GroupManager, UserManager
-from apmatia.lib.user_management.sqlite_repositories import SQLiteUserManagementBundle
+from apmatia.modules.users.models import GroupMemberKind, GroupRole
+from apmatia.modules.users.manager import AccessController, GroupManager, UserManager
+from apmatia.modules.users.sqlite_repositories import SQLiteUserManagementBundle
 
 
 def _bundle(tmp_path):

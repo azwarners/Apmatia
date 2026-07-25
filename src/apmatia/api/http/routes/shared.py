@@ -4,7 +4,7 @@ from fastapi import HTTPException, Request
 from pydantic import BaseModel
 from apmatia.api.internal.auth import get_session, has_any_users
 from apmatia.api.internal.group_access import enabled_group_ids
-from apmatia.api.internal.user_management import list_user_groups
+from apmatia.api.internal.users import list_user_groups
 from apmatia.core.registry import get_application_registry
 
 

@@ -11,8 +11,8 @@ from apmatia.modules.dev_tools.tooling import (
     build_dev_tools_tool_providers,
     dev_tools_tool_definitions,
 )
-from apmatia.lib.tool_management import ToolCall, ToolManager
-from apmatia.lib.tool_management.repositories import AgentToolAssignmentRepository, ToolDefinitionRepository
+from apmatia.modules.agent_tools import ToolCall, ToolManager
+from apmatia.modules.agent_tools.repositories import AgentToolAssignmentRepository, ToolDefinitionRepository
 
 
 class InMemoryToolDefinitionRepository(ToolDefinitionRepository):

@@ -22,15 +22,13 @@ from apmatia.interfaces.streamlit.api_client import (
 from apmatia.interfaces.streamlit.module_views.adapter import adapt_module_view
 from apmatia.interfaces.streamlit.module_views.renderers import render_navigation_pane
 from apmatia.interfaces.streamlit.page_runtime import sync_page_generation
-from apmatia.interfaces.streamlit.pages.login import show_auth_form
+from apmatia.interfaces.streamlit.module_views.auth import show_auth_form
 from apmatia.interfaces.streamlit.pages.archive import discussion
 from apmatia.interfaces.streamlit.pages import (
     settings,
     module_management,
     agent_management,
     module_views,
-    tool_management,
-    user_management,
 )
 from apmatia.lib.persistence.logger import get_logger
 
@@ -40,8 +38,6 @@ PAGE_OPTIONS = [
     "module_management",
     "agent_management",
     "module_view",
-    "user_management",
-    "tool_management",
     "settings",
 ]
 THEME_OPTIONS = ["dark", "light", "system"]
@@ -53,10 +49,6 @@ def _format_page_label(page: str) -> str:
         return "📦 Modules"
     if page == "agent_management":
         return "🤖 Agents"
-    if page == "user_management":
-        return "👥 Users & Groups"
-    if page == "tool_management":
-        return "🛠️ Tools"
     if page == "settings":
         return "⚙️ Settings"
     return page.title()
@@ -539,8 +531,6 @@ def render_sidebar():
     st.sidebar.subheader("Management")
     _nav_button("module_management")
     _nav_button("agent_management")
-    _nav_button("user_management")
-    _nav_button("tool_management")
     st.sidebar.divider()
     _nav_button("settings")
     return st.session_state["selected_page"]
@@ -1240,14 +1230,6 @@ def main():
 
         if selected_page == "module_view":
             module_views.render()
-            return
-
-        if selected_page == "user_management":
-            user_management.render()
-            return
-
-        if selected_page == "tool_management":
-            tool_management.render()
             return
 
         if selected_page == "discussion":

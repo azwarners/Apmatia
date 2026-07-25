@@ -30,7 +30,7 @@ from apmatia.modules.agent_loops.runner import AgentLoopRuntime, LoopTaskRequest
 from apmatia.modules.agent_loops.service import EventCancellationToken, YsparrModelExecutor
 from apmatia.modules.agent_loops.state import resolve_contact_roots
 from apmatia.modules.agent_loops.views import VIEW_DESCRIPTORS
-from apmatia.lib.tool_management.models import ToolDefinition as RuntimeToolDefinition
+from apmatia.modules.agent_tools.models import ToolDefinition as RuntimeToolDefinition
 
 
 class _Token(CancellationToken):

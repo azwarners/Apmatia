@@ -7,8 +7,8 @@ import pytest
 from apmatia.core.registry import Registry
 from apmatia.lib.agent_management.models import Agent
 from apmatia.lib.agent_management.services import AgentService
-from apmatia.lib.tool_management.models import ToolDefinition
-from apmatia.lib.tool_management.sqlite_repositories import SQLiteToolManagementBundle
+from apmatia.modules.agent_tools.models import ToolDefinition
+from apmatia.modules.agent_tools.sqlite_repositories import SQLiteToolManagementBundle
 from apmatia.modules.os_admin.module import APMATIA_OS_ADMIN_MODULE, register
 from apmatia.modules.os_admin.tooling import (
     os_admin_tool_definitions,

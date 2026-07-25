@@ -15,6 +15,7 @@ STABLE_MODULE_IDS = {
     "ai_model_manager",
     "contacts_and_discussions",
     "logging",
+    "users",
 }
 
 
@@ -25,6 +26,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "agent_alarms",
         "agent_config",
         "agent_loops",
+        "agent_tools",
         "ai_host_management",
         "ai_model_executor",
         "ai_model_manager",
@@ -36,11 +38,13 @@ def test_load_bundled_modules_loads_bundled_modules():
         "logging",
         "memory_manager",
         "os_admin",
+        "users",
         "worksim",
     ]
     assert [action.action_id for action in registry.list_actions()] == [
         "agent_alarms.alarms",
         "agent_config.agent_config",
+        "agent_tools.agent_tools",
         "ai_host_management.hosts",
         "ai_host_management.resources",
         "ai_model_executor.capacity",
@@ -62,6 +66,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "ipe.project",
         "ipe.task",
         "memory_manager.memory",
+        "users.users",
         "worksim.org_chart_node",
     ]
     assert [command.command_id for command in registry.list_commands()] == [
@@ -71,6 +76,9 @@ def test_load_bundled_modules_loads_bundled_modules():
         "agent_alarms.alarms.list",
         "agent_config.agent_config.save",
         "agent_loops.tasks.stop",
+        "agent_tools.agent_tools.create",
+        "agent_tools.agent_tools.edit",
+        "agent_tools.agent_tools.list",
         "ai_host_management.hosts.create",
         "ai_host_management.hosts.delete",
         "ai_host_management.hosts.disable",
@@ -155,6 +163,15 @@ def test_load_bundled_modules_loads_bundled_modules():
         "memory_manager.memory.delete",
         "memory_manager.memory.edit",
         "memory_manager.memory.list",
+        "users.users.add_member",
+        "users.users.create_group",
+        "users.users.create_user",
+        "users.users.delete_group",
+        "users.users.delete_user",
+        "users.users.edit_group",
+        "users.users.edit_user",
+        "users.users.list",
+        "users.users.set_membership_enabled",
         "worksim.org_chart_node.create",
         "worksim.org_chart_node.delete",
         "worksim.org_chart_node.edit",
@@ -167,6 +184,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "agent_loops.knowledge.view",
         "agent_loops.tasks.view",
         "agent_loops.workspace.view",
+        "agent_tools.agent_tools.view",
         "ai_host_management.hosts.view",
         "ai_host_management.resources.view",
         "ai_model_executor.capacity.view",
@@ -185,6 +203,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "ipe.task.view",
         "logging.entries.view",
         "memory_manager.memory.view",
+        "users.users.view",
         "worksim.org_chart_node.view",
     ]
 
@@ -196,6 +215,7 @@ def test_create_application_registry_loads_bundled_modules():
         "ai_model_manager",
         "contacts_and_discussions",
         "logging",
+        "users",
     ]
     assert registry.list_actions()
     assert registry.list_commands()
@@ -224,4 +244,5 @@ def test_get_application_registry_returns_cached_registry():
         "ai_model_manager",
         "contacts_and_discussions",
         "logging",
+        "users",
     ]

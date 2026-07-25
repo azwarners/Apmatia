@@ -1,4 +1,4 @@
-"""Login page for user authentication."""
+"""API-only authentication renderer for the stable users module."""
 import streamlit as st
 
 from apmatia.interfaces.streamlit.api_client import ApiError, get_auth_session, login, register
@@ -93,7 +93,3 @@ def show_auth_form():
 
     return False
 
-
-def render():
-    """Render the login page."""
-    return show_auth_form()

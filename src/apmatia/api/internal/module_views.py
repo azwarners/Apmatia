@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from apmatia.api.internal.group_access import enabled_group_ids
-from apmatia.api.internal.user_management import list_user_groups
+from apmatia.api.internal.users import list_user_groups
 from apmatia.core.module_view_runtime import execute_module_command, list_module_view_items
 
 

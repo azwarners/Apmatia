@@ -1,0 +1,19 @@
+[module]
+module_id = "agent_tools"
+name = "Agent Tools"
+version = "0.1.0"
+description = "Define, assign, and safely execute tools used by Apmatia agents."
+author = "Nick"
+status = "development"
+category = "tool"
+default_enabled = true
+tags = ["agents", "tools", "execution", "assignments"]
+
+[metadata]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []

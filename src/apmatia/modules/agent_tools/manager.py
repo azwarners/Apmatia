@@ -22,18 +22,29 @@ class ToolManager(ToolService):
         registry: ToolRegistry | None = None,
         builtin_providers: list[ToolProvider] | None = None,
         builtin_definitions: list[dict[str, Any]] | None = None,
+        include_builtin_tools: bool = True,
     ) -> None:
         self._tool_repo = tool_repo
         self._assignment_repo = assignment_repo
         self._agent_service = agent_service
         self._registry = registry or ToolRegistry()
         self._builtin_definitions = builtin_definitions or []
-        register_builtin_tools(self._registry, providers=builtin_providers)
+        self._include_builtin_tools = include_builtin_tools
+        if include_builtin_tools:
+            register_builtin_tools(self._registry, providers=builtin_providers)
+        else:
+            for provider in builtin_providers or []:
+                self._registry.register(provider)
         self._executor = ToolExecutor(tool_repo, assignment_repo, agent_service, self._registry)
         self.ensure_builtin_tools()
 
     def ensure_builtin_tools(self) -> None:
-        for payload in builtin_tool_definitions(extra_definitions=self._builtin_definitions):
+        definitions = (
+            builtin_tool_definitions(extra_definitions=self._builtin_definitions)
+            if self._include_builtin_tools
+            else self._builtin_definitions
+        )
+        for payload in definitions:
             existing = self._tool_repo.get_by_provider_id(payload["provider_id"])
             if existing is None:
                 self.create_tool_definition(**payload)

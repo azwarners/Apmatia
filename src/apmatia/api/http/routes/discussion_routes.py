@@ -17,7 +17,7 @@ from apmatia.api.internal.agent_management import get_agent
 from apmatia.api.internal.agent_prompts import get_agent_system_prompt
 from apmatia.api.internal.group_access import is_group_member
 from apmatia.api.internal.model_management import get_llm_config
-from apmatia.api.internal.user_management import list_group_members, list_user_groups
+from apmatia.api.internal.users import list_group_members, list_user_groups
 from apmatia.modules.ai_model_manager.models import LLMConfig
 
 from .shared import (

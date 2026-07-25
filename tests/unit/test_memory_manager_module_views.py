@@ -5,8 +5,8 @@ from apmatia.core.registry import CommandContribution, ViewContribution
 from apmatia.modules.memory_manager.manager import MemoryManager
 from apmatia.modules.memory_manager.module_views import ApmatiaMemoryManagerModuleViewProvider
 from apmatia.modules.memory_manager.sqlite_repositories import SQLiteMemoryManagementBundle
-from apmatia.lib.tool_management.models import ToolDefinition
-from apmatia.lib.tool_management.sqlite_repositories import SQLiteToolManagementBundle
+from apmatia.modules.agent_tools.models import ToolDefinition
+from apmatia.modules.agent_tools.sqlite_repositories import SQLiteToolManagementBundle
 
 
 def _command(verb: str) -> CommandContribution:

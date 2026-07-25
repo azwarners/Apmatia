@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Literal
 
 from apmatia.api.internal.group_access import is_group_owner, visible_groups
-from apmatia.api.internal.user_management import (
+from apmatia.api.internal.users import (
     GroupRole,
     add_member,
     create_group,

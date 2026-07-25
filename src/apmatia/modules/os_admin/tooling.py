@@ -6,7 +6,7 @@ import subprocess
 from typing import Any
 
 from apmatia.lib.agent_management.services import AgentService
-from apmatia.lib.tool_management.registry import ToolProvider
+from apmatia.modules.agent_tools.registry import ToolProvider
 
 OS_ADMIN_PROVIDER_ID = "builtin.apmatia_os_admin"
 _COMMAND_TIMEOUT_SECONDS = 10

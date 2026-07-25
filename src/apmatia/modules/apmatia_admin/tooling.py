@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from apmatia.lib.agent_management.services import AgentService
-from apmatia.lib.tool_management.registry import ToolProvider
+from apmatia.modules.agent_tools.registry import ToolProvider
 
 DEFAULT_AGENT_MODE = 0o600
 

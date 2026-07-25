@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from apmatia.lib.user_management.models import GroupRole
+from apmatia.modules.users.models import GroupRole
 
 
 def _normalized_enum_value(value: object) -> str:

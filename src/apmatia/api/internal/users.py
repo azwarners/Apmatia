@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from apmatia.lib.user_management.models import GroupMemberKind, GroupRole, UserId
-from apmatia.core.user_management_runtime import get_group_manager, get_user_manager
+from apmatia.modules.users.models import GroupMemberKind, GroupRole, UserId
+from apmatia.modules.users.runtime import get_group_manager, get_user_manager
 
 
 def create_user(username: str, password: str):

@@ -1,7 +1,7 @@
 """Internal API for tool management."""
 
 from apmatia.core.tool_management_runtime import get_tool_manager
-from apmatia.lib.tool_management.models import ToolCall, ToolResult, new_tool_call_id
+from apmatia.modules.agent_tools.models import ToolCall, ToolResult, new_tool_call_id
 
 
 def create_tool_definition(**kwargs) -> dict:

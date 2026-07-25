@@ -60,10 +60,6 @@ Top-level libraries in `src/apmatia/lib/` currently include:
 
   Provides lightweight persistence primitives, especially SQLite-backed storage and logging helpers. This package exists so higher layers can rely on a focused storage library instead of mixing data access details into orchestration code.
 
-- `user_management`
-
-  Provides the reusable user, group, membership, and authentication domain. It owns password hashing, membership rules, repository contracts, and SQLite repositories so Apmatia can support authentication and access control without baking those concerns directly into the app layer.
-
 - `ysparr` (and the new Seat-based concurrency infrastructure)
 
   Provides the underlying generative execution engine used by Apmatia to talk to text-generation backends. It supplies modality-specific execution, backend adapters such as KoboldCpp and OpenAI-compatible endpoints, and output persistence for model runs.
@@ -73,6 +69,10 @@ Top-level libraries in `src/apmatia/lib/` currently include:
 **Location:** `src/apmatia/modules/` for bundled modules, `workspace/modules/` for draft modules
 
 Modules package application features. They register application metadata, actions, tools, commands, and views into the registry. Modules are the preferred place for new feature work when the feature can be isolated cleanly.
+
+The stable `users` infrastructure module owns authentication plus the user, group, and membership
+domain. Its registry-backed Users view is the Streamlit management surface, while HTTP and internal
+API routes use the same module runtime, managers, and repositories.
 
 Module rules:
 

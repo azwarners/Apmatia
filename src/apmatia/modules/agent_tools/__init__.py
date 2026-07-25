@@ -1,8 +1,8 @@
-"""Tool management library for Apmatia agents."""
+"""Agent tool definitions, assignment, and safe execution."""
 
 from .executor import ToolExecutor, validate_json_schema
 from .models import AgentToolAssignment, ToolCall, ToolDefinition, ToolResult
-from .module import ToolManager
+from .manager import ToolManager
 from .registry import FunctionTool, ToolProvider, ToolRegistry, builtin_tool_definitions, register_builtin_tools
 from .repositories import AgentToolAssignmentRepository, ToolDefinitionRepository
 from .workspace_files import build_workspace_file_tool_providers, workspace_file_tool_definitions

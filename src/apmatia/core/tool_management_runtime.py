@@ -20,20 +20,21 @@ from apmatia.modules.os_admin.tooling import build_os_admin_tool_providers, os_a
 from apmatia.modules.os_admin.tooling import OS_ADMIN_PROVIDER_ID
 from apmatia.modules.memory_manager.tooling import build_memory_tool_providers, memory_tool_definitions
 from apmatia.modules.dev_tools.tooling import build_dev_tools_tool_providers, dev_tools_tool_definitions
-from apmatia.lib.tool_management.module import ToolManager
-from apmatia.lib.tool_management.workspace_modules import (
+from apmatia.modules.agent_tools.manager import ToolManager
+from apmatia.modules.agent_tools.registry import builtin_tool_definitions
+from apmatia.modules.agent_tools.workspace_modules import (
     build_workspace_module_tool_providers,
     workspace_module_tool_definitions,
 )
-from apmatia.lib.tool_management.workspace_files import (
+from apmatia.modules.agent_tools.workspace_files import (
     build_workspace_file_tool_providers,
     workspace_file_tool_definitions,
 )
 from apmatia.modules.knowledge_wiki.tooling import build_wiki_tool_providers, wiki_tool_definitions
 
 if TYPE_CHECKING:
-    from apmatia.lib.tool_management.repositories import ToolDefinitionRepository
-    from apmatia.lib.tool_management.sqlite_repositories import SQLiteToolManagementBundle
+    from apmatia.modules.agent_tools.repositories import ToolDefinitionRepository
+    from apmatia.modules.agent_tools.sqlite_repositories import SQLiteToolManagementBundle
 
 
 APP_DIR = get_app_dir()
@@ -56,7 +57,7 @@ def _ensure_runtime() -> None:
 
     development_enabled = bool(get_config_value("ui", "show_development_modules", default=False))
     if _bundle is None or _tool_manager_development_mode != development_enabled:
-        from apmatia.lib.tool_management.sqlite_repositories import SQLiteToolManagementBundle
+        from apmatia.modules.agent_tools.sqlite_repositories import SQLiteToolManagementBundle
 
         app_dir = APP_DIR if APP_DIR != _DEFAULT_APP_DIR else get_app_dir()
         data_dir = DATA_DIR if DATA_DIR != _DEFAULT_DATA_DIR else get_data_dir()
@@ -64,6 +65,7 @@ def _ensure_runtime() -> None:
         app_dir.mkdir(parents=True, exist_ok=True)
         data_dir.mkdir(parents=True, exist_ok=True)
         _bundle = SQLiteToolManagementBundle(db_path)
+        _set_agent_tools_definitions_enabled(_bundle.tools, development_enabled=development_enabled)
         _set_apmatia_admin_tool_definitions_enabled(_bundle.tools, development_enabled=development_enabled)
         _set_dev_tools_tool_definitions_enabled(_bundle.tools, development_enabled=development_enabled)
         _migrate_os_admin_tool_definition(_bundle.tools, development_enabled=development_enabled)
@@ -82,8 +84,8 @@ def _ensure_runtime() -> None:
                 *build_agent_config_tool_providers(get_app_dir()),
                 *(build_dev_tools_tool_providers(agent_manager) if development_enabled else []),
                 *(build_wiki_tool_providers(get_wiki_manager(), agent_manager) if development_enabled else []),
-                *build_workspace_file_tool_providers(agent_manager),
-                *build_workspace_module_tool_providers(),
+                *(build_workspace_file_tool_providers(agent_manager) if development_enabled else []),
+                *(build_workspace_module_tool_providers() if development_enabled else []),
                 *build_agent_loop_tool_providers(agent_manager),
             ],
             builtin_definitions=[
@@ -95,9 +97,10 @@ def _ensure_runtime() -> None:
                 *agent_config_tool_definitions(),
                 *(dev_tools_tool_definitions() if development_enabled else []),
                 *(wiki_tool_definitions() if development_enabled else []),
-                *workspace_file_tool_definitions(),
-                *workspace_module_tool_definitions(),
+                *(workspace_file_tool_definitions() if development_enabled else []),
+                *(workspace_module_tool_definitions() if development_enabled else []),
             ],
+            include_builtin_tools=development_enabled,
         )
         _tool_manager_development_mode = development_enabled
 
@@ -130,6 +133,29 @@ def _migrate_os_admin_tool_definition(
     )
     if legacy is not None and current is not None and legacy.id != current.id and current.id is not None:
         tool_repo.delete(current.id)
+
+
+def _set_agent_tools_definitions_enabled(
+    tool_repo: "ToolDefinitionRepository",
+    *,
+    development_enabled: bool,
+) -> None:
+    definitions = [
+        *builtin_tool_definitions(),
+        *workspace_file_tool_definitions(),
+        *workspace_module_tool_definitions(),
+    ]
+    for payload in definitions:
+        existing = tool_repo.get_by_provider_id(str(payload["provider_id"]))
+        if existing is None or existing.enabled == development_enabled:
+            continue
+        tool_repo.update(
+            replace(
+                existing,
+                enabled=development_enabled,
+                metadata=payload["metadata"],
+            )
+        )
 
 
 def _set_apmatia_admin_tool_definitions_enabled(

@@ -2,8 +2,8 @@
 
 import tempfile
 
-from apmatia.lib.tool_management.models import AgentToolAssignment, ToolDefinition
-from apmatia.lib.tool_management.sqlite_repositories import (
+from apmatia.modules.agent_tools.models import AgentToolAssignment, ToolDefinition
+from apmatia.modules.agent_tools.sqlite_repositories import (
     SQLiteAgentToolAssignmentRepository,
     SQLiteToolDefinitionRepository,
     ToolManagementTables,

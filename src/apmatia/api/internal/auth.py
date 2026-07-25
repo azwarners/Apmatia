@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from apmatia.core.user_management_runtime import get_session_manager, get_user_manager
+from apmatia.modules.users.runtime import get_session_manager, get_user_manager
 
 
 def has_any_users() -> bool:
@@ -28,4 +28,3 @@ def get_session(token: str | None):
 
 def logout_session(token: str | None) -> bool:
     return get_session_manager().delete_session(token)
-

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from apmatia.api.internal.user_management import create_user, delete_user, edit_user, list_users, verify_user
+from apmatia.api.internal.users import create_user, delete_user, edit_user, list_users, verify_user
 
 from .shared import require_session, serialize_user
 

@@ -4,6 +4,9 @@ All notable changes to Apmatia are documented in this file.
 
 ## Unreleased - Module Metadata and Stable-Only Activation
 
+- Migrated authentication plus user, group, and membership management from the legacy
+  `lib/user_management` package and dedicated Streamlit pages into the stable `users`
+  infrastructure module and its registry-backed Users view.
 - Added first-class module maturity, category, author, default-enabled, and immutable tag metadata to manifests and runtime registry records.
 - Limited maturity to `stable` and `development`, with development as the compatibility-safe default for manifests that omit status.
 - Migrated bundled manifests under `src/apmatia/modules/` so standardized values live in `[module]` and `[metadata]` remains reserved for extensions.

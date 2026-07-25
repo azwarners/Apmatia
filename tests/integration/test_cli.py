@@ -161,10 +161,14 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "ai_host_management",
         "ai_model_executor",
         "ai_model_manager",
+        "apmatia_admin",
         "contacts_and_discussions",
         "dev_tools",
         "ipe",
+        "knowledge_wiki",
         "logging",
+        "memory_manager",
+        "os_admin",
         "worksim",
     ]
     assert payload[0]["module"]["module_id"] == "agent_alarms"
@@ -293,6 +297,28 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "ai_model_manager.models.view",
         "ai_model_manager.preferences.view",
     ]
+    assert payload[4]["module"]["module_id"] == "apmatia_admin"
+    assert payload[4]["module"]["name"] == "Apmatia Admin"
+    assert payload[4]["module"]["status"] == "development"
+    assert payload[4]["module"]["category"] == "core"
+    assert payload[4]["module"]["metadata"] == {
+        "provider_ids": [
+            "builtin.apmatia_create_agent",
+            "builtin.apmatia_clone_agent_as",
+            "builtin.apmatia_set_agent_mode",
+        ]
+    }
+    assert payload[4]["module"]["dependencies"] == {
+        "python": ">=3.10",
+        "python_packages": [],
+        "system_packages": [],
+        "modules": ["contacts_and_discussions"],
+        "tools": [],
+    }
+    assert payload[4]["actions"] == []
+    assert payload[4]["commands"] == []
+    assert payload[4]["views"] == []
+    payload.pop(4)
     assert payload[4]["module"]["module_id"] == "contacts_and_discussions"
     assert payload[4]["module"]["name"] == "Contacts and Discussions"
     assert payload[4]["module"]["version"] == "0.1.0"
@@ -348,7 +374,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[5]["module"]["version"] == "0.1.0"
     assert payload[5]["module"]["description"] == "Developer tools for tree inspection, source reading, and dependency tracing."
     assert payload[5]["module"]["author"] == "Nick"
-    assert payload[5]["module"]["status"] == "stable"
+    assert payload[5]["module"]["status"] == "development"
     assert payload[5]["module"]["category"] == "development"
     assert payload[5]["module"]["tags"] == ["tree", "source", "imports", "inspection"]
     assert payload[5]["module"]["metadata"] == {}
@@ -374,14 +400,14 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[6]["actions"] == []
     assert payload[6]["commands"] == []
     assert payload[6]["views"] == []
-    assert payload[7]["module"]["module_id"] == "logging"
-    assert payload[7]["module"]["name"] == "Logging"
+    assert payload[7]["module"]["module_id"] == "knowledge_wiki"
+    assert payload[7]["module"]["name"] == "Knowledge Wiki"
     assert payload[7]["module"]["version"] == "0.1.0"
-    assert payload[7]["module"]["description"] == "Structured runtime logging and a browsable log viewer for Apmatia."
+    assert payload[7]["module"]["description"] == "Create, organize, search, and maintain hierarchical knowledge wikis."
     assert payload[7]["module"]["author"] == "Nick"
-    assert payload[7]["module"]["status"] == "stable"
-    assert payload[7]["module"]["category"] == "core"
-    assert payload[7]["module"]["tags"] == ["logging", "debugging", "observability", "diagnostics", "runtime"]
+    assert payload[7]["module"]["status"] == "development"
+    assert payload[7]["module"]["category"] == "feature"
+    assert payload[7]["module"]["tags"] == ["knowledge", "wiki", "hierarchy", "agents"]
     assert payload[7]["module"]["metadata"] == {}
     assert payload[7]["module"]["dependencies"] == {
         "python": ">=3.10",
@@ -392,19 +418,55 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     }
     assert payload[7]["actions"] == []
     assert payload[7]["commands"] == []
-    assert payload[7]["views"] == ["logging.entries.view"]
-    assert payload[8]["module"]["module_id"] == "worksim"
-    assert payload[8]["module"]["name"] == "Worksim"
+    assert payload[7]["views"] == []
+    assert payload[8]["module"]["module_id"] == "logging"
+    assert payload[8]["module"]["name"] == "Logging"
     assert payload[8]["module"]["version"] == "0.1.0"
-    assert payload[8]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
+    assert payload[8]["module"]["description"] == "Structured runtime logging and a browsable log viewer for Apmatia."
     assert payload[8]["module"]["author"] == "Nick"
-    assert payload[8]["module"]["status"] == "development"
-    assert payload[8]["module"]["category"] == "feature"
-    assert payload[8]["module"]["tags"] == ["wiki", "org-chart", "agents", "teams", "simulation"]
+    assert payload[8]["module"]["status"] == "stable"
+    assert payload[8]["module"]["category"] == "core"
+    assert payload[8]["module"]["tags"] == ["logging", "debugging", "observability", "diagnostics", "runtime"]
     assert payload[8]["module"]["metadata"] == {}
     assert payload[8]["actions"] == []
     assert payload[8]["commands"] == []
-    assert payload[8]["views"] == []
+    assert payload[8]["views"] == ["logging.entries.view"]
+    assert payload[9]["module"]["module_id"] == "memory_manager"
+    assert payload[9]["module"]["name"] == "Memory Manager"
+    assert payload[9]["module"]["version"] == "0.1.0"
+    assert payload[9]["module"]["description"] == "Persist, browse, edit, archive, and delete agent memories."
+    assert payload[9]["module"]["author"] == "Nick"
+    assert payload[9]["module"]["status"] == "development"
+    assert payload[9]["module"]["category"] == "agent"
+    assert payload[9]["module"]["tags"] == ["memory", "agents", "persistence", "knowledge"]
+    assert payload[9]["module"]["metadata"] == {}
+    assert payload[9]["actions"] == []
+    assert payload[9]["commands"] == []
+    assert payload[9]["views"] == []
+    assert payload[10]["module"]["module_id"] == "os_admin"
+    assert payload[10]["module"]["name"] == "OS Admin"
+    assert payload[10]["module"]["version"] == "0.1.0"
+    assert payload[10]["module"]["description"] == "Read-only operating system administration and diagnostic tools."
+    assert payload[10]["module"]["author"] == "Nick"
+    assert payload[10]["module"]["status"] == "development"
+    assert payload[10]["module"]["category"] == "infrastructure"
+    assert payload[10]["module"]["tags"] == ["operating-system", "administration", "diagnostics", "inspection"]
+    assert payload[10]["module"]["metadata"] == {}
+    assert payload[10]["actions"] == []
+    assert payload[10]["commands"] == []
+    assert payload[10]["views"] == []
+    assert payload[11]["module"]["module_id"] == "worksim"
+    assert payload[11]["module"]["name"] == "Worksim"
+    assert payload[11]["module"]["version"] == "0.1.0"
+    assert payload[11]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
+    assert payload[11]["module"]["author"] == "Nick"
+    assert payload[11]["module"]["status"] == "development"
+    assert payload[11]["module"]["category"] == "feature"
+    assert payload[11]["module"]["tags"] == ["wiki", "org-chart", "agents", "teams", "simulation"]
+    assert payload[11]["module"]["metadata"] == {}
+    assert payload[11]["actions"] == []
+    assert payload[11]["commands"] == []
+    assert payload[11]["views"] == []
 
 
 def test_cli_module_show_displays_worksim_module_details(capsys):

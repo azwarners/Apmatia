@@ -33,7 +33,7 @@ The rest of this document is the deeper explanation and reference guide.
 
 ## Module Types
 
-- Bundled modules live in `src/modules/`
+- Bundled modules live in `src/apmatia/modules/`
 - Draft or agent-assisted modules live in `~/.apmatia/workspace/modules/`
 
 Bundled modules are part of the application. Workspace modules are safe drafts that can be planned, scaffolded, inspected, edited, and validated before promotion.
@@ -51,6 +51,68 @@ Typical module pieces:
 - tools
 - commands
 - views
+
+## Metadata And Manifest Shape
+
+Every module declares the same standardized metadata twice: declaratively in `manifest.toml`, so bootstrap can classify it before importing Python, and as `ModuleMetadata` in `module.py`, so the active registry has typed metadata. Keep the two declarations synchronized.
+
+A new manifest should look like this:
+
+```toml
+[module]
+module_id = "example"
+name = "Example"
+version = "0.1.0"
+description = "A focused example module."
+author = "Your Name"
+status = "development"
+category = "feature"
+default_enabled = true
+tags = ["example"]
+
+[metadata]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []
+```
+
+The matching runtime declaration is:
+
+```python
+from apmatia.core.registry import (
+    ModuleCategory,
+    ModuleMetadata,
+    ModuleStatus,
+)
+
+EXAMPLE_MODULE = ModuleMetadata(
+    module_id="example",
+    name="Example",
+    version="0.1.0",
+    description="A focused example module.",
+    author="Your Name",
+    status=ModuleStatus.DEVELOPMENT,
+    category=ModuleCategory.FEATURE,
+    default_enabled=True,
+    tags=("example",),
+)
+```
+
+Use only `stable` and `development` for status. New modules default to development and should remain there while unfinished, experimental, incomplete, broken, or actively changing. Promote a module to stable only when it is suitable for ordinary users. Status is maturity, not runtime health: enabled, disabled, unavailable, dependency failure, and runtime error are separate concerns.
+
+Use one of the declared singular categories: `core`, `infrastructure`, `feature`, `agent`, `tool`, `integration`, `interface`, `development`, or `other`.
+
+Tags are stored as an immutable tuple at runtime. The `[metadata]` table remains available for arbitrary extension data, but never place `status`, `category`, `default_enabled`, or `tags` there in new repository-owned manifests. The loader can still consume legacy `[metadata].category` and `[metadata].tags` values, with first-class `[module]` values taking precedence.
+
+## Stable-Only Activation
+
+The application starts with `ui.show_development_modules = false`. Bootstrap reads manifests before importing module Python code for registration and activates only modules that are both stable and default-enabled. Inactive development modules do not register functionality, views, actions, commands, tools, providers, dedicated HTTP behavior, or background services.
+
+The Module Management page has an "Enable all modules" toggle for development work. Turning it on persists the setting and rebuilds the active registry. Turning it off restores the release-safe stable-only set. A module that starts background work must expose a `deactivate()` hook and stop that work when disabled.
 
 For module views, prefer a small schema-first description over handwritten interface code. The
 Streamlit adapter can infer list columns and basic create forms from module metadata when the view
@@ -156,7 +218,7 @@ In practice, the planning step should answer four questions before you write cod
 - what problem the module solves
 - what the module name and slug should be
 - which actions, tools, commands, and views belong in the module
-- whether the work should stay in `workspace/modules/` or be promoted into `src/modules/`
+- whether the work should stay in `workspace/modules/` or be promoted into `src/apmatia/modules/`
 
 It is also worth answering one more question:
 
@@ -244,6 +306,8 @@ Validation checks that:
 
 - the required files exist
 - the manifest parses cleanly
+- status and category values are supported
+- first-class metadata has the correct types
 - the Python files are syntactically valid
 - `module.py` exposes `register(registry)`
 - the module can register its metadata and descriptors into a fresh in-memory registry
@@ -287,12 +351,13 @@ The long-term path is:
 2. validate the module
 3. inspect the generated descriptors
 4. promote or copy the module into the bundled module set when it is ready
+5. keep its status as `development` until it is suitable for ordinary users
 
 The project should gradually move feature code into modules where it makes sense, while keeping shared implementation detail in libraries.
 
 If you are running inside Docker, make sure the workspace volume is mounted and `APMATIA_WORKSPACE_ROOT` points at the mounted location. That keeps draft modules persistent and makes workspace tools fail fast when the mount is missing or unwritable.
 
-When promoting a module, copy or move the finalized module from `workspace/modules/<slug>/` into `src/modules/<slug>/` and re-run validation against the bundled location.
+When promoting a module, copy or move the finalized module from `workspace/modules/<slug>/` into `src/apmatia/modules/<slug>/` and re-run validation against the bundled location. Promotion into the bundled tree does not automatically make a module stable.
 
 ## Related Docs
 

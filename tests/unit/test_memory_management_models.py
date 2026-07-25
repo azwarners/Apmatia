@@ -1,4 +1,4 @@
-from apmatia.lib.memory_management.models import MemoryItem
+from apmatia.modules.memory_manager.models import MemoryItem
 
 
 def test_memory_item_defaults():

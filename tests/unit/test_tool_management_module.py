@@ -8,16 +8,16 @@ import pytest
 
 from apmatia.lib.agent_management.models import Agent
 from apmatia.lib.agent_management.services import AgentService
-from apmatia.lib.memory_management.models import MemoryItem
-from apmatia.lib.memory_management.module import MemoryManager
-from apmatia.lib.memory_management.repositories import MemoryRepository
-from apmatia.lib.memory_management.tooling import build_memory_tool_providers, memory_tool_definitions
+from apmatia.modules.memory_manager.models import MemoryItem
+from apmatia.modules.memory_manager.manager import MemoryManager
+from apmatia.modules.memory_manager.repositories import MemoryRepository
+from apmatia.modules.memory_manager.tooling import build_memory_tool_providers, memory_tool_definitions
 from apmatia.lib.tool_management.models import ToolCall
 from apmatia.lib.tool_management.module import ToolManager
 from apmatia.lib.tool_management.repositories import AgentToolAssignmentRepository, ToolDefinitionRepository
-from apmatia.lib.wiki_management.module import WikiManager
-from apmatia.lib.wiki_management.repositories import WikiNodeRepository, WikiRepository
-from apmatia.lib.wiki_management.tooling import build_wiki_tool_providers, wiki_tool_definitions
+from apmatia.modules.knowledge_wiki.manager import WikiManager
+from apmatia.modules.knowledge_wiki.repositories import WikiNodeRepository, WikiRepository
+from apmatia.modules.knowledge_wiki.tooling import build_wiki_tool_providers, wiki_tool_definitions
 
 
 class InMemoryToolDefinitionRepository(ToolDefinitionRepository):

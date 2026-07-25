@@ -1,4 +1,4 @@
-from apmatia.lib.wiki_management.models import KnowledgeObject, Wiki, WikiNode
+from apmatia.modules.knowledge_wiki.models import KnowledgeObject, Wiki, WikiNode
 
 
 def test_knowledge_object_preserves_owner_fields():
@@ -30,4 +30,3 @@ def test_branch_nodes_clear_body_content():
     )
 
     assert node.body == ""
-

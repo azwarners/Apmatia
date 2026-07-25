@@ -92,6 +92,9 @@ class SQLiteToolDefinitionRepository(ToolDefinitionRepository):
             },
         )
 
+    def delete(self, tool_id: int) -> bool:
+        return self._store.delete(self._tables.tools, id=tool_id) > 0
+
     @staticmethod
     def _row_to_tool(row: dict[str, Any]) -> ToolDefinition:
         return ToolDefinition(

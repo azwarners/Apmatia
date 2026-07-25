@@ -4,8 +4,8 @@ import tempfile
 
 import pytest
 
-from apmatia.lib.memory_management.models import MemoryItem
-from apmatia.lib.memory_management.sqlite_repositories import (
+from apmatia.modules.memory_manager.models import MemoryItem
+from apmatia.modules.memory_manager.sqlite_repositories import (
     MemoryManagementTables,
     SQLiteMemoryManagementBundle,
     SQLiteMemoryRepository,

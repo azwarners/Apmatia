@@ -4,9 +4,9 @@ from dataclasses import replace
 
 import pytest
 
-from apmatia.lib.wiki_management.models import Wiki, WikiNode
-from apmatia.lib.wiki_management.module import WikiManager
-from apmatia.lib.wiki_management.repositories import WikiNodeRepository, WikiRepository
+from apmatia.modules.knowledge_wiki.manager import WikiManager
+from apmatia.modules.knowledge_wiki.models import Wiki, WikiNode
+from apmatia.modules.knowledge_wiki.repositories import WikiNodeRepository, WikiRepository
 
 
 class InMemoryWikiRepository(WikiRepository):
@@ -161,4 +161,3 @@ def test_other_users_cannot_modify_private_wikis(wiki_manager: WikiManager):
 
     with pytest.raises(PermissionError):
         wiki_manager.update_wiki(wiki.wiki_id, requester_user_id=8, requester_group_ids=set(), title="Nope")
-

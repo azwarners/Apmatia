@@ -7,9 +7,9 @@ from pathlib import Path
 
 from apmatia.lib.agent_management.module import AgentManager
 from apmatia.lib.agent_management.sqlite_repositories import SQLiteAgentManagementBundle
-from apmatia.lib.memory_management.module import MemoryManager
-from apmatia.lib.memory_management.sqlite_repositories import SQLiteMemoryManagementBundle
-from apmatia.lib.memory_management.tooling import build_memory_tool_providers, memory_tool_definitions
+from apmatia.modules.memory_manager.manager import MemoryManager
+from apmatia.modules.memory_manager.sqlite_repositories import SQLiteMemoryManagementBundle
+from apmatia.modules.memory_manager.tooling import build_memory_tool_providers, memory_tool_definitions
 from apmatia.lib.tool_management.module import ToolManager
 from apmatia.lib.tool_management.models import ToolCall
 from apmatia.lib.tool_management.sqlite_repositories import SQLiteToolManagementBundle

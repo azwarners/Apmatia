@@ -24,6 +24,9 @@ class ToolDefinitionRepository(Protocol):
     def update(self, tool: ToolDefinition) -> None:
         raise NotImplementedError
 
+    def delete(self, tool_id: int) -> bool:
+        raise NotImplementedError
+
 
 class AgentToolAssignmentRepository(Protocol):
     def upsert(self, assignment: AgentToolAssignment) -> AgentToolAssignment:

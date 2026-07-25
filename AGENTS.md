@@ -1,4 +1,4 @@
-Apmatia is built around a collection of tiny, focused Python libraries, but new feature work should prefer modules first. When a capability is being added or expanded, put the implementation in a bundled module under `src/modules/` or a draft module under `workspace/modules/` instead of creating a new top-level library package.
+Apmatia is built around a collection of tiny, focused Python libraries, but new feature work should prefer modules first. When a capability is being added or expanded, put the implementation in a bundled module under `src/apmatia/modules/` or a draft module under `workspace/modules/` instead of creating a new top-level library package.
 
 The existing shared libraries stay in place, but module-specific helper code should live inside the module package itself unless it is clearly reusable across multiple modules. The application layer should stay thin and act only as orchestration and glue.
 
@@ -24,6 +24,23 @@ Do not add new Streamlit pages under `src/apmatia/interfaces/streamlit/pages/` f
 
 When a module needs a guided setup action such as SSH key preparation, keep that action inside the module view form or view metadata instead of creating a new Streamlit page. Prefer a module command that the shared Streamlit module-view layer can invoke, and avoid burying first-run setup only in troubleshooting text.
 
+## Module Metadata and Activation
+
+Every bundled or workspace module must use the current first-class metadata contract in both `manifest.toml` and its runtime `ModuleMetadata`. The standardized fields are `author`, `status`, `category`, `default_enabled`, and `tags`; keep arbitrary extension data in `metadata`. Do not duplicate standardized fields inside the extension metadata dictionary or the manifest's `[metadata]` table.
+
+Only these maturity values are supported:
+
+- `stable`: suitable for ordinary use
+- `development`: unfinished, experimental, incomplete, broken, or actively changing
+
+New modules and manifests default to `development`. When classification is uncertain, use `development`. Do not invent alpha, beta, experimental, production, deprecated, or other status values. Runtime availability, enabled state, dependency failures, and errors are operational concerns and must not be added to `ModuleStatus`.
+
+Only use categories declared by `ModuleCategory`: `core`, `infrastructure`, `feature`, `agent`, `tool`, `integration`, `interface`, `development`, or `other`. Use singular values.
+
+The manifest is the bootstrap source of truth. Keep its standardized values synchronized with the runtime `ModuleMetadata` declared in `module.py`; tests enforce this parity. Existing legacy manifests may be read from `[metadata].category` and `[metadata].tags`, but all repository-owned manifests must use first-class values under `[module]`.
+
+Apmatia starts in stable-only mode. Bootstrap must inspect manifests before importing module Python packages for registration, and development modules must not register actions, tools, commands, views, providers, dedicated routes, or background services while inactive. The persisted `ui.show_development_modules` setting and the Module Management "Enable all modules" toggle control this activation boundary. Filtering a navigation list is not sufficient. When adding a background service, provide a module deactivation hook that stops it when the application returns to stable-only mode.
+
 When reporting changes back to the user, always include the full absolute path of at least one relevant file so it is obvious which repo instance and directory were touched. Prefer verbose path references when mentioning files in responses, especially after work that could otherwise be confused with a different checkout.
 
 Do not use relative paths like `apmatia/...`, `./...`, or bare filenames when describing changed files to the user. Use absolute paths such as `/home/nick/ServerData/repos/apmatia/...` so there is no ambiguity about which checkout is being discussed.
@@ -36,4 +53,4 @@ Do not delete, rename, or remove any existing module, package, directory, or sub
 If a request is ambiguous, incomplete, or could be interpreted as changing a different module, ask for clarification before making any destructive change.
 Never infer that an existing module should be removed just because a new module is being added or a refactor is in progress.
 When asked to restore or revert work, only restore the files or paths actually changed in the current task unless the user explicitly requests a broader rollback.
-Before deleting any directory that contains code, summarize exactly what will be removed and wait for confirmation.
+Before deleting any directory that contains code, summarize exactly what will be removed. A user request that explicitly names the target and asks for its deletion is sufficient confirmation; do not ask again.

@@ -14,7 +14,7 @@ VIEW_DESCRIPTORS: tuple[ViewContribution, ...] = tuple(
         metadata={
             "ui": {
                 "render_mode": "collection",
-                "title": spec.plural_label.title(),
+                "title": spec.plural_label,
                 "caption": spec.description,
                 "empty_state": f"No {spec.plural_label.lower()} have been recorded yet.",
                 "item_key": "id",

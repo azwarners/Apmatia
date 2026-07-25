@@ -562,8 +562,8 @@ def test_tool_management_page_grants_multiple_tools_with_checklists(mock_streaml
 
     mock_assign.assert_has_calls(
         [
-            call(7, 1, enabled=True, confirmation_required=None, read_only=None),
             call(7, 2, enabled=True, confirmation_required=None, read_only=None),
+            call(7, 1, enabled=True, confirmation_required=None, read_only=None),
         ]
     )
     mock_execute.assert_not_called()
@@ -624,212 +624,66 @@ def test_tool_management_page_updates_existing_tool(mock_streamlit):
     )
     mock_streamlit.success.assert_any_call("Updated tool definition echo (ID 1).")
 
-def test_memory_management_page_loads_saved_memories(mock_streamlit):
-    """Memory management page loads saved memories through the API client."""
-    agents = [{"id": 7, "name": "Planner"}]
-    memories = [
-        {
-            "id": 9,
-            "title": "Trip note",
-            "content": "Bring passport",
-            "tags": ["travel"],
-            "owner_agent_id": 7,
-            "visibility": "draft",
-            "status": "active",
-            "source_discussion_id": "disc-1",
-            "source_message_ids": ["1"],
-        }
-    ]
-    list_memories_calls: list[dict[str, object]] = []
-    search_memories_calls: list[tuple[str, dict[str, object]]] = []
+def test_ai_model_manager_module_view_shows_saved_model_url():
+    """The migrated module view returns the saved model URL for its API URL column."""
+    from apmatia.core.module_view_runtime import ModuleViewContext
+    from apmatia.modules.ai_model_manager.models import LLMConfig
+    from apmatia.modules.ai_model_manager.module_views import ApmatiaAiModelManagerModuleViewProvider
+    from apmatia.modules.ai_model_manager.views import VIEW_DESCRIPTORS
 
-    def _selectbox(label, options, index=0, **_kwargs):
-        if label == "Agent filter":
-            return options[1] if len(options) > 1 else options[0]
-        if label == "Select memory":
-            return options[index]
-        if label == "Owner agent":
-            return options[0]
-        return options[index]
-
-    mock_streamlit.text_input.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.text_area.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.selectbox.side_effect = _selectbox
-    mock_streamlit.form_submit_button.return_value = False
-    mock_streamlit.button.side_effect = lambda *args, **kwargs: False
-
-    def _list_memories(**kwargs):
-        list_memories_calls.append(kwargs)
-        return memories
-
-    def _search_memories(query, **kwargs):
-        search_memories_calls.append((query, kwargs))
-        return memories
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_memories", side_effect=_list_memories
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.get_memory", return_value=memories[0]
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.search_memories", side_effect=_search_memories
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.create_memory"
-    ) as mock_create, patch(
-        "apmatia.interfaces.streamlit.api_client.update_memory"
-    ) as mock_update, patch(
-        "apmatia.interfaces.streamlit.api_client.archive_memory"
-    ) as mock_archive, patch(
-        "apmatia.interfaces.streamlit.api_client.delete_memory"
-    ) as mock_delete:
-        import apmatia.interfaces.streamlit.pages.memory_management as memory_management_page
-
-        memory_management_page = importlib.reload(memory_management_page)
-        memory_management_page.render()
-
-    mock_create.assert_not_called()
-    mock_update.assert_not_called()
-    mock_archive.assert_not_called()
-    mock_delete.assert_not_called()
-    mock_streamlit.title.assert_called_with("Memory Management")
-    mock_streamlit.caption.assert_any_call(
-        "Browse memories by agent, user, or group, grouped by owning agent."
+    config = LLMConfig(
+        id=1,
+        user_alias="Local Model",
+        backend="openai_compatible",
+        provider_name="Qwen",
+        model_url="http://localhost:5001",
     )
-    assert list_memories_calls == [{"include_archived": True, "owner_agent_id": 7}]
-    assert search_memories_calls == []
+    view = next(item for item in VIEW_DESCRIPTORS if item.view_id == "ai_model_manager.llm_configs.view")
+    with patch("apmatia.modules.ai_model_manager.module_views.list_llm_configs", return_value=[config]):
+        items = ApmatiaAiModelManagerModuleViewProvider().list_items(
+            view=view,
+            context=ModuleViewContext(user_id=1),
+        )
 
-def test_memory_management_page_limits_owner_agent_choices_to_writable_agents(mock_streamlit):
-    """The create form should only offer agents owned by the current user."""
-    agents = [
-        {"id": 7, "name": "Planner", "owner_user_id": 1, "owner_group_id": None},
-        {"id": 8, "name": "Foreign", "owner_user_id": 2, "owner_group_id": None},
-    ]
-    memories = []
-    mock_streamlit.session_state["authenticated_user"] = {"user_id": 1}
-    mock_streamlit.text_input.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.text_area.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.form_submit_button.return_value = False
-    mock_streamlit.button.side_effect = lambda *args, **kwargs: False
+    assert items[0]["model_url"] == "http://localhost:5001"
+    assert {column["key"]: column["label"] for column in view.metadata["ui"]["columns"]}["model_url"] == "API URL"
 
-    def _selectbox(label, options, index=0, **_kwargs):
-        if label == "Agent filter":
-            return options[0]
-        if label == "Select memory":
-            return options[index] if options else None
-        if label == "Owner agent":
-            assert options == [None, 7]
-            return options[1]
-        return options[index]
+def test_ai_model_manager_module_view_can_test_ai_model():
+    """The migrated module view probes a saved AI model through its test command."""
+    from apmatia.core.module_view_runtime import ModuleViewContext
+    from apmatia.modules.ai_model_manager.commands import COMMAND_DESCRIPTORS
+    from apmatia.modules.ai_model_manager.module_views import ApmatiaAiModelManagerModuleViewProvider
 
-    mock_streamlit.selectbox.side_effect = _selectbox
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_agents", return_value=agents), patch(
-        "apmatia.interfaces.streamlit.api_client.list_memories", return_value=memories
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.search_memories", return_value=memories
-    ):
-        import apmatia.interfaces.streamlit.pages.memory_management as memory_management_page
-
-        memory_management_page = importlib.reload(memory_management_page)
-        memory_management_page.render()
-
-    mock_streamlit.info.assert_any_call("No memories found.")
-
-def test_model_management_page_shows_saved_model_url(mock_streamlit):
-    """Existing model cards show the saved base URL for verification."""
-    configs = [
-        {
-            "id": 1,
-            "user_alias": "Local Model",
-            "backend": "openai_compatible",
-            "provider_name": "Qwen",
-            "model_url": "http://localhost:5001",
-            "api_key": "",
-            "max_response_size": 8192,
-            "system_prompt": "",
-            "metadata": {},
-        }
-    ]
-    mock_streamlit.form_submit_button.return_value = False
-    mock_streamlit.text_input.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.text_area.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.number_input.side_effect = lambda _label, value=0, **_kwargs: value
-    mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=configs):
-        import apmatia.interfaces.streamlit.pages.model_management as model_management_page
-
-        model_management_page = importlib.reload(model_management_page)
-        model_management_page.render()
-
-    mock_streamlit.caption.assert_any_call("URL: http://localhost:5001")
-
-def test_model_management_page_can_test_ai_model(mock_streamlit):
-    """Model management can probe a saved AI model through the API."""
-    configs = [
-        {
-            "id": 1,
-            "user_alias": "Local Model",
-            "backend": "openai_compatible",
-            "provider_name": "Qwen",
-            "model_url": "http://localhost:5001",
-            "api_key": "",
-            "max_response_size": 8192,
-            "system_prompt": "",
-            "metadata": {},
-        }
-    ]
-    mock_streamlit.form_submit_button.return_value = False
-    mock_streamlit.text_input.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.text_area.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.number_input.side_effect = lambda _label, value=0, **_kwargs: value
-    mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
-    mock_streamlit.button.side_effect = lambda label, *args, **_kwargs: label == "Test"
-
-    with patch("apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=configs), patch(
-        "apmatia.interfaces.streamlit.api_client.test_llm_config",
+    command = next(item for item in COMMAND_DESCRIPTORS if item.command_id == "ai_model_manager.llm_configs.test")
+    with patch(
+        "apmatia.modules.ai_model_manager.module_views.probe_llm_config",
         return_value={"reply_preview": "ready and connected"},
     ) as mock_test:
-        import apmatia.interfaces.streamlit.pages.model_management as model_management_page
-
-        model_management_page = importlib.reload(model_management_page)
-        model_management_page.render()
+        result = ApmatiaAiModelManagerModuleViewProvider().execute_command(
+            command=command,
+            payload={"item_id": 1},
+            context=ModuleViewContext(user_id=1),
+        )
 
     mock_test.assert_called_once_with(1)
-    mock_streamlit.success.assert_any_call(
-        "AI model responded: ready and connected"
-    )
+    assert result == {"status": "ok", "item": {"reply_preview": "ready and connected"}}
 
-def test_model_management_page_uses_ai_model_labels(mock_streamlit):
-    """Model management page uses the updated AI model terminology and fields."""
-    llm_configs = [
-        {"id": 301, "user_alias": "Default", "provider_name": "gpt-4o-mini"},
-        {"id": 302, "user_alias": "Active", "provider_name": "gpt-4o"},
-    ]
-    mock_streamlit.text_input.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.text_area.side_effect = lambda _label, value="", **_kwargs: value
-    mock_streamlit.form_submit_button.return_value = False
+def test_ai_model_manager_module_view_uses_ai_model_labels():
+    """The migrated module view exposes current LLM configuration labels and commands."""
+    from apmatia.modules.ai_model_manager.views import VIEW_DESCRIPTORS
 
-    with patch(
-        "apmatia.interfaces.streamlit.api_client.list_llm_configs", return_value=llm_configs
-    ), patch("apmatia.interfaces.streamlit.api_client.create_llm_config") as mock_create, patch(
-        "apmatia.interfaces.streamlit.api_client.update_llm_config"
-    ) as mock_update, patch(
-        "apmatia.interfaces.streamlit.api_client.delete_llm_config"
-    ) as mock_delete:
-        import apmatia.interfaces.streamlit.pages.model_management as model_management_page
+    view = next(item for item in VIEW_DESCRIPTORS if item.view_id == "ai_model_manager.llm_configs.view")
+    ui = view.metadata["ui"]
 
-        model_management_page = importlib.reload(model_management_page)
-        model_management_page.render()
-
-    mock_create.assert_not_called()
-    mock_update.assert_not_called()
-    mock_delete.assert_not_called()
-    mock_streamlit.title.assert_called_with("Model Management")
-    mock_streamlit.caption.assert_any_call(
-        "Create, edit, and remove AI model objects through the local API."
-    )
-    mock_streamlit.subheader.assert_any_call("AI Model")
-    mock_streamlit.subheader.assert_any_call("Existing AI models")
+    assert ui["title"] == "LLM Configs"
+    assert ui["caption"] == "Manage remote LLM endpoint configurations (OpenAI-compatible APIs)."
+    assert view.metadata["singular_label"] == "LLM Config"
+    assert view.metadata["plural_label"] == "LLM Configs"
+    assert ui["commands"] == {
+        "create": "ai_model_manager.llm_configs.create",
+        "edit": "ai_model_manager.llm_configs.edit",
+        "delete": "ai_model_manager.llm_configs.delete",
+    }
 
 def test_user_management_page_loads_and_manages_groups(mock_streamlit):
     """User management uses the API client for users, groups, and membership updates."""
@@ -1264,7 +1118,7 @@ def test_main_function_authenticated_routes_to_settings(mock_streamlit):
         "client.showSidebarNavigation", False
     )
     mock_streamlit.sidebar.title.assert_called_once_with("Apmatia")
-    assert mock_streamlit.sidebar.button.call_count == 6
+    assert mock_streamlit.sidebar.button.call_count == 5
     mock_streamlit.sidebar.button.assert_any_call(
         "📦 Modules",
         key="nav_module_management",

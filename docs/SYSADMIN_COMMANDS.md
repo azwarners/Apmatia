@@ -1,12 +1,12 @@
 # Sysadmin Command Allowlist
 
-This document preserves the sysadmin command list that was provided for Apmatia's read-only system audit tool.
+This document preserves the sysadmin command list used by Apmatia's read-only OS Admin module.
 
 Important:
 
 - These commands are intended for inspection and diagnosis only.
 - They are not a general shell-execution interface.
-- Shell redirection, pipes, chaining, and `sudo` are intentionally out of scope for the safe audit provider.
+- Shell redirection, pipes, chaining, and `sudo` are intentionally out of scope for the safe OS administration provider.
 - Some entries below use placeholders like `[service]`, `[host]`, or `[path]` to show how the command is meant to be used.
 
 ## Essential Commands
@@ -124,4 +124,4 @@ These were explicitly called out as out of scope for read-only audit work:
 
 ## Notes
 
-The current Apmatia safe system-audit tool uses an allowlist that covers the read-only inspection commands above. If you want a new command added later, it should be implemented as a deliberate backend change rather than exposed as arbitrary shell access.
+The current Apmatia OS Admin tool uses an allowlist that covers the read-only inspection commands above. If you want a new command added later, it should be implemented as a deliberate backend change rather than exposed as arbitrary shell access.

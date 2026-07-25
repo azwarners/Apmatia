@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from apmatia.core.registry import ModuleMetadata, Registry
 
-from apmatia.lib.dev_tools.tooling import DEV_TOOLS_PROVIDER_IDS
+from .tooling import DEV_TOOLS_PROVIDER_IDS
 
 from .tools import TOOL_DESCRIPTORS
 
@@ -12,7 +12,7 @@ APMATIA_DEV_TOOLS_MODULE = ModuleMetadata(
     version="0.1.0",
     description="Developer tools for tree inspection, source reading, and dependency tracing.",
     author="Nick",
-    status="stable",
+    status="development",
     category="development",
     default_enabled=True,
     tags=("tree", "source", "imports", "inspection"),

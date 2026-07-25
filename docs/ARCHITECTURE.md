@@ -32,13 +32,13 @@ This keeps behavior consistent across the CLI, the FastAPI surface, and the Stre
 
 ### 1. Libraries (Business Logic)
 
-**Location:** `src/lib/`
+**Location:** `src/apmatia/lib/`
 
 Libraries contain the real domain behavior for Apmatia. They implement features, encapsulate persistence details, integrate with model backends, and stay reusable outside the main application.
 
 They do not know about HTTP, FastAPI, Streamlit, or the CLI.
 
-Top-level libraries in `src/lib/` currently include:
+Top-level libraries in `src/apmatia/lib/` currently include:
 
 - `agent_management`
 
@@ -70,20 +70,44 @@ Top-level libraries in `src/lib/` currently include:
 
 ### 2. Modules (Feature Packages)
 
-**Location:** `src/modules/` for bundled modules, `workspace/modules/` for draft modules
+**Location:** `src/apmatia/modules/` for bundled modules, `workspace/modules/` for draft modules
 
 Modules package application features. They register application metadata, actions, tools, commands, and views into the registry. Modules are the preferred place for new feature work when the feature can be isolated cleanly.
 
 Module rules:
 
-- bundled modules ship under `src/modules/`
+- bundled modules ship under `src/apmatia/modules/`
 - draft, agent-assisted, or user-created work stays in `workspace/modules/`
 - modules may depend on libraries and core helpers, but they should not own transport concerns
 - modules register capabilities into the registry instead of talking directly to interfaces
 
+#### Module metadata contract
+
+Each module has matching declarative metadata in `manifest.toml` and runtime metadata in `module.py`. Standard fields are first-class:
+
+- `author`
+- `status`: `stable` or `development`
+- `category`: one of `core`, `infrastructure`, `feature`, `agent`, `tool`, `integration`, `interface`, `development`, or `other`
+- `default_enabled`
+- immutable `tags`
+
+The manifest `[metadata]` table and the runtime `metadata` dictionary remain available only for module-specific extensions. Standard fields must not be duplicated there. Missing status values are interpreted as `development`, missing categories as `feature`, and missing `default_enabled` values as true. Legacy category and tags values under `[metadata]` are accepted for compatibility, with first-class `[module]` values taking precedence.
+
+#### Activation boundary
+
+Apmatia is stable-only by default. Module bootstrap reads each manifest before importing the module package:
+
+```text
+manifest discovery -> maturity/default-enabled filter -> Python import -> registry contributions
+```
+
+In stable-only mode, only stable modules with `default_enabled = true` are imported by bootstrap for registration. Development modules remain discoverable through manifest inspection, but their actions, tools, commands, views, providers, dedicated HTTP functionality, and background services are inactive.
+
+The persisted `ui.show_development_modules` setting can switch the application to all-modules mode. The Module Management page exposes it as "Enable all modules." A change rebuilds the active registry and provider set in each process; module deactivation hooks stop background work when returning to stable-only mode.
+
 ### 3. Core (Orchestration)
 
-**Location:** `src/core/`
+**Location:** `src/apmatia/core/`
 
 Core coordinates one or more libraries into application behavior. It loads config, wires repositories and services together, applies app-specific rules, and shapes library behavior into complete workflows.
 
@@ -91,7 +115,7 @@ It does not expose interfaces or own transport details.
 
 ### 4. API (Internal)
 
-**Location:** `src/api/internal/`
+**Location:** `src/apmatia/api/internal/`
 
 This is the canonical programmatic interface for Apmatia. Interfaces and transports use this layer instead of reaching into core or libraries directly.
 
@@ -99,7 +123,7 @@ It exposes application capabilities as stable functions and keeps the rest of th
 
 ### 5. API (HTTP)
 
-**Location:** `src/api/http/`
+**Location:** `src/apmatia/api/http/`
 
 This layer exposes the internal API over FastAPI. It defines routes, request models, response shapes, session requirements, and serialization concerns.
 
@@ -107,12 +131,12 @@ It does not implement business logic or call libraries directly.
 
 ### 6. Interfaces
 
-**Location:** `src/interfaces/`
+**Location:** `src/apmatia/interfaces/`
 
 Interfaces are clients of the API boundary.
 
-- `src/interfaces/cli/` provides a command-line entrypoint for direct local use.
-- `src/interfaces/streamlit/` provides the primary interactive UI in Python via Streamlit.
+- `src/apmatia/interfaces/cli/` provides a command-line entrypoint for direct local use.
+- `src/apmatia/interfaces/streamlit/` provides the primary interactive UI in Python via Streamlit.
 
 The Streamlit app is organized as a small interface client:
 
@@ -169,11 +193,11 @@ Practical guidance:
 
 To add a new feature:
 
-1. Create or extend a library in `src/lib/` if the logic is reusable.
+1. Create or extend a library in `src/apmatia/lib/` if the logic is reusable.
 2. Decide whether the feature belongs in a library or a module.
-3. Package the feature in a module under `src/modules/` or `workspace/modules/`.
-4. Add orchestration in `src/core/`.
-5. Expose it through `src/api/internal/`.
+3. Package the feature in a module under `src/apmatia/modules/` or `workspace/modules/`.
+4. Add orchestration in `src/apmatia/core/`.
+5. Expose it through `src/apmatia/api/internal/`.
 6. Optionally surface it through FastAPI, Streamlit, the CLI, or another interface.
 
 That sequence preserves the API-first boundary and keeps interfaces thin.

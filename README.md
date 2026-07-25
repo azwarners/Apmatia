@@ -7,7 +7,7 @@ Apmatia is moving toward a module-first architecture:
 - reusable capability code should live in libraries
 - feature packages should live in modules
 - new feature work should generally start as a module when it fits the problem
-- bundled modules live in `src/modules/`
+- bundled modules live in `src/apmatia/modules/`
 - draft and agent-assisted modules live in `~/.apmatia/workspace/modules/`
 
 The first bundled module to actively drive new product behavior is `ipe`, which now
@@ -26,7 +26,7 @@ Interface -> API (internal) -> Core -> Library -> External Service
 
 That gives the project a few important properties:
 
-- business logic lives in reusable libraries under `src/lib/`
+- business logic lives in reusable libraries under `src/apmatia/lib/`
 - interfaces stay thin and do not call core directly
 - the CLI, HTTP API, and Streamlit UI all share the same behavior
 
@@ -34,7 +34,7 @@ That gives the project a few important properties:
 
 - FastAPI core service on a configurable host and port
 - Streamlit UI on a configurable host and port
-- CLI entrypoint in `src/interfaces/cli/main.py`
+- CLI entrypoint in `src/apmatia/interfaces/cli/main.py`
 
 ## Current Capabilities
 
@@ -47,6 +47,7 @@ That gives the project a few important properties:
 - soft-delete discussion and folder lifecycle with restore support
 - shared settings for prompting and UI appearance
 - registry-driven module metadata, scaffolding, validation, and workspace editing
+- stable-only module activation by default, with an explicit all-modules development toggle
 - module-driven Streamlit navigation, visibility controls, and generic view rendering
 - schema-inferred module view forms for list/create module pages
 
@@ -54,16 +55,17 @@ That gives the project a few important properties:
 
 ```text
 src/
-├── api/
-│   ├── http/        # FastAPI transport layer
-│   └── internal/    # canonical application interface
-├── core/            # orchestration and runtime wiring
-│   └── modules/     # module registry, scaffolding, planning, validation, workspace tools
-├── interfaces/
-│   ├── cli/
-│   └── streamlit/
-├── lib/             # reusable business logic libraries
-└── modules/         # bundled feature modules
+└── apmatia/
+    ├── api/
+    │   ├── http/        # FastAPI transport layer
+    │   └── internal/    # canonical application interface
+    ├── core/            # orchestration and runtime wiring
+    │   └── modules/     # module scaffolding, planning, validation, workspace tools
+    ├── interfaces/
+    │   ├── cli/
+    │   └── streamlit/
+    ├── lib/             # reusable business logic libraries
+    └── modules/         # bundled feature modules
 ```
 
 The most important rule is simple: interfaces use the API, and only the API talks to the core.
@@ -72,7 +74,7 @@ Modules are the preferred home for new feature packages when the feature can be 
 
 ## Libraries
 
-Top-level libraries in `src/lib/` currently include:
+Top-level libraries in `src/apmatia/lib/` currently include:
 
 - `agent_management` for agent lifecycle operations and persistence contracts
 - `apmatia_core` for shared object and permission primitives
@@ -161,6 +163,10 @@ Module authors now have a clearer path for UI:
 - describe field intent once through the module view schema helpers
 - let the Streamlit adapter render list views and create forms automatically
 - use module management visibility to hide modules or specific views from the left navigation
+
+Every module declares first-class `author`, `status`, `category`, `default_enabled`, and `tags` values in both its manifest and runtime registry metadata. Status is deliberately limited to `stable` and `development`; new and uncertain modules stay development until they are ready for ordinary users. The manifest `[metadata]` table is reserved for module-specific extensions.
+
+The application starts in stable-only mode. Development modules remain discoverable but are not activated: their registry contributions, views, dedicated API behavior, providers, and background services stay unavailable. The Module Management page can explicitly enable all modules for development work through the persisted `ui.show_development_modules` setting.
 
 ## Additional Documentation
 

@@ -8,7 +8,7 @@ The point is not just to preserve history. It is to show how to think about a ne
 
 We began by creating a bundled module under:
 
-- `/home/nick/ServerData/repos/apmatia/src/modules/ipe/`
+- `/home/nick/ServerData/repos/apmatia/src/apmatia/modules/ipe/`
 
 At that stage the module only needed the standard scaffold files:
 

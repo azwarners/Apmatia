@@ -1,0 +1,19 @@
+[module]
+module_id = "knowledge_wiki"
+name = "Knowledge Wiki"
+version = "0.1.0"
+description = "Create, organize, search, and maintain hierarchical knowledge wikis."
+author = "Nick"
+status = "development"
+category = "feature"
+default_enabled = true
+tags = ["knowledge", "wiki", "hierarchy", "agents"]
+
+[metadata]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []

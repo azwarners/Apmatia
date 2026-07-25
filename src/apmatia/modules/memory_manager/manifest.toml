@@ -1,0 +1,19 @@
+[module]
+module_id = "memory_manager"
+name = "Memory Manager"
+version = "0.1.0"
+description = "Persist, browse, edit, archive, and delete agent memories."
+author = "Nick"
+status = "development"
+category = "agent"
+default_enabled = true
+tags = ["memory", "agents", "persistence", "knowledge"]
+
+[metadata]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []

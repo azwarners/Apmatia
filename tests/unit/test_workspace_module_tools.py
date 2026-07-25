@@ -359,4 +359,4 @@ def test_runtime_seeds_workspace_tools(monkeypatch: pytest.MonkeyPatch, tmp_path
     assert "plan_workspace_module" in names
     assert "create_workspace_module" in names
     assert "write_workspace_module_file" in names
-    assert "apmatia_system_audit" in names
+    assert "apmatia_os_admin" not in names

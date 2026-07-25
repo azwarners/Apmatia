@@ -52,8 +52,8 @@ tags = ["linux", "administration", "monitoring"]
 python = ">=3.10"
 python_packages = ["psutil"]
 system_packages = ["procps"]
-modules = ["system_audit"]
-tools = ["system_audit.inspect"]
+modules = ["os_admin"]
+tools = ["os_admin.inspect"]
 """.lstrip(),
         encoding="utf-8",
     )
@@ -69,8 +69,8 @@ tools = ["system_audit.inspect"]
         "python": ">=3.10",
         "python_packages": ["psutil"],
         "system_packages": ["procps"],
-        "modules": ["system_audit"],
-        "tools": ["system_audit.inspect"],
+        "modules": ["os_admin"],
+        "tools": ["os_admin.inspect"],
     }
 
 
@@ -183,7 +183,7 @@ python = [">=3.10"]
 python_packages = ["psutil", 2]
 system_packages = "procps"
 modules = [1]
-tools = ["system_audit.inspect", 2]
+tools = ["os_admin.inspect", 2]
 """.lstrip(),
         encoding="utf-8",
     )

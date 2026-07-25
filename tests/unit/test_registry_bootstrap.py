@@ -14,7 +14,6 @@ from apmatia.core.registry import bootstrap
 STABLE_MODULE_IDS = {
     "ai_model_manager",
     "contacts_and_discussions",
-    "dev_tools",
     "logging",
 }
 
@@ -29,10 +28,14 @@ def test_load_bundled_modules_loads_bundled_modules():
         "ai_host_management",
         "ai_model_executor",
         "ai_model_manager",
+        "apmatia_admin",
         "contacts_and_discussions",
         "dev_tools",
         "ipe",
+        "knowledge_wiki",
         "logging",
+        "memory_manager",
+        "os_admin",
         "worksim",
     ]
     assert [action.action_id for action in registry.list_actions()] == [
@@ -58,6 +61,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "ipe.idea",
         "ipe.project",
         "ipe.task",
+        "memory_manager.memory",
         "worksim.org_chart_node",
     ]
     assert [command.command_id for command in registry.list_commands()] == [
@@ -147,6 +151,10 @@ def test_load_bundled_modules_loads_bundled_modules():
         "ipe.task.delete",
         "ipe.task.edit",
         "ipe.task.list",
+        "memory_manager.memory.create",
+        "memory_manager.memory.delete",
+        "memory_manager.memory.edit",
+        "memory_manager.memory.list",
         "worksim.org_chart_node.create",
         "worksim.org_chart_node.delete",
         "worksim.org_chart_node.edit",
@@ -176,6 +184,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "ipe.project.view",
         "ipe.task.view",
         "logging.entries.view",
+        "memory_manager.memory.view",
         "worksim.org_chart_node.view",
     ]
 
@@ -186,7 +195,6 @@ def test_create_application_registry_loads_bundled_modules():
     assert [module.module_id for module in registry.list_modules(include_development=True)] == [
         "ai_model_manager",
         "contacts_and_discussions",
-        "dev_tools",
         "logging",
     ]
     assert registry.list_actions()
@@ -215,6 +223,5 @@ def test_get_application_registry_returns_cached_registry():
     assert [module.module_id for module in first.list_modules(include_development=True)] == [
         "ai_model_manager",
         "contacts_and_discussions",
-        "dev_tools",
         "logging",
     ]

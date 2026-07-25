@@ -1,0 +1,19 @@
+[module]
+module_id = "os_admin"
+name = "OS Admin"
+version = "0.1.0"
+description = "Read-only operating system administration and diagnostic tools."
+author = "Nick"
+status = "development"
+category = "infrastructure"
+default_enabled = true
+tags = ["operating-system", "administration", "diagnostics", "inspection"]
+
+[metadata]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []

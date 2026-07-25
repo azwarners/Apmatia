@@ -28,7 +28,6 @@ from apmatia.interfaces.streamlit.pages import (
     settings,
     module_management,
     agent_management,
-    memory_management,
     module_views,
     tool_management,
     user_management,
@@ -42,7 +41,6 @@ PAGE_OPTIONS = [
     "agent_management",
     "module_view",
     "user_management",
-    "memory_management",
     "tool_management",
     "settings",
 ]
@@ -59,8 +57,6 @@ def _format_page_label(page: str) -> str:
         return "👥 Users & Groups"
     if page == "tool_management":
         return "🛠️ Tools"
-    if page == "memory_management":
-        return "🧠 Memories"
     if page == "settings":
         return "⚙️ Settings"
     return page.title()
@@ -544,7 +540,6 @@ def render_sidebar():
     _nav_button("module_management")
     _nav_button("agent_management")
     _nav_button("user_management")
-    _nav_button("memory_management")
     _nav_button("tool_management")
     st.sidebar.divider()
     _nav_button("settings")
@@ -1253,10 +1248,6 @@ def main():
 
         if selected_page == "tool_management":
             tool_management.render()
-            return
-
-        if selected_page == "memory_management":
-            memory_management.render()
             return
 
         if selected_page == "discussion":

@@ -4,9 +4,9 @@ from dataclasses import replace
 
 import pytest
 
-from apmatia.lib.memory_management.models import MemoryItem
-from apmatia.lib.memory_management.module import MemoryManager
-from apmatia.lib.memory_management.repositories import MemoryRepository
+from apmatia.modules.memory_manager.models import MemoryItem
+from apmatia.modules.memory_manager.manager import MemoryManager
+from apmatia.modules.memory_manager.repositories import MemoryRepository
 
 
 class InMemoryMemoryRepository(MemoryRepository):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from apmatia.core.module_view_runtime import register_module_view_provider
 from apmatia.core.registry import ModuleMetadata, Registry
-from apmatia.lib.persistence import logger as persistence_logger
+from apmatia.modules.persistence import logger as persistence_logger
 
 from .actions import ACTION_DESCRIPTORS
 from .commands import COMMAND_DESCRIPTORS

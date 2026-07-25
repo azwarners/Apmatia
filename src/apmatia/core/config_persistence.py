@@ -1,8 +1,5 @@
-"""Compatibility shim: re-export config persistence from the shared library."""
+"""Compatibility shim for the bundled persistence module."""
 
-try:
-    from persistence.core import load_config_file, save_config_file
-except ModuleNotFoundError:
-    from apmatia.lib.persistence.persistence.core import load_config_file, save_config_file
+from apmatia.modules.persistence import load_config_file, save_config_file
 
 __all__ = ["load_config_file", "save_config_file"]

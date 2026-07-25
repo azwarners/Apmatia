@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Protocol
-from typing import Any
+from typing import Any, Protocol
 
 
 class Store(Protocol):

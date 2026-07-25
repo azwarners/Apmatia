@@ -15,5 +15,5 @@ tags = ["logging", "debugging", "observability", "diagnostics", "runtime"]
 python = ">=3.10"
 python_packages = []
 system_packages = []
-modules = []
+modules = ["persistence"]
 tools = []

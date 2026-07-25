@@ -20,10 +20,7 @@ def temp_db_path():
 
 @pytest.fixture
 def memory_repo(temp_db_path):
-    try:
-        from persistence import SQLiteStore
-    except ModuleNotFoundError:
-        from apmatia.lib.persistence.persistence import SQLiteStore
+    from apmatia.modules.persistence import SQLiteStore
     store = SQLiteStore(temp_db_path)
     return SQLiteMemoryRepository(store, MemoryManagementTables())
 

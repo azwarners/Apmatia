@@ -1,0 +1,19 @@
+[module]
+module_id = "persistence"
+name = "Persistence"
+version = "0.1.0"
+description = "Provide shared SQLite, configuration, and structured log persistence infrastructure."
+author = "Nick"
+status = "stable"
+category = "infrastructure"
+default_enabled = true
+tags = ["persistence", "sqlite", "configuration", "logging", "storage"]
+
+[metadata]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = []
+tools = []

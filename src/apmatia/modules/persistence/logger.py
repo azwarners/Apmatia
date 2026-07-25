@@ -18,6 +18,7 @@ _LOGGER_NAME = "apmatia"
 _FILE_HANDLER_MARKER = "_apmatia_file_handler"
 _STREAM_HANDLER_MARKER = "_apmatia_stream_handler"
 _CONFIGURED_MARKER = "_apmatia_logging_configured"
+_CONFIGURED_LOG_FILE_MARKER = "_apmatia_logging_file"
 _AGENT_LOOP_HANDLER_MARKER = "_apmatia_agent_loop_handler"
 _AGENT_LOOP_LOGGER_NAME = "apmatia.agent_loop"
 _DEFAULT_LOG_BASENAME = "apmatia.jsonl"
@@ -54,13 +55,13 @@ def get_agent_loop_log_path(task_id: str | None = None) -> Path:
 
 def configure_logging() -> logging.Logger:
     root_logger = logging.getLogger()
-    if getattr(root_logger, _CONFIGURED_MARKER, False):
-        return logging.getLogger(_LOGGER_NAME)
-
     log_dir = get_log_dir()
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = get_log_file_path()
     log_file.parent.mkdir(parents=True, exist_ok=True)
+    configured_log_file = getattr(root_logger, _CONFIGURED_LOG_FILE_MARKER, None)
+    if getattr(root_logger, _CONFIGURED_MARKER, False) and configured_log_file == log_file:
+        return logging.getLogger(_LOGGER_NAME)
 
     root_logger.setLevel(logging.DEBUG)
 
@@ -72,6 +73,7 @@ def configure_logging() -> logging.Logger:
     root_logger.addHandler(stream_handler)
     _set_logger_levels(_NOISY_LOGGER_LEVELS)
     setattr(root_logger, _CONFIGURED_MARKER, True)
+    setattr(root_logger, _CONFIGURED_LOG_FILE_MARKER, log_file)
     logging.captureWarnings(True)
 
     return logging.getLogger(_LOGGER_NAME)
@@ -197,6 +199,7 @@ def _remove_apmatia_handlers(root_logger: logging.Logger) -> None:
     for handler in list(root_logger.handlers):
         if getattr(handler, _FILE_HANDLER_MARKER, False) or getattr(handler, _STREAM_HANDLER_MARKER, False):
             root_logger.removeHandler(handler)
+            handler.close()
 
 
 def _set_logger_levels(levels: dict[str, int]) -> None:

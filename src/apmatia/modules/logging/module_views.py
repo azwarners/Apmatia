@@ -5,7 +5,7 @@ from typing import Any
 
 from apmatia.core.module_view_runtime import ModuleViewContext
 from apmatia.core.registry import CommandContribution, ViewContribution
-from apmatia.lib.persistence.logger import read_structured_log_entries
+from apmatia.modules.persistence.logger import read_structured_log_entries
 
 
 class ApmatiaLoggingModuleViewProvider:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from apmatia.lib.persistence.logger import get_logger
+from apmatia.modules.persistence.logger import get_logger
 
 
 _ACTIVE_PAGE_KEY = "_apm_streamlit_active_page"

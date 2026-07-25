@@ -4,10 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-try:
-    from persistence import SQLiteStore
-except ModuleNotFoundError:
-    from apmatia.lib.persistence.persistence import SQLiteStore
+from apmatia.modules.persistence import SQLiteStore
 
 from .models import Agent
 from .repositories import AgentRepository

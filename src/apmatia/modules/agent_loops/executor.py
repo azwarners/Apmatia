@@ -8,7 +8,7 @@ from typing import Any
 from time import perf_counter
 
 from apmatia.lib.apmatia_core.models import utc_now
-from apmatia.lib.persistence import logger as persistence_logger
+from apmatia.modules.persistence import logger as persistence_logger
 
 from .models import (
     AgentLoopExecutionRequest,

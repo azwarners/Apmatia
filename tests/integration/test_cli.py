@@ -173,6 +173,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "memory_manager",
         "module_manager",
         "os_admin",
+        "persistence",
         "preferences",
         "runtime_telemetry",
         "users",
@@ -237,7 +238,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "python": ">=3.10",
         "python_packages": [],
         "system_packages": [],
-        "modules": ["ysparr"],
+        "modules": ["persistence", "ysparr"],
         "tools": [],
     }
     assert payload[0]["actions"] == []
@@ -261,7 +262,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
             "python": ">=3.10",
             "python_packages": [],
             "system_packages": [],
-            "modules": [],
+            "modules": ["persistence"],
             "tools": [],
         },
     }
@@ -286,7 +287,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
             "python": ">=3.10",
             "python_packages": [],
             "system_packages": [],
-            "modules": [],
+            "modules": ["persistence"],
             "tools": [],
         },
     }
@@ -395,7 +396,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "python": ">=3.10",
         "python_packages": [],
         "system_packages": [],
-        "modules": ["ysparr"],
+        "modules": ["persistence", "ysparr"],
         "tools": [],
     }
     assert payload[4]["actions"] == [
@@ -460,6 +461,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[6]["module"]["category"] == "feature"
     assert payload[6]["module"]["tags"] == ["ideas", "tasks", "projects", "habits", "calendar", "assistant"]
     assert payload[6]["module"]["metadata"] == {}
+    assert payload[6]["module"]["dependencies"]["modules"] == ["persistence"]
     assert payload[6]["actions"] == []
     assert payload[6]["commands"] == []
     assert payload[6]["views"] == []
@@ -476,7 +478,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "python": ">=3.10",
         "python_packages": [],
         "system_packages": [],
-        "modules": [],
+        "modules": ["persistence"],
         "tools": [],
     }
     assert payload[7]["actions"] == []
@@ -491,6 +493,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[8]["module"]["category"] == "core"
     assert payload[8]["module"]["tags"] == ["logging", "debugging", "observability", "diagnostics", "runtime"]
     assert payload[8]["module"]["metadata"] == {}
+    assert payload[8]["module"]["dependencies"]["modules"] == ["persistence"]
     assert payload[8]["actions"] == []
     assert payload[8]["commands"] == []
     assert payload[8]["views"] == ["logging.entries.view"]
@@ -503,6 +506,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[9]["module"]["category"] == "agent"
     assert payload[9]["module"]["tags"] == ["memory", "agents", "persistence", "knowledge"]
     assert payload[9]["module"]["metadata"] == {}
+    assert payload[9]["module"]["dependencies"]["modules"] == ["persistence"]
     assert payload[9]["actions"] == []
     assert payload[9]["commands"] == []
     assert payload[9]["views"] == []
@@ -534,6 +538,29 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[11]["actions"] == []
     assert payload[11]["commands"] == []
     assert payload[11]["views"] == []
+    persistence = payload.pop(12)
+    assert persistence["module"] == {
+        "module_id": "persistence",
+        "name": "Persistence",
+        "version": "0.1.0",
+        "description": "Provide shared SQLite, configuration, and structured log persistence infrastructure.",
+        "author": "Nick",
+        "status": "stable",
+        "category": "infrastructure",
+        "default_enabled": True,
+        "tags": ["persistence", "sqlite", "configuration", "logging", "storage"],
+        "metadata": {},
+        "dependencies": {
+            "python": ">=3.10",
+            "python_packages": [],
+            "system_packages": [],
+            "modules": [],
+            "tools": [],
+        },
+    }
+    assert persistence["actions"] == []
+    assert persistence["commands"] == []
+    assert persistence["views"] == []
     preferences = payload.pop(12)
     assert preferences["module"]["module_id"] == "preferences"
     assert preferences["module"]["name"] == "Preferences"
@@ -581,6 +608,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "access-control",
     ]
     assert payload[12]["module"]["metadata"] == {}
+    assert payload[12]["module"]["dependencies"]["modules"] == ["persistence"]
     assert payload[12]["actions"] == ["users.users"]
     assert payload[12]["commands"] == [
         "users.users.add_member",

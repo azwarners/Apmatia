@@ -6,10 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-try:
-    from persistence import SQLiteStore
-except ModuleNotFoundError:
-    from apmatia.lib.persistence.persistence import SQLiteStore
+from apmatia.modules.persistence import SQLiteStore
 
 from .models import Discussion, DiscussionParticipant, DiscussionTurn, Topic, TopicSummary
 from .repositories import (

@@ -28,10 +28,7 @@ def tables():
 @pytest.fixture
 def agent_repo(temp_db_path, tables):
     """Create SQLiteAgentRepository instance."""
-    try:
-        from persistence import SQLiteStore
-    except ModuleNotFoundError:
-        from apmatia.lib.persistence.persistence import SQLiteStore
+    from apmatia.modules.persistence import SQLiteStore
     store = SQLiteStore(temp_db_path)
     return SQLiteAgentRepository(store, tables)
 

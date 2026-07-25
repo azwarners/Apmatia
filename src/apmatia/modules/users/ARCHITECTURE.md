@@ -6,7 +6,7 @@ This stable infrastructure module owns Apmatia's user/group domain and persisten
 
 - Keep user/group business logic modular and reusable.
 - Support user-private and group-shared data ownership (`uid`/`gid` style).
-- Use the shared persistence library (`SQLiteStore`) behind repository boundaries.
+- Use the stable persistence module (`SQLiteStore`) behind repository boundaries.
 - Keep Apmatia runtime wiring outside this package.
 
 ## Package Layout
@@ -15,7 +15,7 @@ This stable infrastructure module owns Apmatia's user/group domain and persisten
 - `repositories.py`: persistence-facing contracts.
 - `services.py`: use-case-facing contracts.
 - `manager.py`: orchestration entrypoints (`UserManager`, `GroupManager`, `AccessController`).
-- `sqlite_repositories.py`: SQLite adapter wired to `persistence.SQLiteStore`.
+- `sqlite_repositories.py`: SQLite adapter wired to `apmatia.modules.persistence.SQLiteStore`.
 
 ## Planned Flow
 

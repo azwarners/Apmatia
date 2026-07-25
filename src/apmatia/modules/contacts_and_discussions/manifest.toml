@@ -15,5 +15,5 @@ tags = ["topics", "discussions", "summaries", "chat-targets", "turns", "migratio
 python = ">=3.10"
 python_packages = []
 system_packages = []
-modules = ["ysparr"]
+modules = ["persistence", "ysparr"]
 tools = []

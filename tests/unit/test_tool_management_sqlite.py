@@ -11,10 +11,7 @@ from apmatia.modules.agent_tools.sqlite_repositories import (
 
 
 def _make_store(path: str):
-    try:
-        from persistence import SQLiteStore
-    except ModuleNotFoundError:
-        from apmatia.lib.persistence.persistence import SQLiteStore
+    from apmatia.modules.persistence import SQLiteStore
     return SQLiteStore(path)
 
 

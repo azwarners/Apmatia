@@ -30,6 +30,7 @@ def test_logging_module_view_provider_reads_structured_log_entries(monkeypatch, 
     monkeypatch.setenv("APMATIA_LOG_DIR", str(log_dir))
     monkeypatch.setenv("APMATIA_LOG_FILE", str(log_file))
 
+    log_dir.mkdir(parents=True, exist_ok=True)
     log_file.write_text(
         "\n".join(
             [
@@ -115,7 +116,7 @@ def test_logging_module_view_provider_reads_structured_log_entries(monkeypatch, 
 def test_logging_configuration_suppresses_watchdog_debug_noise(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("APMATIA_LOG_FILE", str(tmp_path / "apmatia.jsonl"))
 
-    logger_module = importlib.import_module("apmatia.lib.persistence.logger")
+    logger_module = importlib.import_module("apmatia.modules.persistence.logger")
     logger_module = importlib.reload(logger_module)
     logger_module.clear_log_file()
 

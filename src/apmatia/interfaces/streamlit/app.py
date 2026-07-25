@@ -24,7 +24,7 @@ from apmatia.interfaces.streamlit.module_views.renderers import render_navigatio
 from apmatia.interfaces.streamlit.page_runtime import sync_page_generation
 from apmatia.interfaces.streamlit.module_views.auth import show_auth_form
 from apmatia.interfaces.streamlit.pages import module_views
-from apmatia.lib.persistence.logger import get_logger
+from apmatia.modules.persistence.logger import get_logger
 
 FAVICON_PATH = Path(__file__).resolve().parents[4] / "assets" / "favicon.png"
 PAGE_OPTIONS = [

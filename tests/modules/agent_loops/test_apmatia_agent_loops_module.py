@@ -192,7 +192,7 @@ def test_agent_loop_executor_writes_detailed_logs_with_speed_metrics(tmp_path: P
     monkeypatch.setenv("APMATIA_LOG_DIR", str(log_dir))
     monkeypatch.setenv("APMATIA_LOG_FILE", str(log_dir / "apmatia.jsonl"))
 
-    logger_module = importlib.import_module("apmatia.lib.persistence.logger")
+    logger_module = importlib.import_module("apmatia.modules.persistence.logger")
     logger_module = importlib.reload(logger_module)
     logger_module.clear_agent_loop_log_dir()
 

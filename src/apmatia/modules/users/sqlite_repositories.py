@@ -4,10 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-try:
-    from persistence import SQLiteStore
-except ModuleNotFoundError:
-    from apmatia.lib.persistence.persistence import SQLiteStore
+from apmatia.modules.persistence import SQLiteStore
 
 from .models import (
     Group,

@@ -80,7 +80,7 @@ Top-level libraries in `src/apmatia/lib/` currently include:
 - `apmatia_core` for shared object and permission primitives
 - `discussions` for prompt shaping and discussion-oriented model execution
 - `model_management` for saved LLM configuration records
-- `persistence` for lightweight SQLite-oriented storage helpers
+- the stable `persistence` infrastructure module for SQLite, config-file, and structured-log storage helpers
 - the stable `ysparr` infrastructure module for backend-agnostic generative execution
 
 The stable `users` infrastructure module under `src/apmatia/modules/users/` owns users, groups,

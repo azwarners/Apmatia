@@ -5,10 +5,7 @@ from pathlib import Path
 
 import pytest
 
-try:
-    from persistence import SQLiteStore
-except ModuleNotFoundError:
-    from apmatia.lib.persistence.persistence import SQLiteStore
+from apmatia.modules.persistence import SQLiteStore
 
 from apmatia.modules.agents.models import Agent
 from apmatia.modules.agents.manager import AgentManager

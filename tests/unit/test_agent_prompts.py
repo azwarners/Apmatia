@@ -8,10 +8,7 @@ from apmatia.modules.agents.prompt_repositories import (
 
 
 def _store(path):
-    try:
-        from persistence import SQLiteStore
-    except ModuleNotFoundError:
-        from apmatia.lib.persistence.persistence import SQLiteStore
+    from apmatia.modules.persistence import SQLiteStore
     return SQLiteStore(path)
 
 

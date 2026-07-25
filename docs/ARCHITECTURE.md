@@ -56,10 +56,6 @@ Top-level libraries in `src/apmatia/lib/` currently include:
 
   Provides CRUD behavior for saved LLM configurations. It normalizes model records and persists reusable backend definitions into shared application configuration so discussions and agents can select models consistently.
 
-- `persistence`
-
-  Provides lightweight persistence primitives, especially SQLite-backed storage and logging helpers. This package exists so higher layers can rely on a focused storage library instead of mixing data access details into orchestration code.
-
 - the stable `ysparr` infrastructure module (and the new Seat-based concurrency infrastructure)
 
   Provides the underlying generative execution engine used by Apmatia to talk to text-generation backends. It supplies modality-specific execution, backend adapters such as KoboldCpp and OpenAI-compatible endpoints, and output persistence for model runs.
@@ -69,6 +65,8 @@ Top-level libraries in `src/apmatia/lib/` currently include:
 **Location:** `src/apmatia/modules/` for bundled modules, `workspace/modules/` for draft modules
 
 Modules package application features. They register application metadata, actions, tools, commands, and views into the registry. Modules are the preferred place for new feature work when the feature can be isolated cleanly.
+
+The stable `persistence` infrastructure module owns shared SQLite document storage, JSON/YAML configuration persistence, persistence descriptors, and structured log-file storage. Other bundled modules declare it as a module dependency and import its APIs from `apmatia.modules.persistence`.
 
 The stable `users` infrastructure module owns authentication plus the user, group, and membership
 domain. Its registry-backed Users view is the Streamlit management surface, while HTTP and internal

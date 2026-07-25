@@ -10,7 +10,7 @@ from apmatia.core.security.transport import (
     create_server_ssl_context,
     validate_transport_security,
 )
-from apmatia.lib.persistence.logger import get_logger
+from apmatia.modules.persistence.logger import get_logger
 
 logger = get_logger(__name__)
 

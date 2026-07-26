@@ -8,7 +8,6 @@ HOST_VIEW_ID = "ai_host_management.hosts.view"
 COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     CommandContribution(
         module_id="ai_host_management",
-        action_id="ai_host_management.hosts",
         command_id="ai_host_management.hosts.list",
         path=("ai_host_management", "hosts", "list"),
         name="AI Hosts List",
@@ -17,7 +16,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_host_management",
-        action_id="ai_host_management.hosts",
         command_id="ai_host_management.hosts.create",
         path=("ai_host_management", "hosts", "create"),
         name="AI Hosts Create",
@@ -26,7 +24,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_host_management",
-        action_id="ai_host_management.hosts",
         command_id="ai_host_management.hosts.edit",
         path=("ai_host_management", "hosts", "edit"),
         name="AI Hosts Edit",
@@ -35,7 +32,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_host_management",
-        action_id="ai_host_management.hosts",
         command_id="ai_host_management.hosts.disable",
         path=("ai_host_management", "hosts", "disable"),
         name="AI Hosts Disable",
@@ -44,7 +40,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_host_management",
-        action_id="ai_host_management.hosts",
         command_id="ai_host_management.hosts.delete",
         path=("ai_host_management", "hosts", "delete"),
         name="AI Hosts Delete",
@@ -53,7 +48,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_host_management",
-        action_id="ai_host_management.resources",
         command_id="ai_host_management.resources.inspect_local",
         path=("ai_host_management", "resources", "inspect_local"),
         name="Inspect AI Host Resources",
@@ -62,7 +56,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_host_management",
-        action_id="ai_host_management.resources",
         command_id="ai_host_management.resources.validate",
         path=("ai_host_management", "resources", "validate"),
         name="Validate Host Configuration",
@@ -71,7 +64,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_host_management",
-        action_id="ai_host_management.hosts",
         command_id="ai_host_management.hosts.prepare_ssh_key",
         path=("ai_host_management", "hosts", "prepare_ssh_key"),
         name="Prepare SSH Key",
@@ -80,7 +72,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_host_management",
-        action_id="ai_host_management.hosts",
         command_id="ai_host_management.hosts.prepare_ssh_copy_command",
         path=("ai_host_management", "hosts", "prepare_ssh_copy_command"),
         name="Prepare SSH Copy Command",

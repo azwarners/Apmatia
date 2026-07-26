@@ -72,7 +72,7 @@ def test_module_manager_view_toggles_module_visibility(mock_streamlit):
         renderer.render(_catalog(_module()))
 
     execute.assert_called_once_with(
-        "module_manager.module_manager.set_module_visibility",
+        "module_manager.set_module_visibility",
         module_id="ipe",
         hidden=True,
     )
@@ -88,7 +88,7 @@ def test_module_manager_view_reorders_modules(mock_streamlit):
         renderer.render(_catalog(_module(), second))
 
     execute.assert_called_once_with(
-        "module_manager.module_manager.set_module_order",
+        "module_manager.set_module_order",
         module_id="ipe",
         new_index=1,
     )
@@ -110,7 +110,7 @@ def test_module_manager_view_toggles_view_visibility(mock_streamlit):
         renderer.render(_catalog(_module(views=[view])))
 
     execute.assert_called_once_with(
-        "module_manager.module_manager.set_view_visibility",
+        "module_manager.set_view_visibility",
         view_id="ipe.task.view",
         hidden=True,
     )
@@ -126,7 +126,7 @@ def test_module_manager_view_enables_all_modules(mock_streamlit):
         renderer.render(_catalog())
 
     execute.assert_called_once_with(
-        "module_manager.module_manager.set_activation",
+        "module_manager.set_activation",
         enabled=True,
     )
     mock_streamlit.rerun.assert_called_once()

@@ -12,7 +12,7 @@ from apmatia.api.internal.module_management import (
     update_module_order,
     update_development_modules,
 )
-from apmatia.api.internal.module_views import get_module_view_items, run_module_command
+from apmatia.api.internal.module_views import get_module_view_items, list_module_commands, run_module_command
 
 from .shared import require_session
 
@@ -33,6 +33,12 @@ class ModuleCommandPayload(BaseModel):
 
 class DevelopmentModulesPayload(BaseModel):
     enabled: bool
+
+
+@router.get("/module-commands", response_model=list[dict])
+def get_module_commands() -> list[dict]:
+    """Return the active command catalog used to assemble interface clients."""
+    return list_module_commands()
 
 
 @router.get("/modules/activation", response_model=dict)

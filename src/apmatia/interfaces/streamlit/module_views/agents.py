@@ -18,7 +18,7 @@ from apmatia.interfaces.streamlit.api_client import (
 )
 
 
-COMMAND_PREFIX = "agents.agents"
+COMMAND_PREFIX = "agents"
 
 
 def _empty_form_values() -> dict[str, object]:

@@ -150,11 +150,20 @@ In the IPE module, an action might represent:
 - habit management
 - calendar management
 
-An action is not the thing that edits the database. It is the umbrella that groups the related commands and views.
+An action is not the thing that edits the database. It is optional organizational metadata for related views and tools; commands are registered directly under their module.
 
 ### Commands
 
 A command is the concrete thing an interface or agent can invoke.
+
+Commands do not belong to actions. Each command has a module-scoped identifier such as
+`agents.list`. Modules with several independent resource families may add a meaningful command
+namespace to avoid collisions, such as `ipe.idea.create`, without linking the command to an action.
+
+The CLI is assembled from active command descriptors. `path` determines the nested shell command,
+while `name`, `description`, and `metadata.input_fields` generate command help and typed flags.
+Collection commands can omit `input_fields` when their matching view schema already describes the
+create or edit fields. Commands without either schema remain executable through `--payload JSON`.
 
 Use a command when you want to say, “run this specific operation.”
 

@@ -158,7 +158,7 @@ def _optional_string(value: Any) -> str | None:
 def _view_from_command(command: CommandContribution) -> ViewContribution:
     return ViewContribution(
         module_id=command.module_id,
-        action_id=command.action_id,
+        action_id=str(command.metadata.get("collection_view_id") or command.module_id).removesuffix(".view"),
         view_id=str(command.metadata.get("collection_view_id") or ""),
         name=command.name,
         description=command.description,

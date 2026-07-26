@@ -17,7 +17,6 @@ def _command_descriptors() -> tuple[CommandContribution, ...]:
             descriptors.append(
                 CommandContribution(
                     module_id="ai_model_manager",
-                    action_id=spec.action_id,
                     command_id=command_id,
                     path=tuple(command_id.split(".")),
                     name=f"{spec.singular_label} {verb.title()}",
@@ -35,7 +34,6 @@ def _command_descriptors() -> tuple[CommandContribution, ...]:
         (
             CommandContribution(
                 module_id="ai_model_manager",
-                action_id=model_spec.action_id,
                 command_id=model_spec.scan_command_id,
                 path=tuple(model_spec.scan_command_id.split(".")),
                 name="Scan GGUF Directory",
@@ -44,7 +42,6 @@ def _command_descriptors() -> tuple[CommandContribution, ...]:
             ),
             CommandContribution(
                 module_id="ai_model_manager",
-                action_id=model_spec.action_id,
                 command_id=model_spec.show_command_id,
                 path=tuple(model_spec.show_command_id.split(".")),
                 name="Show Model Details",
@@ -59,7 +56,6 @@ def _command_descriptors() -> tuple[CommandContribution, ...]:
     descriptors.append(
         CommandContribution(
             module_id="ai_model_manager",
-            action_id=llm_spec.action_id,
             command_id="ai_model_manager.llm_configs.test",
             path=("ai_model_manager", "llm_configs", "test"),
             name="Test LLM Config",

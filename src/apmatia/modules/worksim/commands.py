@@ -10,7 +10,6 @@ from .collections import ORG_CHART_VIEW_SPECS
 COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = tuple(
     CommandContribution(
         module_id="worksim",
-        action_id=spec.action_id,
         command_id=command_id,
         path=tuple(command_id.split(".")),
         name=f"{spec.singular_label} {verb.title()}",

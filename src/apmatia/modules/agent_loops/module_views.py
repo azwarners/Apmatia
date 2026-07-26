@@ -43,7 +43,7 @@ class ApmatiaAgentLoopsModuleViewProvider:
         payload: Mapping[str, Any],
         context: ModuleViewContext,
     ) -> dict[str, Any] | None:
-        if command.command_id == "agent_loops.tasks.stop":
+        if command.command_id == "agent_loops.stop":
             task_id = str(payload.get("task_id") or "").strip()
             if not task_id:
                 raise ValueError("task_id is required.")

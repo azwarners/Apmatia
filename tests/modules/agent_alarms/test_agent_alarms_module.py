@@ -122,11 +122,11 @@ def test_agent_alarms_view_descriptor_exposes_create_and_row_actions():
         "enabled",
     ]
     assert [action.intent for action in spec.view_actions] == ["create"]
-    assert spec.view_actions[0].payload["command_id"] == "agent_alarms.alarms.create"
+    assert spec.view_actions[0].payload["command_id"] == "agent_alarms.create"
     assert [action.intent for action in spec.item_actions] == ["edit", "delete"]
     assert [action.payload["command_id"] for action in spec.item_actions] == [
-        "agent_alarms.alarms.edit",
-        "agent_alarms.alarms.delete",
+        "agent_alarms.edit",
+        "agent_alarms.delete",
     ]
 
 

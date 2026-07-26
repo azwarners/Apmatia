@@ -8,7 +8,7 @@ import streamlit as st
 from apmatia.interfaces.streamlit.api_client import ApiError, execute_module_command
 
 
-COMMAND_PREFIX = "module_manager.module_manager"
+COMMAND_PREFIX = "module_manager"
 
 
 def render(items: Iterable[dict[str, object]]) -> None:

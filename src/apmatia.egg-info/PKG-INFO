@@ -1,3 +1,16 @@
+Metadata-Version: 2.4
+Name: apmatia
+Version: 0.0.1.7
+Summary: A modular, registry-driven AI application platform.
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: fastapi
+Requires-Dist: python-dotenv
+Requires-Dist: streamlit==1.58.0
+Requires-Dist: uvicorn
+Dynamic: license-file
+
 # Apmatia
 
 Apmatia is an API-first, self-hosted application framework for modular AI workflows. It packages capabilities as focused modules, keeps shared primitives and orchestration in a thin core layer, and serves both programmatic and interactive use through the same API boundary.

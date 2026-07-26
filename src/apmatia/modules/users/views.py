@@ -15,7 +15,7 @@ VIEW_DESCRIPTORS: tuple[ViewContribution, ...] = (
             "singular_label": "User",
             "plural_label": "Users & Groups",
             "empty_state": "No users or groups are available yet.",
-            "commands": {verb: f"users.users.{verb}" for verb in (
+            "commands": {verb: f"users.{verb}" for verb in (
                 "list",
                 "create_user",
                 "edit_user",

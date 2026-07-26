@@ -32,7 +32,7 @@ VIEW_DESCRIPTORS: tuple[ViewContribution, ...] = (
                         "intent": "save",
                         "scope": "view",
                         "style": "primary",
-                        "payload": {"command_id": "agent_config.agent_config.save"},
+                        "payload": {"command_id": "agent_config.save"},
                     }
                 ],
             },

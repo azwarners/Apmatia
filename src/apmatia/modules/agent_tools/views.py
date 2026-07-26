@@ -68,9 +68,9 @@ VIEW_DESCRIPTORS: tuple[ViewContribution, ...] = (
             "plural_label": "Agent Tools",
             "empty_state": "No agent tools are available yet.",
             "commands": {
-                "list": "agent_tools.agent_tools.list",
-                "create": "agent_tools.agent_tools.create",
-                "edit": "agent_tools.agent_tools.edit",
+                "list": "agent_tools.list",
+                "create": "agent_tools.create",
+                "edit": "agent_tools.edit",
             },
             "schema": AGENT_TOOLS_SCHEMA,
             "ui": {"render_mode": "collection", "layout": "table-with-actions"},

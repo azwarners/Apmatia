@@ -6,8 +6,7 @@ from apmatia.core.registry import CommandContribution
 COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = tuple(
     CommandContribution(
         module_id="agent_tools",
-        action_id="agent_tools.agent_tools",
-        command_id=f"agent_tools.agent_tools.{verb}",
+        command_id=f"agent_tools.{verb}",
         path=("agent_tools", verb),
         name=f"Agent Tools {verb.title()}",
         description=f"{verb.title()} an agent tool definition.",

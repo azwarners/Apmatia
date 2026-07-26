@@ -13,7 +13,6 @@ def test_ipe_module_view_provider_creates_and_lists_ideas(tmp_path):
     context = ModuleViewContext(user_id=7)
     command = CommandContribution(
         module_id="ipe",
-        action_id="ipe.idea",
         command_id="ipe.idea.create",
         name="Create idea",
         metadata={

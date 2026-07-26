@@ -76,7 +76,7 @@ class AgentAlarmsModuleViewProvider:
 def _view_from_command(command: CommandContribution) -> ViewContribution:
     return ViewContribution(
         module_id=command.module_id,
-        action_id=command.action_id,
+        action_id=str(command.metadata.get("collection_view_id") or command.module_id).removesuffix(".view"),
         view_id="agent_alarms.alarms.view",
         name="Agent Alarms",
         description="Schedule autonomous alarm-style agent runs.",

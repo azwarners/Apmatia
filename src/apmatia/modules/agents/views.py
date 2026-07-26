@@ -15,7 +15,7 @@ VIEW_DESCRIPTORS: tuple[ViewContribution, ...] = (
             "singular_label": "Agent",
             "plural_label": "Agents",
             "empty_state": "No agents have been created yet.",
-            "commands": {verb: f"agents.agents.{verb}" for verb in ("list", "create", "edit", "delete")},
+            "commands": {verb: f"agents.{verb}" for verb in ("list", "create", "edit", "delete")},
             "schema": {
                 "version": 1,
                 "resources": {"agents": {"key": "id"}},

@@ -41,8 +41,7 @@ class FakeToolManager:
 def _command(verb: str) -> CommandContribution:
     return CommandContribution(
         module_id="agent_tools",
-        action_id="agent_tools.agent_tools",
-        command_id=f"agent_tools.agent_tools.{verb}",
+        command_id=f"agent_tools.{verb}",
         name=f"Agent Tools {verb.title()}",
         metadata={
             "verb": verb,

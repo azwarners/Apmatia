@@ -34,6 +34,7 @@ COPY --from=deps /usr/local /usr/local
 COPY .pytest.ini ./
 COPY Dockerfile ./
 COPY docker-compose.yml ./
+COPY pyproject.toml README.md ./
 COPY .streamlit/ .streamlit/
 COPY assets/ assets/
 COPY docs/VERSION ./VERSION

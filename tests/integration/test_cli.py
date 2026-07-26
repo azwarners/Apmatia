@@ -15,8 +15,8 @@ def _apmatia_workspace_root(monkeypatch: pytest.MonkeyPatch, tmp_path):
     monkeypatch.setenv("APMATIA_WORKSPACE_ROOT", str(tmp_path / "workspace" / "modules"))
 
 
-@patch("apmatia.interfaces.cli.main.prompt_llm")
-@patch("sys.argv", ["main.py", "Nick"])
+@patch("apmatia.interfaces.cli.main.api_client.prompt")
+@patch("sys.argv", ["main.py", "prompt", "Nick"])
 def test_cli_with_prompt(mock_prompt_llm):
     mock_prompt_llm.return_value = "mocked cli response"
     assert main() == 0
@@ -293,10 +293,10 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     }
     assert agents["actions"] == ["agents.agents"]
     assert agents["commands"] == [
-        "agents.agents.create",
-        "agents.agents.delete",
-        "agents.agents.edit",
-        "agents.agents.list",
+        "agents.create",
+        "agents.delete",
+        "agents.edit",
+        "agents.list",
     ]
     assert agents["views"] == ["agents.agents.view"]
     assert agents["source"] == "bundled"
@@ -519,11 +519,11 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[10]["module"]["tags"] == ["modules", "configuration", "navigation"]
     assert payload[10]["actions"] == ["module_manager.module_manager"]
     assert payload[10]["commands"] == [
-        "module_manager.module_manager.set_activation",
-        "module_manager.module_manager.set_module_order",
-        "module_manager.module_manager.set_module_visibility",
-        "module_manager.module_manager.set_view_order",
-        "module_manager.module_manager.set_view_visibility",
+        "module_manager.set_activation",
+        "module_manager.set_module_order",
+        "module_manager.set_module_visibility",
+        "module_manager.set_view_order",
+        "module_manager.set_view_visibility",
     ]
     assert payload[10]["views"] == ["module_manager.module_manager.view"]
     assert payload[11]["module"]["module_id"] == "os_admin"
@@ -568,7 +568,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert preferences["module"]["category"] == "core"
     assert preferences["module"]["default_enabled"] is True
     assert preferences["actions"] == ["preferences.preferences"]
-    assert preferences["commands"] == ["preferences.preferences.save"]
+    assert preferences["commands"] == ["preferences.save"]
     assert preferences["views"] == ["preferences.preferences.view"]
     runtime_telemetry = payload.pop(12)
     assert runtime_telemetry["module"] == {
@@ -611,15 +611,15 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[12]["module"]["dependencies"]["modules"] == ["persistence"]
     assert payload[12]["actions"] == ["users.users"]
     assert payload[12]["commands"] == [
-        "users.users.add_member",
-        "users.users.create_group",
-        "users.users.create_user",
-        "users.users.delete_group",
-        "users.users.delete_user",
-        "users.users.edit_group",
-        "users.users.edit_user",
-        "users.users.list",
-        "users.users.set_membership_enabled",
+        "users.add_member",
+        "users.create_group",
+        "users.create_user",
+        "users.delete_group",
+        "users.delete_user",
+        "users.edit_group",
+        "users.edit_user",
+        "users.list",
+        "users.set_membership_enabled",
     ]
     assert payload[12]["views"] == ["users.users.view"]
     assert payload[13]["module"]["module_id"] == "worksim"

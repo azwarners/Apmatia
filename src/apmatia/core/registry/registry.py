@@ -41,7 +41,6 @@ class Registry:
     def register_command(self, command: CommandContribution | None = None, **kwargs: Any) -> CommandContribution:
         record = command or CommandContribution(**kwargs)
         self._validate_identifier(record.command_id, "command_id")
-        self._validate_identifier(record.action_id, "action_id")
         self._validate_identifier(record.module_id, "module_id")
         self._commands[record.command_id] = record
         return record

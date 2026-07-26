@@ -34,7 +34,6 @@ def test_registry_registers_and_lists_command():
     registry = Registry()
     command = CommandContribution(
         module_id="example",
-        action_id="example.action",
         command_id="example.command",
         name="Example Command",
     )
@@ -79,10 +78,10 @@ def test_worksim_module_registers_into_registry():
     ]
     assert [action.action_id for action in registry.list_actions()] == ["worksim.org_chart_node"]
     assert [command.command_id for command in registry.list_commands()] == [
-        "worksim.org_chart_node.create",
-        "worksim.org_chart_node.delete",
-        "worksim.org_chart_node.edit",
-        "worksim.org_chart_node.list",
+        "worksim.create",
+        "worksim.delete",
+        "worksim.edit",
+        "worksim.list",
     ]
     assert [view.view_id for view in registry.list_views()] == ["worksim.org_chart_node.view"]
 

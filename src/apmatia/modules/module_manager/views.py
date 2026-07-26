@@ -16,7 +16,7 @@ VIEW_DESCRIPTORS: tuple[ViewContribution, ...] = (
             "plural_label": "Modules",
             "empty_state": "No modules are registered yet.",
             "commands": {
-                verb: f"module_manager.module_manager.{verb}"
+                verb: f"module_manager.{verb}"
                 for verb in (
                     "set_activation",
                     "set_module_visibility",

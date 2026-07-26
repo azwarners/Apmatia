@@ -28,19 +28,19 @@ class WorksimOrgChartViewSpec:
 
     @property
     def list_command_id(self) -> str:
-        return f"{self.action_id}.list"
+        return "worksim.list"
 
     @property
     def create_command_id(self) -> str:
-        return f"{self.action_id}.create"
+        return "worksim.create"
 
     @property
     def edit_command_id(self) -> str:
-        return f"{self.action_id}.edit"
+        return "worksim.edit"
 
     @property
     def delete_command_id(self) -> str:
-        return f"{self.action_id}.delete"
+        return "worksim.delete"
 
     @property
     def metadata(self) -> dict[str, object]:

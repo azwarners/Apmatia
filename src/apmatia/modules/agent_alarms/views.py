@@ -230,7 +230,7 @@ VIEW_DESCRIPTORS: tuple[ViewContribution, ...] = (
                         "intent": "create",
                         "scope": "view",
                         "style": "primary",
-                        "payload": {"command_id": "agent_alarms.alarms.create"},
+                        "payload": {"command_id": "agent_alarms.create"},
                     }
                 ],
                 "item_actions": [
@@ -240,7 +240,7 @@ VIEW_DESCRIPTORS: tuple[ViewContribution, ...] = (
                         "intent": "edit",
                         "scope": "item",
                         "style": "secondary",
-                        "payload": {"command_id": "agent_alarms.alarms.edit"},
+                        "payload": {"command_id": "agent_alarms.edit"},
                     },
                     {
                         "key": "delete",
@@ -249,14 +249,14 @@ VIEW_DESCRIPTORS: tuple[ViewContribution, ...] = (
                         "scope": "item",
                         "style": "secondary",
                         "confirmation": True,
-                        "payload": {"command_id": "agent_alarms.alarms.delete"},
+                        "payload": {"command_id": "agent_alarms.delete"},
                     },
                 ],
                 "commands": {
-                    "create": "agent_alarms.alarms.create",
-                    "delete": "agent_alarms.alarms.delete",
-                    "edit": "agent_alarms.alarms.edit",
-                    "list": "agent_alarms.alarms.list",
+                    "create": "agent_alarms.create",
+                    "delete": "agent_alarms.delete",
+                    "edit": "agent_alarms.edit",
+                    "list": "agent_alarms.list",
                 },
             },
         },

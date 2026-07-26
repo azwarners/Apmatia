@@ -17,7 +17,6 @@ def _command_descriptors() -> tuple[CommandContribution, ...]:
             descriptors.append(
                 CommandContribution(
                     module_id="contacts_and_discussions",
-                    action_id=spec.action_id,
                     command_id=command_id,
                     path=tuple(command_id.split(".")),
                     name=f"{spec.singular_label} {verb.title()}",
@@ -35,7 +34,6 @@ def _command_descriptors() -> tuple[CommandContribution, ...]:
         (
             CommandContribution(
                 module_id="contacts_and_discussions",
-                action_id=topic_spec.action_id,
                 command_id="contacts_and_discussions.topics.assess_transition",
                 path=("contacts_and_discussions", "topics", "assess_transition"),
                 name="Assess Topic Transition",
@@ -44,7 +42,6 @@ def _command_descriptors() -> tuple[CommandContribution, ...]:
             ),
             CommandContribution(
                 module_id="contacts_and_discussions",
-                action_id=topic_spec.action_id,
                 command_id="contacts_and_discussions.topics.summarize",
                 path=("contacts_and_discussions", "topics", "summarize"),
                 name="Summarize Topic",

@@ -37,7 +37,6 @@ def _registry() -> Registry:
     registry.register_command(
         CommandContribution(
             module_id="example",
-            action_id="example.items",
             command_id="example.items.create",
             name="Create item",
             metadata={"object_type": "item", "verb": "create"},

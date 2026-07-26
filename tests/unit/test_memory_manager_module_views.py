@@ -12,8 +12,7 @@ from apmatia.modules.agent_tools.sqlite_repositories import SQLiteToolManagement
 def _command(verb: str) -> CommandContribution:
     return CommandContribution(
         module_id="memory_manager",
-        action_id="memory_manager.memory",
-        command_id=f"memory_manager.memory.{verb}",
+        command_id=f"memory_manager.{verb}",
         name=f"Memory {verb}",
         metadata={"object_type": "memory", "verb": verb, "collection_view_id": "memory_manager.memory.view"},
     )

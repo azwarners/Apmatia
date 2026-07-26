@@ -7,7 +7,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     # --- Host Resources ---
     CommandContribution(
         module_id="ai_model_executor",
-        action_id="ai_model_executor.resources",
         command_id="ai_model_executor.resources.inspect",
         path=("ai_model_executor", "resources", "inspect"),
         name="Inspect Host Resources",
@@ -17,7 +16,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     # --- Executions ---
     CommandContribution(
         module_id="ai_model_executor",
-        action_id="ai_model_executor.executions",
         command_id="ai_model_executor.executions.list",
         path=("ai_model_executor", "executions", "list"),
         name="List Executions",
@@ -26,7 +24,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_model_executor",
-        action_id="ai_model_executor.executions",
         command_id="ai_model_executor.executions.can_run",
         path=("ai_model_executor", "executions", "can_run"),
         name="Can Run Model",
@@ -35,7 +32,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_model_executor",
-        action_id="ai_model_executor.executions",
         command_id="ai_model_executor.executions.start",
         path=("ai_model_executor", "executions", "start"),
         name="Start Model",
@@ -44,7 +40,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_model_executor",
-        action_id="ai_model_executor.executions",
         command_id="ai_model_executor.executions.stop",
         path=("ai_model_executor", "executions", "stop"),
         name="Stop Model",
@@ -53,7 +48,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_model_executor",
-        action_id="ai_model_executor.executions",
         command_id="ai_model_executor.executions.status",
         path=("ai_model_executor", "executions", "status"),
         name="Execution Status",
@@ -62,7 +56,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_model_executor",
-        action_id="ai_model_executor.executions",
         command_id="ai_model_executor.executions.show",
         path=("ai_model_executor", "executions", "show"),
         name="Show Execution",
@@ -72,7 +65,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     # --- Queue ---
     CommandContribution(
         module_id="ai_model_executor",
-        action_id="ai_model_executor.queue",
         command_id="ai_model_executor.queue.list",
         path=("ai_model_executor", "queue", "list"),
         name="List Queue Items",
@@ -81,7 +73,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_model_executor",
-        action_id="ai_model_executor.queue",
         command_id="ai_model_executor.queue.enqueue",
         path=("ai_model_executor", "queue", "enqueue"),
         name="Enqueue Work",
@@ -90,7 +81,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_model_executor",
-        action_id="ai_model_executor.queue",
         command_id="ai_model_executor.queue.cancel",
         path=("ai_model_executor", "queue", "cancel"),
         name="Cancel Queue Item",
@@ -100,7 +90,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     # --- Reservations ---
     CommandContribution(
         module_id="ai_model_executor",
-        action_id="ai_model_executor.reservations",
         command_id="ai_model_executor.reservations.list",
         path=("ai_model_executor", "reservations", "list"),
         name="List Reservations",
@@ -109,7 +98,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_model_executor",
-        action_id="ai_model_executor.reservations",
         command_id="ai_model_executor.reservations.create",
         path=("ai_model_executor", "reservations", "create"),
         name="Create Reservation",
@@ -118,7 +106,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     ),
     CommandContribution(
         module_id="ai_model_executor",
-        action_id="ai_model_executor.reservations",
         command_id="ai_model_executor.reservations.release",
         path=("ai_model_executor", "reservations", "release"),
         name="Release Reservation",
@@ -128,7 +115,6 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = (
     # --- Capacity ---
     CommandContribution(
         module_id="ai_model_executor",
-        action_id="ai_model_executor.capacity",
         command_id="ai_model_executor.capacity.list",
         path=("ai_model_executor", "capacity", "list"),
         name="List Capacity",

@@ -12,7 +12,7 @@ from apmatia.interfaces.streamlit.api_client import (
     logout,
 )
 
-COMMAND_PREFIX = "users.users"
+COMMAND_PREFIX = "users"
 
 
 def _safe_int(value: object) -> int | None:

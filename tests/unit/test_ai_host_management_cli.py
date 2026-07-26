@@ -1,140 +1,83 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import patch
 
 from apmatia.interfaces.cli.main import main
 
 
-def test_cli_ai_host_list_and_show(capsys):
-    client = SimpleNamespace(
-        list_ai_hosts=lambda: [
-            {
-                "id": 1,
-                "name": "Local node",
-                "hostname": "localhost",
-                "role": "inference",
-                "connection_type": "local",
-                "enabled": True,
-            }
-        ],
-        show_ai_host=lambda host_id: {
-            "id": host_id,
-            "name": "Local node",
-            "hostname": "localhost",
-            "role": "inference",
-            "connection_type": "local",
-            "username": "",
-            "port": 22,
-            "credential_ref": "",
-            "enabled": True,
-            "notes": "",
-        },
-    )
-
-    with patch("apmatia.interfaces.cli.ai_host_management._api_client", return_value=client):
-        exit_code = main(["ai-host-management", "list"])
-        show_exit_code = main(["ai-host-management", "show", "1", "--format", "text"])
-
-    captured = capsys.readouterr()
-
-    assert exit_code == 0
-    assert show_exit_code == 0
-    assert "Local node" in captured.out
-    assert "Credential ref" in captured.out
+def _descriptor(command: str, *, fields=()):
+    return {
+        "module_id": "ai_host_management",
+        "module_name": "AI Host Management",
+        "module_description": "Manage AI-capable hosts.",
+        "command_id": f"ai_host_management.{command}",
+        "path": ["ai_host_management", *command.split(".")],
+        "name": command.replace(".", " ").title(),
+        "description": f"Run {command}.",
+        "fields": list(fields),
+    }
 
 
-def test_cli_ai_host_add_and_validate(capsys):
-    client = SimpleNamespace(
-        create_ai_host=lambda **payload: {"id": 7, **payload},
-        validate_ai_host=lambda **payload: {"passed": True, "errors": [], "host": {"id": None, **payload}},
-    )
+CATALOG = [
+    _descriptor("hosts.list"),
+    _descriptor(
+        "hosts.create",
+        fields=(
+            {"key": "name", "required": True},
+            {"key": "hostname", "required": True},
+            {"key": "role", "required": True},
+        ),
+    ),
+    _descriptor("hosts.delete", fields=({"key": "item_id", "data_type": "number", "required": True},)),
+    _descriptor("resources.inspect_local"),
+]
 
-    with patch("apmatia.interfaces.cli.ai_host_management._api_client", return_value=client):
-        add_exit_code = main(
+
+def test_dynamic_ai_host_commands_are_discovered_and_executed(capsys):
+    with patch("apmatia.interfaces.cli.main.api_client.list_module_commands", return_value=CATALOG), patch(
+        "apmatia.interfaces.cli.dynamic.api_client.execute_module_command",
+        return_value={"items": [{"name": "Local node"}]},
+    ) as execute:
+        assert main(["ai-host-management", "hosts", "list"]) == 0
+
+    execute.assert_called_once_with("ai_host_management.hosts.list", {})
+    assert "Local node" in capsys.readouterr().out
+
+
+def test_dynamic_ai_host_create_uses_generated_fields():
+    with patch("apmatia.interfaces.cli.main.api_client.list_module_commands", return_value=CATALOG), patch(
+        "apmatia.interfaces.cli.dynamic.api_client.execute_module_command",
+        return_value={"status": "created"},
+    ) as execute:
+        assert main(
             [
                 "ai-host-management",
-                "add",
+                "hosts",
+                "create",
                 "--name",
                 "SSH node",
                 "--hostname",
                 "10.0.0.5",
                 "--role",
                 "inference",
-                "--connection-type",
-                "ssh",
-                "--username",
-                "nick",
-                "--credential-ref",
-                "~/.ssh/id_ed25519",
-                "--format",
-                "text",
+                "--payload",
+                '{"connection_type":"ssh"}',
             ]
-        )
-        validate_exit_code = main(
-            [
-                "ai-host-management",
-                "test",
-                "--name",
-                "SSH node",
-                "--hostname",
-                "10.0.0.5",
-                "--role",
-                "inference",
-                "--connection-type",
-                "ssh",
-                "--username",
-                "nick",
-                "--credential-ref",
-                "~/.ssh/id_ed25519",
-                "--format",
-                "text",
-            ]
-        )
+        ) == 0
 
-    captured = capsys.readouterr()
-
-    assert add_exit_code == 0
-    assert validate_exit_code == 0
-    assert "Created AI host 7" in captured.out
-    assert "Validation passed." in captured.out
-
-
-def test_cli_ai_host_delete(capsys):
-    client = SimpleNamespace(delete_ai_host=lambda host_id: {"status": "deleted", "host_id": host_id})
-
-    with patch("apmatia.interfaces.cli.ai_host_management._api_client", return_value=client):
-        exit_code = main(["ai-host-management", "delete", "7", "--format", "text"])
-
-    captured = capsys.readouterr()
-
-    assert exit_code == 0
-    assert "Deleted AI host 7" in captured.out
-
-
-def test_cli_ai_host_inspect_summaries(capsys):
-    client = SimpleNamespace(
-        inspect_ai_host_resources=lambda bootstrap_password=None: [
-            {
-                "host_id": 1,
-                "name": "AI PC",
-                "hostname": "192.168.86.132",
-                "resource_status": "ok",
-                "available_ram_bytes": 8,
-                "total_ram_bytes": 16,
-                "vram_free_bytes": 6,
-                "vram_total_bytes": 8,
-                "detected_gpu_count": 1,
-            }
-        ]
+    execute.assert_called_once_with(
+        "ai_host_management.hosts.create",
+        {"connection_type": "ssh", "name": "SSH node", "hostname": "10.0.0.5", "role": "inference"},
     )
 
-    with patch("apmatia.interfaces.cli.ai_host_management._api_client", return_value=client):
-        exit_code = main(["ai-host-management", "inspect", "--format", "text"])
 
-    captured = capsys.readouterr()
+def test_dynamic_ai_host_delete_and_resource_inspection():
+    with patch("apmatia.interfaces.cli.main.api_client.list_module_commands", return_value=CATALOG), patch(
+        "apmatia.interfaces.cli.dynamic.api_client.execute_module_command",
+        return_value={"status": "ok"},
+    ) as execute:
+        assert main(["ai-host-management", "hosts", "delete", "--item-id", "7"]) == 0
+        assert main(["ai-host-management", "resources", "inspect-local"]) == 0
 
-    assert exit_code == 0
-    assert "AI PC" in captured.out
-    assert "resource_status" not in captured.out
-
+    assert execute.call_args_list[0].args == ("ai_host_management.hosts.delete", {"item_id": 7})
+    assert execute.call_args_list[1].args == ("ai_host_management.resources.inspect_local", {})

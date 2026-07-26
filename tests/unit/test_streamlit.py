@@ -166,7 +166,7 @@ def test_preferences_module_view_loads_and_saves(mock_streamlit):
     mock_save.assert_called_once()
     command_id, = mock_save.call_args.args
     payload = mock_save.call_args.kwargs
-    assert command_id == "preferences.preferences.save"
+    assert command_id == "preferences.save"
     assert payload["llama_server_log_dir"] == "/var/log/llama.cpp"
     assert payload["gguf_directories"] == "/models/gguf\n/alt/models/gguf"
     assert payload["auto_scan_gguf_directory"] is True
@@ -390,7 +390,7 @@ def test_agent_management_confirmed_delete_clears_selected_form_state(mock_strea
         agent_management_page = importlib.reload(agent_management_page)
         agent_management_page.render(agents)
 
-    mock_delete.assert_called_once_with("agents.agents.delete", item_id=1)
+    mock_delete.assert_called_once_with("agents.delete", item_id=1)
     assert mock_streamlit.session_state["agent_form_values"]["id"] is None
     assert mock_streamlit.session_state["agent_selected_id"] is None
     assert "agent_delete_target" not in mock_streamlit.session_state
@@ -503,7 +503,7 @@ def test_users_module_view_loads_and_manages_groups(mock_streamlit):
         users_view.render([*users, *groups, *memberships])
 
     mock_execute.assert_called_once_with(
-        "users.users.create_user",
+        "users.create_user",
         username="newuser",
         password="newpass",
     )
@@ -547,7 +547,7 @@ def test_users_module_view_allows_adding_agent_members(mock_streamlit):
         users_view.render([*users, *groups, *memberships])
 
     mock_execute.assert_called_once_with(
-        "users.users.add_member",
+        "users.add_member",
         group_id=10,
         member_kind="agent",
         role="member",

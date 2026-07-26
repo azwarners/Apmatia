@@ -1506,7 +1506,7 @@ def _render_agent_loops_task_history(items: list[dict[str, object]], *, roots: d
                             task_id = str(item.get("task_id") or "").strip()
                             if task_id:
                                 try:
-                                    execute_module_command("agent_loops.tasks.stop", task_id=task_id)
+                                    execute_module_command("agent_loops.stop", task_id=task_id)
                                 except ApiError as error:
                                     st.error(f"Unable to stop task: {error.detail}")
                                 else:

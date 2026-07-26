@@ -162,7 +162,7 @@ VIEW_DESCRIPTORS: tuple[ViewContribution, ...] = (
                         "intent": "save",
                         "scope": "view",
                         "style": "primary",
-                        "payload": {"command_id": "preferences.preferences.save"},
+                        "payload": {"command_id": "preferences.save"},
                     }
                 ],
             },

@@ -94,7 +94,7 @@ def test_module_views_page_saves_agent_config_changes(mock_streamlit):
                 intent="save",
                 scope="view",
                 style="primary",
-                payload={"command_id": "agent_config.agent_config.save"},
+                payload={"command_id": "agent_config.save"},
             ),
         ),
         items=(
@@ -114,7 +114,7 @@ def test_module_views_page_saves_agent_config_changes(mock_streamlit):
         action_key="save",
         scope="view",
         payload={
-            "command_id": "agent_config.agent_config.save",
+            "command_id": "agent_config.save",
             "agent_id": "1",
             "workspace_root": "/tmp/workspace",
             "knowledge_root": "/tmp/knowledge",
@@ -137,7 +137,7 @@ def test_module_views_page_saves_agent_config_changes(mock_streamlit):
         module_views_page.render()
 
     mock_execute.assert_called_once_with(
-        "agent_config.agent_config.save",
+        "agent_config.save",
         agent_id="1",
         workspace_root="/tmp/workspace",
         knowledge_root="/tmp/knowledge",
@@ -168,7 +168,7 @@ def test_render_module_view_emits_agent_config_save_intent(mock_streamlit):
                 intent="save",
                 scope="view",
                 style="primary",
-                payload={"command_id": "agent_config.agent_config.save"},
+                payload={"command_id": "agent_config.save"},
             ),
         ),
         items=(
@@ -190,7 +190,7 @@ def test_render_module_view_emits_agent_config_save_intent(mock_streamlit):
 
     assert intents
     assert intents[0].intent == "save"
-    assert intents[0].payload["command_id"] == "agent_config.agent_config.save"
+    assert intents[0].payload["command_id"] == "agent_config.save"
     assert intents[0].payload["agent_id"] == "1"
     assert intents[0].payload["workspace_root"] == "/tmp/workspace"
     assert intents[0].payload["knowledge_root"] == "/tmp/knowledge"
@@ -495,7 +495,7 @@ def test_module_views_page_enriches_agent_alarm_dropdowns_and_schedule_fields(mo
                 intent="create",
                 scope="view",
                 style="primary",
-                payload={"command_id": "agent_alarms.alarms.create"},
+                payload={"command_id": "agent_alarms.create"},
             ),
         ),
         create_form=ModuleViewFormDescriptor(
@@ -1348,7 +1348,7 @@ def test_module_views_page_stops_agent_loops_task_from_history(mock_streamlit):
     ):
         module_views_page._render_agent_loops_task_history(task_items, roots={})
 
-    mock_stop.assert_called_once_with("agent_loops.tasks.stop", task_id="loop-123")
+    mock_stop.assert_called_once_with("agent_loops.stop", task_id="loop-123")
     mock_streamlit.success.assert_called_with("Stop requested.")
     mock_streamlit.rerun.assert_called()
 

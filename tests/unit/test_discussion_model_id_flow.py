@@ -59,10 +59,10 @@ def test_llm_config_with_docker_gateway_url():
     assert config.model_url == "http://172.17.0.1:8080"
 
 
-@patch("apmatia.modules.contacts_and_discussions.services.OpenAICompatibleBackend")
+@patch("apmatia.modules.discuss.services.OpenAICompatibleBackend")
 def test_build_backend_uses_llm_config(mock_backend):
     """Test that _build_backend uses llm_config.model_url."""
-    from apmatia.modules.contacts_and_discussions.services import _build_backend
+    from apmatia.modules.discuss.services import _build_backend
     
     llm_config = LLMConfig(
         user_alias="Qwen-80B",

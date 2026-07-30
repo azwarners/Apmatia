@@ -6,7 +6,7 @@ from .module import AGENT_ALARMS_MODULE, register
 from .module_views import AgentAlarmsModuleViewProvider
 from .models import AlarmStatus, AgentAlarm
 from .service import AgentAlarmsService, get_agent_alarm_service, shutdown_agent_alarm_service
-from .views import ALARM_COLLECTION_VIEW_SCHEMA, VIEW_DESCRIPTORS
+from .views import VIEW_DESCRIPTORS
 
 __all__ = [
     "ACTION_DESCRIPTORS",

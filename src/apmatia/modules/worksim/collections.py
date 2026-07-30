@@ -45,6 +45,7 @@ class WorksimOrgChartViewSpec:
     @property
     def metadata(self) -> dict[str, object]:
         return {
+            "view_contract_ready": True,
             "object_type": self.object_type,
             "singular_label": self.singular_label,
             "plural_label": self.plural_label,

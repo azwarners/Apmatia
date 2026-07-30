@@ -13,12 +13,12 @@ APMATIA_PREFERENCES_MODULE = ModuleMetadata(
     module_id="preferences",
     name="Preferences",
     version="0.1.0",
-    description="Configure Apmatia runtime, model discovery, agent roots, time zone, appearance, and terminal preferences.",
+    description="Configure Apmatia preferences, module visibility, and navigation order.",
     author="Nick",
     status="stable",
     category="core",
     default_enabled=True,
-    tags=("preferences", "configuration", "appearance", "runtime"),
+    tags=("preferences", "configuration", "appearance", "runtime", "modules", "navigation"),
     metadata={},
 )
 

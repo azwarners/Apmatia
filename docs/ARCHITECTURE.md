@@ -40,7 +40,7 @@ They do not know about Streamlit or the CLI and should not own transport concern
 
 The stable `persistence` infrastructure module owns shared SQLite document storage, JSON/YAML configuration persistence, persistence descriptors, and structured log-file storage. Other bundled modules declare it as a module dependency and import its APIs from `apmatia.modules.persistence`.
 
-The stable `users` infrastructure module owns authentication plus the user, group, and membership domain. Its registry-backed Users view is the Streamlit management surface, while HTTP and internal API routes use the same module runtime, managers, and repositories.
+The stable `auth` infrastructure module owns sessions, login orchestration, and the Streamlit login view. The stable `users` infrastructure module owns the user, group, and membership domain and its registry-backed management view. HTTP and internal API routes use the modules' runtime entrypoints.
 
 Module rules:
 
@@ -105,14 +105,19 @@ Interfaces are clients of the API boundary.
 
 - `src/apmatia/interfaces/cli/` provides a command-line entrypoint for direct local use.
 - `src/apmatia/interfaces/streamlit/` provides the primary interactive UI in Python via Streamlit.
+- `src/apmatia/interfaces/text/` provides a deliberately small text-based adapter for proving contract replaceability.
 
 The Streamlit app is organized as a small interface client:
 
-- `app.py` handles layout, auth gating, theme application, custom sidebar navigation, and the shared header menu safeguards.
+- `app.py` handles layout, auth gating, theme application, generic module catalog navigation, and the shared header menu safeguards.
 - `api_client.py` is the interface-side adapter that talks to the FastAPI app contract.
 - `pages/` contains focused UI pages for discussion, model management, agent management, login, and settings.
 
-The key architectural point is that the Streamlit interface stays thin. It renders controls and state, but the actual application behavior still flows through the API and then into core and modules.
+The Text adapter provides a second GUI implementation that proves the API/document boundary is framework-neutral:
+
+- `text_adapter.py` implements authentication, generic CRUD/form views, dynamic options, one management view, Discussion timeline/composer behavior, Agent Loops polling/terminal behavior, navigation, confirmations, and action-result effects.
+
+The key architectural point is that interfaces are now demonstrably one of multiple adapters. All interfaces consume the API/document contract rather than core or modules directly. The view contract models in `core/view_contract/` define the portable document boundary that both adapters negotiate.
 
 ## Rules
 

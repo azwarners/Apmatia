@@ -210,7 +210,7 @@ def test_registered_host_resource_inspection_collects_per_host_reports(monkeypat
     )
     ssh_host = service.create_host(
         name="Remote AI",
-        hostname="192.168.86.132",
+        hostname="192.0.2.132",
         role="inference",
         connection_type="ssh",
         username="nick",
@@ -256,7 +256,7 @@ def test_ssh_resource_probe_parses_remote_output(tmp_path, monkeypatch):
     host = services.AIHost(
         id=99,
         name="Remote AI",
-        hostname="192.168.86.132",
+        hostname="192.0.2.132",
         role="inference",
         connection_type="ssh",
         username="nick",
@@ -308,7 +308,7 @@ def test_ssh_resource_probe_parses_remote_free_output(tmp_path, monkeypatch):
     host = services.AIHost(
         id=100,
         name="Remote AI",
-        hostname="192.168.86.132",
+        hostname="192.0.2.132",
         role="inference",
         connection_type="ssh",
         username="nick",
@@ -346,7 +346,7 @@ def test_ssh_resource_probe_reports_missing_client(monkeypatch):
     host = services.AIHost(
         id=7,
         name="Remote AI",
-        hostname="192.168.86.132",
+        hostname="192.0.2.132",
         role="inference",
         connection_type="ssh",
         username="nick",
@@ -359,7 +359,7 @@ def test_ssh_resource_probe_reports_missing_client(monkeypatch):
     assert snapshot is None
     assert error is not None
     assert "SSH client not available on this Apmatia host." in error
-    assert "Host target: nick@192.168.86.132" in error
+    assert "Host target: nick@192.0.2.132" in error
     assert "credential_ref: (empty)" in error
     assert "ssh-agent" in error
     assert "~/.ssh/id_ed25519" in error
@@ -406,7 +406,7 @@ def test_prepare_ssh_key_material_can_bootstrap_with_password(tmp_path, monkeypa
     result = services.prepare_ssh_key_material(
         credential_ref=str(private_key),
         username="nick",
-        hostname="192.168.86.132",
+        hostname="192.0.2.132",
         port=2222,
         bootstrap_password="secret",
     )
@@ -416,7 +416,7 @@ def test_prepare_ssh_key_material_can_bootstrap_with_password(tmp_path, monkeypa
     assert result["bootstrap_error"] == ""
     assert result["ssh_public_key_install_command"].startswith("ssh-copy-id -p 2222")
     assert called["username"] == "nick"
-    assert called["hostname"] == "192.168.86.132"
+    assert called["hostname"] == "192.0.2.132"
     assert called["port"] == 2222
     assert called["public_key_path"] == public_key
     assert called["password"] == "secret"
@@ -427,7 +427,7 @@ def test_prepare_ssh_copy_command_builds_copy_instruction():
 
     result = services.prepare_ssh_copy_command(
         username="nick",
-        hostname="192.168.86.132",
+        hostname="192.0.2.132",
         port=22,
         credential_ref="/home/apmatia/.apmatia/ssh/id_ed25519",
     )
@@ -437,11 +437,11 @@ def test_prepare_ssh_copy_command_builds_copy_instruction():
     assert result["ssh_public_key_install_command"] == (
         "ssh-copy-id -p 22 -i /home/apmatia/.apmatia/ssh/id_ed25519.pub "
         "-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/tmp/apmatia_known_hosts "
-        "nick@192.168.86.132"
+        "nick@192.0.2.132"
     )
     assert result["ssh_connection_test_command"] == (
         "ssh -vvv -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new "
-        "-o UserKnownHostsFile=/tmp/apmatia_known_hosts -p 22 nick@192.168.86.132"
+        "-o UserKnownHostsFile=/tmp/apmatia_known_hosts -p 22 nick@192.0.2.132"
     )
 
 
@@ -458,7 +458,7 @@ monkeypatch.setattr(
         AIHostResourceReport(
             host_id=1,
             name="AI PC",
-            hostname="192.168.86.132",
+            hostname="192.0.2.132",
             role="inference",
             connection_type="ssh",
             username="nick",
@@ -488,7 +488,7 @@ monkeypatch.setattr(
     assert len(items) == 1
     assert items[0]["host_id"] == 1
     assert items[0]["name"] == "AI PC"
-    assert items[0]["hostname"] == "192.168.86.132"
+    assert items[0]["hostname"] == "192.0.2.132"
     assert items[0]["credential_ref"] == "~/.ssh/id_ed25519"
     assert items[0]["resource_status"] == "ok"
     assert items[0]["detected_gpu_count"] == 1
@@ -502,7 +502,7 @@ monkeypatch.setattr(
     assert items[0]["ssh_connection_test_command"].startswith("ssh -vvv \\\n  -i ~/.ssh/id_ed25519 ")
     assert "UserKnownHostsFile=/tmp/apmatia_known_hosts" in items[0]["ssh_connection_test_command"]
     assert items[0]["ssh_resource_probe_command"].startswith("ssh -i ~/.ssh/id_ed25519 \\\n  -p 22 \\")
-    assert "nick@192.168.86.132" in items[0]["ssh_resource_probe_command"]
+    assert "nick@192.0.2.132" in items[0]["ssh_resource_probe_command"]
     assert "noninteractive" not in items[0]["troubleshooting_hint"]
     assert "SSH authentication is already working" not in items[0]["troubleshooting_hint"]
 
@@ -546,7 +546,7 @@ def test_module_view_provider_edit_can_bootstrap_ssh_key(monkeypatch):
                 {
                     "id": 7,
                     "name": "Server",
-                    "hostname": "192.168.86.33",
+                    "hostname": "192.0.2.33",
                     "role": "inference",
                     "connection_type": "ssh",
                     "username": "nick",
@@ -587,7 +587,7 @@ def test_resource_view_reports_probe_command_and_clearer_hint(monkeypatch):
         {
             "host_id": 1,
             "name": "AI PC",
-            "hostname": "192.168.86.132",
+            "hostname": "192.0.2.132",
             "role": "inference",
             "connection_type": "ssh",
             "username": "nick",
@@ -611,7 +611,7 @@ def test_resource_view_reports_probe_command_and_clearer_hint(monkeypatch):
 
     assert "SSH authentication is already working" in module_views._format_troubleshooting_hint(report)
     assert "ssh -i /home/apmatia/.apmatia/ssh/id_ed25519 \\" in module_views._format_ssh_resource_probe_command(report)
-    assert "nick@192.168.86.132" in module_views._format_ssh_resource_probe_command(report)
+    assert "nick@192.0.2.132" in module_views._format_ssh_resource_probe_command(report)
 
 
 def test_ssh_probe_failure_mentions_authentication_issue():
@@ -620,7 +620,7 @@ def test_ssh_probe_failure_mentions_authentication_issue():
     host = services.AIHost(
         id=1,
         name="AI PC",
-        hostname="192.168.86.132",
+        hostname="192.0.2.132",
         role="inference",
         connection_type="ssh",
         username="nick",
@@ -629,7 +629,7 @@ def test_ssh_probe_failure_mentions_authentication_issue():
     message = services._format_ssh_probe_failure(
         "SSH inspection failed.",
         host=host,
-        ssh_target="nick@192.168.86.132",
+        ssh_target="nick@192.0.2.132",
         auth_note="credential_ref resolved to SSH key path /home/apmatia/.apmatia/ssh/id_ed25519.",
         ssh_binary="/usr/bin/ssh",
         stderr="Permission denied (publickey,password)",

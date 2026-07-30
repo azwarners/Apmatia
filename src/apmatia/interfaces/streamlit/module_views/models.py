@@ -1,107 +1,28 @@
-from __future__ import annotations
+"""Compatibility exports for the framework-neutral view contract.
 
-from dataclasses import dataclass, field
-from typing import Any
+New interfaces and modules must import these types from ``apmatia.core.view_contract``.
+"""
 
+from apmatia.core.view_contract.models import (
+    CollectionColumnDescriptor,
+    CollectionViewDescriptor,
+    ModuleViewActionDescriptor,
+    ModuleViewFormActionDescriptor,
+    ModuleViewFormDescriptor,
+    ModuleViewFormFieldDescriptor,
+    ModuleViewIntent,
+    ModuleViewNavigationPaneDescriptor,
+    ModuleViewRenderModel,
+)
 
-@dataclass(frozen=True, slots=True)
-class CollectionColumnDescriptor:
-    key: str
-    label: str
-    empty_value: str = "-"
-
-
-@dataclass(frozen=True, slots=True)
-class ModuleViewActionDescriptor:
-    key: str
-    label: str
-    intent: str
-    scope: str = "item"
-    style: str = "secondary"
-    confirmation: bool = False
-    payload: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass(frozen=True, slots=True)
-class ModuleViewFormActionDescriptor:
-    key: str
-    label: str
-    intent: str
-    style: str = "secondary"
-    payload: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass(frozen=True, slots=True)
-class ModuleViewIntent:
-    view_id: str
-    intent: str
-    action_key: str
-    scope: str
-    item_id: str | None = None
-    item: Any | None = None
-    payload: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass(frozen=True, slots=True)
-class ModuleViewFormFieldDescriptor:
-    key: str
-    label: str
-    field_type: str = "text"
-    help_text: str = ""
-    placeholder: str = ""
-    default: Any = ""
-    required: bool = False
-    min_value: int | float | None = None
-    max_value: int | float | None = None
-    step: int | float | None = None
-    options: tuple[Any, ...] = ()
-    section: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class ModuleViewFormDescriptor:
-    key: str
-    title: str
-    description: str = ""
-    submit_label: str = "Save"
-    cancel_label: str = "Cancel"
-    actions: tuple[ModuleViewFormActionDescriptor, ...] = ()
-    fields: tuple[ModuleViewFormFieldDescriptor, ...] = ()
-
-
-@dataclass(frozen=True, slots=True)
-class ModuleViewNavigationPaneDescriptor:
-    title: str
-    top_exit_label: str = "Back to Apmatia"
-    bottom_exit_label: str = "Back to Apmatia"
-    empty_state: str = "No contacts are available yet."
-    item_label_key: str = "title"
-    item_subtitle_key: str = "chat_preview"
-    item_detail_key: str = "last_activity_at"
-    item_value_key: str = "id"
-
-
-@dataclass(frozen=True, slots=True)
-class CollectionViewDescriptor:
-    view_id: str
-    title: str
-    description: str = ""
-    caption: str = ""
-    empty_state: str = "No items yet."
-    item_key: str = "id"
-    columns: tuple[CollectionColumnDescriptor, ...] = ()
-    item_actions: tuple[ModuleViewActionDescriptor, ...] = ()
-    view_actions: tuple[ModuleViewActionDescriptor, ...] = ()
-    create_form: ModuleViewFormDescriptor | None = None
-    edit_form: ModuleViewFormDescriptor | None = None
-    nav_pane: ModuleViewNavigationPaneDescriptor | None = None
-    items: tuple[Any, ...] = ()
-    unsupported_reason: str | None = None
-    render_mode: str = "collection"
-
-    @property
-    def is_supported(self) -> bool:
-        return self.unsupported_reason is None
-
-
-ModuleViewRenderModel = CollectionViewDescriptor
+__all__ = [
+    "CollectionColumnDescriptor",
+    "CollectionViewDescriptor",
+    "ModuleViewActionDescriptor",
+    "ModuleViewFormActionDescriptor",
+    "ModuleViewFormDescriptor",
+    "ModuleViewFormFieldDescriptor",
+    "ModuleViewIntent",
+    "ModuleViewNavigationPaneDescriptor",
+    "ModuleViewRenderModel",
+]

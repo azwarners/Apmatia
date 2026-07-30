@@ -811,7 +811,7 @@ def delete_llm_config(config_id: int) -> bool:
 
 def probe_llm_config(config_id: int) -> dict[str, Any]:
     """Test connectivity to an LLM endpoint."""
-    from apmatia.modules.contacts_and_discussions.services import prompt_llm
+    from apmatia.modules.discuss.services import prompt_llm
 
     config = get_llm_config(config_id)
     if config is None:
@@ -861,7 +861,7 @@ class LLMManager:
         return delete_llm_config(config_id)
 
     def probe_config(self, config_id: int) -> dict[str, Any]:
-        from apmatia.modules.contacts_and_discussions.services import prompt_llm
+        from apmatia.modules.discuss.services import prompt_llm
 
         config = self.get_config(config_id)
         if config is None:

@@ -122,8 +122,8 @@ def test_group_prompt_resolves_each_member_model():
         2: {"id": 2, "name": "Beatrice", "active_model_id": 6},
     }
     configs = {
-        5: {"id": 5, "model_url": "http://192.168.86.132:8080", "backend": "openai_compatible"},
-        6: {"id": 6, "model_url": "http://192.168.86.133:8080", "backend": "openai_compatible"},
+        5: {"id": 5, "model_url": "http://192.0.2.132:8080", "backend": "openai_compatible"},
+        6: {"id": 6, "model_url": "http://192.0.2.133:8080", "backend": "openai_compatible"},
     }
 
     with patch(
@@ -158,8 +158,8 @@ def test_group_prompt_resolves_each_member_model():
         call.kwargs["llm_config"].model_url
         for call in mock_prompt.call_args_list
     ] == [
-        "http://192.168.86.132:8080",
-        "http://192.168.86.133:8080",
+        "http://192.0.2.132:8080",
+        "http://192.0.2.133:8080",
     ]
     assert [
         call.kwargs["request_metadata"]["speaker_name"]
@@ -192,7 +192,7 @@ def test_discussion_snapshot_uses_agent_names_for_assistant_turns():
         "apmatia.api.http.routes.discussion_routes.require_session",
         return_value=SimpleNamespace(user_id=1, username="Nick"),
     ), patch(
-        "apmatia.modules.contacts_and_discussions.services.TopicManagementBundle",
+        "apmatia.modules.discuss.services.TopicManagementBundle",
         return_value=bundle,
     ), patch(
         "apmatia.api.http.routes.discussion_routes.get_agent",

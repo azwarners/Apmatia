@@ -179,6 +179,10 @@ def get_auth_session() -> dict[str, Any]:
     return _request("GET", "/auth/session")
 
 
+def list_auth_views() -> list[dict[str, Any]]:
+    return _unwrap_collection(_request("GET", "/auth/views"), "views")
+
+
 def login(username: str, password: str) -> dict[str, Any]:
     return _request(
         "POST",
@@ -379,40 +383,19 @@ def list_module_view_items(view_id: str) -> list[dict[str, Any]]:
     return _request("GET", f"/module-views/{view_id}/items")
 
 
+def list_module_view_documents() -> list[dict[str, Any]]:
+    return _unwrap_collection(_request("GET", "/module-view-documents"), "documents")
+
+
+def get_module_view_document(view_id: str) -> dict[str, Any]:
+    payload = _request("GET", f"/module-views/{view_id}/document")
+    if not isinstance(payload, dict):
+        raise ApiError("API returned an unexpected view document.", 500)
+    return payload
+
+
 def execute_module_command(command_id: str, **payload: Any) -> dict[str, Any]:
     return _request("POST", f"/module-commands/{command_id}", json={"payload": payload})
-
-
-def start_loop_task(**payload: Any) -> dict[str, Any]:
-    return _request("POST", "/agent-loops/tasks", json=payload)
-
-
-def list_loop_tasks(**params: Any) -> list[dict[str, Any]]:
-    query = urlencode(
-        {key: value for key, value in params.items() if value is not None and value != ""},
-        doseq=True,
-    )
-    path = "/agent-loops/tasks" if not query else f"/agent-loops/tasks?{query}"
-    payload = _request("GET", path)
-    if isinstance(payload, list):
-        return payload
-    if isinstance(payload, dict):
-        tasks = payload.get("tasks")
-        if isinstance(tasks, list):
-            return tasks
-    raise ApiError("API returned an unexpected payload for loop tasks.", 500)
-
-
-def get_loop_task(task_id: str) -> dict[str, Any] | None:
-    return _request("GET", f"/agent-loops/tasks/{task_id}")
-
-
-def get_loop_task_transcript(task_id: str) -> dict[str, Any] | None:
-    return _request("GET", f"/agent-loops/tasks/{task_id}/transcript")
-
-
-def stop_loop_task(task_id: str) -> dict[str, Any] | None:
-    return _request("POST", f"/agent-loops/tasks/{task_id}/stop")
 
 
 def list_agents() -> list[dict[str, Any]]:
@@ -549,79 +532,9 @@ def get_compiled_agent_prompt(prompt_id: int, name: str | None = None) -> str:
     return _request("GET", _path_with_query(f"/agent-prompts/{prompt_id}/compiled", name=name))
 
 
-def discussion_state(discussion_id: str | None = None) -> dict[str, Any]:
-    params = {}
-    if discussion_id:
-        params["discussion_id"] = discussion_id
-    return _request("GET", "/discussion/state", params=params if params else None)
-
-
-def discussion_tree() -> dict[str, Any]:
-    return _request("GET", "/discussions/tree")
-
-
-def create_discussion(**payload: Any) -> dict[str, Any]:
-    return _request("POST", "/discussions", json=payload)
-
-
-def update_discussion(discussion_id: str, **payload: Any) -> dict[str, Any]:
-    return _request("PATCH", f"/discussions/{discussion_id}", json=payload)
-
-
-def delete_discussion(discussion_id: str) -> dict[str, Any]:
-    return _request("DELETE", f"/discussions/{discussion_id}")
-
-
-def open_discussion(discussion_id: str) -> dict[str, Any]:
-    return _request("POST", "/discussions/open", json={"discussion_id": discussion_id})
-
-
-def prompt_discussion(**payload: Any) -> dict[str, Any]:
-    return _request("POST", "/discussion/prompt", json=payload)
-
-
-def prompt_group_discussion(**payload: Any) -> dict[str, Any]:
-    return _request("POST", "/discussion/group-prompt", json=payload)
-
-
-def stop_discussion() -> dict[str, Any]:
-    return _request("POST", "/discussion/stop")
-
-
-def set_discussion_group_chat_mode(discussion_id: str, **payload: Any) -> dict[str, Any]:
-    return _request("POST", f"/discussions/{discussion_id}/group-chat", json=payload)
-
-
-def pause_group_chat() -> dict[str, Any]:
-    return _request("POST", "/discussion/group-chat/pause")
-
-
-def resume_group_chat() -> dict[str, Any]:
-    return _request("POST", "/discussion/group-chat/resume")
-
-
-def reset_discussion() -> dict[str, Any]:
-    return _request("POST", "/discussion/reset")
-
-
-def update_discussion_message(discussion_id: str, message_index: int, text: str) -> dict[str, Any]:
-    return _request(
-        "PATCH",
-        f"/discussions/{discussion_id}/messages/{message_index}",
-        json={"text": text},
-    )
-
-
-def delete_discussion_message(discussion_id: str, message_index: int) -> dict[str, Any]:
-    return _request("DELETE", f"/discussions/{discussion_id}/messages/{message_index}")
-
-
-def delete_discussion_messages(discussion_id: str, message_indices: list[int]) -> dict[str, Any]:
-    return _request(
-        "DELETE",
-        f"/discussions/{discussion_id}/messages",
-        json={"message_indices": message_indices},
-    )
+def load_view_source(operation: str, **parameters: Any) -> Any:
+    """Load a declared view source through the API source-provider boundary."""
+    return _request("POST", f"/module-view-sources/{operation}", json={"parameters": parameters})
 
 
 def list_wikis(**params: Any) -> list[dict[str, Any]]:

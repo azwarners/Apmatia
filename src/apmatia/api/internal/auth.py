@@ -1,30 +1,30 @@
 from __future__ import annotations
 
-from apmatia.modules.users.runtime import get_session_manager, get_user_manager
+from apmatia.modules.auth.runtime import (
+    get_session,
+    has_any_users,
+    login_user,
+    logout_session,
+    register_user,
+)
+from apmatia.core.registry import get_application_registry
+from apmatia.core.view_contract import normalize_view_document
 
 
-def has_any_users() -> bool:
-    return len(get_user_manager().list_users()) > 0
+def list_auth_views() -> list[dict]:
+    return [
+        normalize_view_document(view).to_dict()
+        for view in get_application_registry().list_views()
+        if view.module_id == "auth"
+        and str((view.metadata.get("ui") or {}).get("navigation") or "")
+        == "pre_authentication"
+    ]
 
-
-def register_user(username: str, password: str):
-    return get_user_manager().create_user(username=username, password=password)
-
-
-def login_user(username: str, password: str):
-    manager = get_user_manager()
-    if not manager.verify_user(username=username, password=password):
-        return None
-
-    user = next((u for u in manager.list_users() if u.username == username), None)
-    if user is None or user.id is None:
-        return None
-    return get_session_manager().create_session(user_id=user.id, username=user.username)
-
-
-def get_session(token: str | None):
-    return get_session_manager().get_session(token)
-
-
-def logout_session(token: str | None) -> bool:
-    return get_session_manager().delete_session(token)
+__all__ = [
+    "get_session",
+    "has_any_users",
+    "login_user",
+    "list_auth_views",
+    "logout_session",
+    "register_user",
+]

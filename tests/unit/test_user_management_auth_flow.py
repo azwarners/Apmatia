@@ -1,7 +1,7 @@
 """
 Tests for the complete authentication flow: user registration followed by login/session creation.
 """
-from apmatia.modules.users.auth import SessionManager
+from apmatia.modules.auth.sessions import SessionManager
 from apmatia.modules.users.manager import UserManager
 from apmatia.modules.users.sqlite_repositories import SQLiteUserManagementBundle
 

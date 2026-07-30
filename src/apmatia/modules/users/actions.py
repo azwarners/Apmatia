@@ -8,7 +8,7 @@ ACTION_DESCRIPTORS: tuple[ActionContribution, ...] = (
         module_id="users",
         action_id="users.users",
         name="Users",
-        description="Authenticate accounts and manage users, groups, and memberships.",
+        description="Manage users, groups, and memberships.",
         metadata={"object_type": "users"},
     ),
 )

@@ -55,6 +55,22 @@ class UsersModuleViewProvider:
         verb = str(command.metadata.get("verb") or command.command_id.rsplit(".", 1)[-1]).strip().lower()
         if verb == "list":
             return {"items": self.list_items(view=_view_from_command(command), context=context)}
+        if verb in {"create", "edit", "delete"}:
+            item = payload.get("item") if isinstance(payload.get("item"), Mapping) else {}
+            item_kind = str(payload.get("item_kind") or item.get("item_kind") or "user").strip().lower()
+            payload = {**item, **payload}
+            payload.pop("item", None)
+            if item_kind == "membership":
+                verb = "add_member" if verb == "create" else "set_membership_enabled"
+                payload = {
+                    **payload,
+                    "membership_id": payload.get("membership_id", payload.get("item_id")),
+                    "enabled": False if command.metadata.get("verb") == "delete" else payload.get("is_enabled", payload.get("enabled", True)),
+                }
+            else:
+                verb = f"{verb}_{item_kind}"
+                if item_kind == "group":
+                    payload = {**payload, "group_id": payload.get("group_id", payload.get("item_id"))}
         if verb == "create_user":
             user = self.users.create_user(
                 username=str(payload.get("username") or ""),

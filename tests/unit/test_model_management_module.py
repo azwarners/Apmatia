@@ -77,7 +77,7 @@ def test_probe_config_uses_limited_prompt_response():
             max_response_size=4096,
         ),
     ), patch(
-        "apmatia.modules.contacts_and_discussions.services.prompt_llm",
+        "apmatia.modules.discuss.services.prompt_llm",
         return_value="ready and connected",
     ) as mock_prompt:
         result = manager.probe_config(4)

@@ -45,8 +45,8 @@ def test_resolve_docker_host_loopback_preserves_lan_addresses_in_docker():
         return_value="172.17.0.1",
     ):
         assert (
-            _resolve_docker_host_loopback("http://192.168.86.132:8080")
-            == "http://192.168.86.132:8080"
+            _resolve_docker_host_loopback("http://192.0.2.132:8080")
+            == "http://192.0.2.132:8080"
         )
 
 

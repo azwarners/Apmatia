@@ -36,6 +36,7 @@ def _build_view_spec(spec):
         name=f"{spec.plural_label} View",
         description=spec.description,
         metadata={
+            "view_contract_ready": True,
             "ui": {
                 "render_mode": "collection",
                 "title": spec.plural_label.title(),

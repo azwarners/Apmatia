@@ -29,12 +29,12 @@ def _module(*, views: list[dict[str, object]] | None = None) -> dict[str, object
 
 
 def _load_renderer():
-    import apmatia.interfaces.streamlit.module_views.module_manager as module_manager_view
+    import apmatia.interfaces.streamlit.module_views.preferences as preferences_view
 
-    return importlib.reload(module_manager_view)
+    return importlib.reload(preferences_view)
 
 
-def test_module_manager_view_lists_modules_and_views(mock_streamlit):
+def test_module_management_view_lists_modules_and_views(mock_streamlit):
     items = _catalog(
         _module(
             views=[
@@ -58,13 +58,13 @@ def test_module_manager_view_lists_modules_and_views(mock_streamlit):
 
     _load_renderer().render(items)
 
-    mock_streamlit.title.assert_called_with("Module Manager")
+    mock_streamlit.title.assert_called_with("Modules")
     mock_streamlit.subheader.assert_any_call("Integrated Productivity Environment")
     mock_streamlit.write.assert_any_call("Tasks View")
     mock_streamlit.write.assert_any_call("Projects View")
 
 
-def test_module_manager_view_toggles_module_visibility(mock_streamlit):
+def test_module_management_view_toggles_module_visibility(mock_streamlit):
     mock_streamlit.button.side_effect = lambda label, **_kwargs: label == "Hide module"
     renderer = _load_renderer()
 
@@ -72,14 +72,14 @@ def test_module_manager_view_toggles_module_visibility(mock_streamlit):
         renderer.render(_catalog(_module()))
 
     execute.assert_called_once_with(
-        "module_manager.set_module_visibility",
+        "preferences.set_module_visibility",
         module_id="ipe",
         hidden=True,
     )
     mock_streamlit.rerun.assert_called_once()
 
 
-def test_module_manager_view_reorders_modules(mock_streamlit):
+def test_module_management_view_reorders_modules(mock_streamlit):
     second = {**_module(), "module_id": "worksim", "name": "Worksim"}
     mock_streamlit.button.side_effect = lambda label, **kwargs: label == "Move down" and not kwargs.get("disabled", False)
     renderer = _load_renderer()
@@ -88,14 +88,14 @@ def test_module_manager_view_reorders_modules(mock_streamlit):
         renderer.render(_catalog(_module(), second))
 
     execute.assert_called_once_with(
-        "module_manager.set_module_order",
+        "preferences.set_module_order",
         module_id="ipe",
         new_index=1,
     )
     mock_streamlit.rerun.assert_called_once()
 
 
-def test_module_manager_view_toggles_view_visibility(mock_streamlit):
+def test_module_management_view_toggles_view_visibility(mock_streamlit):
     view = {
         "view_id": "ipe.task.view",
         "name": "Tasks View",
@@ -110,14 +110,14 @@ def test_module_manager_view_toggles_view_visibility(mock_streamlit):
         renderer.render(_catalog(_module(views=[view])))
 
     execute.assert_called_once_with(
-        "module_manager.set_view_visibility",
+        "preferences.set_view_visibility",
         view_id="ipe.task.view",
         hidden=True,
     )
     mock_streamlit.rerun.assert_called_once()
 
 
-def test_module_manager_view_enables_all_modules(mock_streamlit):
+def test_module_management_view_enables_all_modules(mock_streamlit):
     mock_streamlit.toggle.side_effect = None
     mock_streamlit.toggle.return_value = True
     renderer = _load_renderer()
@@ -126,7 +126,7 @@ def test_module_manager_view_enables_all_modules(mock_streamlit):
         renderer.render(_catalog())
 
     execute.assert_called_once_with(
-        "module_manager.set_activation",
+        "preferences.set_activation",
         enabled=True,
     )
     mock_streamlit.rerun.assert_called_once()

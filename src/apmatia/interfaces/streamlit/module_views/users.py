@@ -93,8 +93,8 @@ def _agent_by_id(agents: Iterable[dict[str, object]], agent_id: int | None) -> d
     return None
 
 
-def render(items: Iterable[dict[str, object]]) -> None:
-    """Render users-module items using its schema-selected view."""
+def render_legacy(items: Iterable[dict[str, object]]) -> None:
+    """Render the retired users compatibility screen for regression tests."""
     resolved_items = [item for item in items if isinstance(item, dict)]
     users = [item for item in resolved_items if item.get("item_kind") == "user"]
     groups = [item for item in resolved_items if item.get("item_kind") == "group"]
@@ -421,3 +421,6 @@ def render(items: Iterable[dict[str, object]]) -> None:
                     if st.button("Open", key=f"open_group_{group.get('id')}", use_container_width=True):
                         st.session_state["users_selected_group_id"] = group.get("id")
                         st.rerun()
+
+
+render = render_legacy

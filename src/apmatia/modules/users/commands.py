@@ -5,6 +5,9 @@ from apmatia.core.registry import CommandContribution
 
 _VERBS = (
     "list",
+    "create",
+    "edit",
+    "delete",
     "create_user",
     "edit_user",
     "delete_user",

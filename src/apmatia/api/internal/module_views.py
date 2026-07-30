@@ -7,6 +7,22 @@ from apmatia.api.internal.group_access import enabled_group_ids
 from apmatia.api.internal.users import list_user_groups
 from apmatia.core.module_view_runtime import execute_module_command, list_module_view_items
 from apmatia.core.registry import get_application_registry
+from apmatia.core.view_contract import normalize_view_document
+
+
+def list_module_view_documents() -> list[dict[str, Any]]:
+    """Return every active registry view as a deterministic portable document."""
+    registry = get_application_registry()
+    return [normalize_view_document(view).to_dict() for view in registry.list_views()]
+
+
+def get_module_view_document(view_id: str) -> dict[str, Any]:
+    """Return one active registry view as a portable document."""
+    normalized_view_id = view_id.strip()
+    for view in get_application_registry().list_views():
+        if view.view_id == normalized_view_id:
+            return normalize_view_document(view).to_dict()
+    raise ValueError(f"Unknown module view: {view_id}")
 
 
 def list_module_commands() -> list[dict[str, Any]]:

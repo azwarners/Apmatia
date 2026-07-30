@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from apmatia.core.view_contract import normalize_view_document
+
 from .actions import ActionContribution
 from .commands import CommandContribution
 from .modules import ModuleMetadata
@@ -50,6 +52,9 @@ class Registry:
         self._validate_identifier(record.view_id, "view_id")
         self._validate_identifier(record.action_id, "action_id")
         self._validate_identifier(record.module_id, "module_id")
+        # Validate the portable compatibility document at registration time so malformed view
+        # metadata fails once, before individual renderers interpret it differently.
+        normalize_view_document(record)
         self._views[record.view_id] = record
         return record
 

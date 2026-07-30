@@ -21,6 +21,8 @@ This stable infrastructure module owns Apmatia's user/group domain and persisten
 
 `API (internal)` -> `modules.users.runtime` -> users-module managers -> repository interfaces -> SQLite adapter
 
+Authentication sessions and the login view are owned by the separate stable `auth` module.
+
 ## Notes
 
 - This package already uses package-relative imports to stay portable across package roots.

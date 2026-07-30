@@ -256,39 +256,24 @@ def test_render_module_view_renders_rows_and_emits_intents(mock_streamlit):
     )
 
 
-def test_render_module_view_renders_troubleshooting_footer(mock_streamlit):
-    import apmatia.interfaces.streamlit.module_views.renderers as renderers
+def test_ai_host_resource_document_declares_troubleshooting_fields():
+    from apmatia.core.view_contract import normalize_view_document
+    from apmatia.modules.ai_host_management.views import VIEW_DESCRIPTORS
 
-    renderers = importlib.reload(renderers)
+    resource_view = next(view for view in VIEW_DESCRIPTORS if view.view_id.endswith("resources.view"))
+    document = normalize_view_document(resource_view).to_dict()
+    collection = document["presentation"]["children"][0]
+    table = collection["children"][0]
+    column_keys = {column["key"] for column in table["properties"]["columns"]}
 
-    spec = adapt_module_view(
-        _collection_view(),
-        items=[
-            {
-                "id": 1,
-                "name": "Alpha",
-                "status": "active",
-                "host_summary": "ID 1 | Alpha | 192.168.86.132",
-                "troubleshooting_hint": "The remote SSH session reached the host, but the remote command failed while resolving the session user. This is not a password prompt problem.",
-                "resource_error": "SSH inspection failed: No user exists for uid 1000",
-                "ssh_connection_test_command": "ssh -vvv nick@192.168.86.132",
-                "ssh_public_key_install_command": "ssh-copy-id -i ~/.ssh/id_ed25519.pub nick@192.168.86.132",
-            }
-        ],
-    )
-
-    renderers.render_module_view(spec)
-
-    mock_streamlit.subheader.assert_called_with("Troubleshooting")
-    mock_streamlit.write.assert_any_call("ID 1 | Alpha | 192.168.86.132")
-    mock_streamlit.write.assert_any_call(
-        "The remote SSH session reached the host, but the remote command failed while resolving the session user. This is not a password prompt problem."
-    )
-    mock_streamlit.write.assert_any_call("SSH inspection failed: No user exists for uid 1000")
-    mock_streamlit.caption.assert_any_call("Copy and run this from the machine running Apmatia to inspect the SSH handshake.")
-    mock_streamlit.caption.assert_called_with("Copy and run this from the machine running Apmatia after the key has been created.")
-    mock_streamlit.code.assert_any_call("ssh -vvv nick@192.168.86.132", language="bash")
-    mock_streamlit.code.assert_called_with("ssh-copy-id -i ~/.ssh/id_ed25519.pub nick@192.168.86.132", language="bash")
+    assert resource_view.metadata["view_contract_ready"] is True
+    assert {
+        "resource_error",
+        "troubleshooting_hint",
+        "ssh_connection_test_command",
+        "ssh_public_key_install_command",
+        "ssh_resource_probe_command",
+    } <= column_keys
 
 
 def test_render_module_view_form_renders_action_button(mock_streamlit):

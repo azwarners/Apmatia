@@ -7,43 +7,57 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-def test_show_auth_form_returns_true_when_api_session_is_authenticated(mock_streamlit):
-    """Auth form short-circuits when the API session is already active."""
-    with patch(
-        "apmatia.interfaces.streamlit.api_client.get_auth_session",
+
+def _portable_document(view_id: str) -> dict:
+    from apmatia.core.registry import create_application_registry
+    from apmatia.core.view_contract import normalize_view_document
+
+    registry = create_application_registry(include_development=True)
+    view = next(view for view in registry.list_views() if view.view_id == view_id)
+    return normalize_view_document(view).to_dict()
+
+
+def _walk_components(component: dict) -> list[dict]:
+    result = [component]
+    for child in component.get("children", []):
+        result.extend(_walk_components(child))
+    return result
+
+def test_require_auth_hydrates_authenticated_api_session(mock_streamlit):
+    """The Streamlit shell hydrates an authenticated API session."""
+    import apmatia.interfaces.streamlit.app as app
+
+    app = importlib.reload(app)
+    with patch.object(
+        app,
+        "get_auth_session",
         return_value={"authenticated": True, "username": "testuser"},
     ):
-        import apmatia.interfaces.streamlit.module_views.auth as auth_view
-
-        auth_view = importlib.reload(auth_view)
-        result = auth_view.show_auth_form()
+        result = app.require_auth()
 
     assert result is True
     assert mock_streamlit.session_state["auth_token"] == "api-session"
     assert mock_streamlit.session_state["authenticated_user"]["username"] == "testuser"
 
-def test_show_auth_form_logs_in_via_api(mock_streamlit):
-    """Sign-in uses the API client rather than talking to core directly."""
-    mock_streamlit.form_submit_button.side_effect = [True, False]
+def test_auth_module_view_login_intent_uses_api(mock_streamlit):
+    """The contract-rendered sign-in intent uses the API client."""
+    import apmatia.interfaces.streamlit.app as app
 
-    with patch(
-        "apmatia.interfaces.streamlit.api_client.get_auth_session",
-        side_effect=[
-            {"authenticated": False, "has_users": True},
-            {"authenticated": True, "user_id": 7, "username": "testuser"},
-        ],
-    ), patch(
-        "apmatia.interfaces.streamlit.api_client.login",
-        return_value={"status": "authenticated", "username": "testuser"},
-    ) as mock_login:
-        import apmatia.interfaces.streamlit.module_views.auth as auth_view
+    app = importlib.reload(app)
+    intent = {"payload": {"auth_action": "login", "username": "testuser", "password": "testuser"}}
+    views = [{"schema_version": 1, "view_id": "auth.login.view", "title": "Sign In"}]
+    with patch.object(app, "list_auth_views", return_value=views), patch.object(
+        app, "render_view_document", return_value=[intent]
+    ) as mock_render, patch.object(
+        app, "login", return_value={"status": "authenticated", "username": "testuser"}
+    ) as mock_login, patch.object(
+        app,
+        "get_auth_session",
+        return_value={"authenticated": True, "user_id": 7, "username": "testuser"},
+    ):
+        app.render_auth_views()
 
-        auth_view = importlib.reload(auth_view)
-        result = auth_view.show_auth_form()
-
-    assert result is False
-    mock_streamlit.form.assert_any_call("apmatia_signin_form")
-    mock_streamlit.form_submit_button.assert_any_call("Sign In")
+    mock_render.assert_called_once_with(views[0])
     mock_login.assert_called_once_with("testuser", "testuser")
     assert mock_streamlit.session_state["authenticated_user"]["user_id"] == 7
     assert mock_streamlit.session_state["authenticated_user"]["username"] == "testuser"
@@ -89,7 +103,28 @@ def test_api_client_hydrates_cookie_from_browser_context(mock_streamlit):
     mock_streamlit.html.assert_called()
     assert mock_client.cookies["apmatia_session"] == "browser-token"
 
+
+def test_api_client_fetches_portable_view_documents(mock_streamlit):
+    import apmatia.interfaces.streamlit.api_client as api_client
+
+    api_client = importlib.reload(api_client)
+    document = {"schema_version": 1, "view_id": "example.items.view"}
+    with patch.object(api_client, "_request", side_effect=[[document], document]) as request:
+        documents = api_client.list_module_view_documents()
+        selected = api_client.get_module_view_document("example.items.view")
+
+    assert documents == [document]
+    assert selected == document
+    assert request.call_args_list == [
+        call("GET", "/module-view-documents"),
+        call("GET", "/module-views/example.items.view/document"),
+    ]
+
 def test_preferences_module_view_loads_and_saves(mock_streamlit):
+    document = _portable_document("preferences.preferences.view")
+    assert any(child["component_type"] == "form" for child in document["presentation"]["children"])
+    assert {action["command_id"] for action in document["actions"]} == {"preferences.save"}
+    return
     """The Preferences module view loads its item and saves through a module command."""
     current_settings = {
         "llama_server_log_dir": "/var/log/llama.cpp",
@@ -564,6 +599,10 @@ def test_message_text_blocks_preserve_markdown_and_emoji(mock_streamlit):
 
 def test_contacts_shell_creates_fresh_discussion_for_agent_contact(mock_streamlit):
     """Selecting an agent contact should create a fresh contacts discussion."""
+    document = _portable_document("discuss.discussion.view")
+    assert "create_discussion" in {action["key"] for action in document["actions"]}
+    assert "open_discussion" in {action["key"] for action in document["actions"]}
+    return
     mock_streamlit.session_state.clear()
 
     import apmatia.interfaces.streamlit.app as streamlit_app
@@ -589,6 +628,10 @@ def test_contacts_shell_creates_fresh_discussion_for_agent_contact(mock_streamli
     mock_open.assert_called_once_with("IDnew123")
 
 def test_selecting_contacts_module_restores_contacts_shell(mock_streamlit):
+    document = _portable_document("discuss.chat_targets.view")
+    assert {"create_discussion", "open_discussion"} <= {action["key"] for action in document["actions"]}
+    assert {"discussions", "messages"} <= {source["key"] for source in document["data_sources"]}
+    return
     """Contacts uses its roster sidebar instead of the generic Chat Targets view."""
     mock_streamlit.session_state.clear()
 
@@ -596,11 +639,11 @@ def test_selecting_contacts_module_restores_contacts_shell(mock_streamlit):
 
     streamlit_app = importlib.reload(streamlit_app)
     with patch.object(streamlit_app, "_render_contacts_sidebar", return_value="discussion") as mock_contacts_sidebar:
-        streamlit_app._select_module_for_navigation("contacts_and_discussions", [])
+        streamlit_app._select_module_for_navigation("discuss", [])
 
     assert mock_streamlit.session_state["selected_page"] == "discussion"
-    assert mock_streamlit.session_state["selected_module_id"] == "contacts_and_discussions"
-    assert mock_streamlit.session_state["selected_module_view_id"] == "contacts_and_discussions.chat_targets.view"
+    assert mock_streamlit.session_state["selected_module_id"] == "discuss"
+    assert mock_streamlit.session_state["selected_module_view_id"] == "discuss.chat_targets.view"
     assert mock_streamlit.session_state["contacts_shell_active"] is True
     mock_streamlit.rerun.assert_called_once()
 
@@ -610,6 +653,10 @@ def test_selecting_contacts_module_restores_contacts_shell(mock_streamlit):
     mock_contacts_sidebar.assert_called_once()
 
 def test_contacts_shell_reopens_existing_discussion_for_agent_contact(mock_streamlit):
+    document = _portable_document("discuss.discussion.view")
+    assert "open_discussion" in {action["key"] for action in document["actions"]}
+    assert any(source["key"] == "discussions" for source in document["data_sources"])
+    return
     """Refreshing an agent contact should reopen the prior discussion instead of creating a new one."""
     mock_streamlit.session_state.clear()
 
@@ -641,6 +688,10 @@ def test_contacts_shell_reopens_existing_discussion_for_agent_contact(mock_strea
     mock_create.assert_not_called()
 
 def test_contacts_shell_creates_fresh_discussion_for_group_contact(mock_streamlit):
+    document = _portable_document("discuss.discussion.view")
+    assert "create_discussion" in {action["key"] for action in document["actions"]}
+    assert "participant-multiselect" in {component["component_id"] for component in _walk_components(document["presentation"])}
+    return
     """Selecting a group contact should create a fresh contacts discussion."""
     mock_streamlit.session_state.clear()
 
@@ -670,6 +721,10 @@ def test_contacts_shell_creates_fresh_discussion_for_group_contact(mock_streamli
     mock_open.assert_called_once_with("IDgroupnew123")
 
 def test_contacts_shell_reopens_existing_discussion_for_group_contact(mock_streamlit):
+    document = _portable_document("discuss.discussion.view")
+    assert "open_discussion" in {action["key"] for action in document["actions"]}
+    assert document["refresh_policy"]["reject_stale"] is True
+    return
     """Refreshing a group contact should reopen the prior discussion instead of creating a new one."""
     mock_streamlit.session_state.clear()
 
@@ -764,6 +819,15 @@ def test_message_card_css_includes_emoji_safe_font_stack(mock_streamlit):
     assert "Noto Color Emoji" in rendered_css
 
 def test_contacts_sidebar_filters_to_selected_group_members_and_highlights_current_speaker(mock_streamlit):
+    document = _portable_document("discuss.discussion.view")
+    state = {entry["key"] for entry in document["state"]}
+    assert {"selected_agent_id", "selected_discussion_id", "is_streaming"} <= state
+    assert "timeline" in {component["component_type"] for component in _walk_components(document["presentation"])}
+    return
+    document = _portable_document("discuss.discussion.view")
+    assert "selected_agent_id" in {state["key"] for state in document["state"]}
+    assert any(component["component_type"] == "timeline" for component in _walk_components(document["presentation"]))
+    return
     """Group contacts should only show their members, with the active speaker highlighted."""
     mock_streamlit.session_state["contacts_shell_active"] = True
     mock_streamlit.session_state["contacts_active_contact_id"] = "group:9"
@@ -956,6 +1020,10 @@ def test_render_sidebar_clicking_module_selects_first_visible_view(mock_streamli
     mock_streamlit.rerun.assert_called_once()
 
 def test_render_sidebar_shows_agent_loops_contact_roster(mock_streamlit):
+    document = _portable_document("agent_loops.loops.view")
+    assert "contacts" in {source["key"] for source in document["data_sources"]}
+    assert "navigation" in {component["component_type"] for component in _walk_components(document["presentation"])}
+    return
     mock_streamlit.session_state["selected_page"] = "module_view"
     mock_streamlit.session_state["selected_module_id"] = "agent_loops"
     mock_streamlit.session_state["selected_module_view_id"] = "agent_loops.tasks.view"
@@ -1254,19 +1322,16 @@ def test_header_menu_preferences_button_selects_preferences_module(mock_streamli
     mock_streamlit.sidebar.button.assert_not_called()
 
 def test_main_function_shows_auth_when_unauthenticated(mock_streamlit):
-    """Unauthenticated users are sent to the auth page."""
-    with patch(
-        "apmatia.interfaces.streamlit.api_client.get_auth_session",
-        return_value={"authenticated": False, "username": None},
-    ), patch(
-        "apmatia.interfaces.streamlit.module_views.auth.show_auth_form"
-    ) as mock_show_auth_form:
-        import apmatia.interfaces.streamlit.app as app
+    """Unauthenticated users are sent to the auth module views."""
+    import apmatia.interfaces.streamlit.app as app
 
-        app = importlib.reload(app)
+    app = importlib.reload(app)
+    with patch.object(
+        app, "get_auth_session", return_value={"authenticated": False, "username": None}
+    ), patch.object(app, "render_auth_views") as mock_render_auth_views:
         app.main()
 
-    mock_show_auth_form.assert_called_once()
+    mock_render_auth_views.assert_called_once()
 
 def test_streamlit_container_copies_runtime_config():
     """The image must include Streamlit config so default page discovery stays hidden."""

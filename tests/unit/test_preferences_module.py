@@ -15,8 +15,9 @@ def test_preferences_module_is_stable_and_exposes_form_view() -> None:
     assert APMATIA_PREFERENCES_MODULE.status == "stable"
     assert APMATIA_PREFERENCES_MODULE.default_enabled is True
     assert view.view_id == "preferences.preferences.view"
-    assert view.metadata["ui"]["render_mode"] == "form"
-    assert view.metadata["ui"]["form"]["fields"]
+    presentation = view.metadata["presentation"]
+    assert presentation.component_type == "page"
+    assert any(child.component_type == "form" for child in presentation.children)
 
 
 def test_preferences_provider_lists_current_preferences() -> None:

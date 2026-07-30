@@ -1,6 +1,6 @@
 import json
 
-from apmatia.modules.users.auth import SessionManager
+from apmatia.modules.auth.sessions import SessionManager
 
 
 def test_session_manager_create_get_delete():

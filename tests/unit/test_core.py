@@ -1,12 +1,12 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from apmatia.modules.contacts_and_discussions.services import prompt_llm
+from apmatia.modules.discuss.services import prompt_llm
 
 
-@patch("apmatia.modules.contacts_and_discussions.services.KoboldCppBackend")
-@patch("apmatia.modules.contacts_and_discussions.services.TextFileStorage")
-@patch("apmatia.modules.contacts_and_discussions.services.execute")
+@patch("apmatia.modules.discuss.services.KoboldCppBackend")
+@patch("apmatia.modules.discuss.services.TextFileStorage")
+@patch("apmatia.modules.discuss.services.execute")
 def test_core_prompt(mock_execute, mock_storage_class, mock_backend_class, tmp_path):
     output_file = tmp_path / "output.txt"
     output_file.write_text("chunk one\nchunk two", encoding="utf-8")

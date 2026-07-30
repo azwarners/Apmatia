@@ -1,7 +1,7 @@
 """Generic module view adapters for the Apmatia Streamlit interface."""
 
-from apmatia.interfaces.streamlit.module_views.adapter import adapt_module_view
-from apmatia.interfaces.streamlit.module_views.models import (
+from apmatia.core.view_contract.normalization import adapt_module_view
+from apmatia.core.view_contract.models import (
     CollectionColumnDescriptor,
     CollectionViewDescriptor,
     ModuleViewActionDescriptor,

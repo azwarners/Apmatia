@@ -3,12 +3,12 @@ from __future__ import annotations
 from apmatia.core.registry import CommandContribution
 
 
-_VERBS = ("list", "create", "edit", "delete")
+_VERBS = ("list", "create", "edit", "clone", "delete")
 
 
 def _input_fields(verb: str) -> list[dict[str, object]]:
     fields: list[dict[str, object]] = []
-    if verb in {"edit", "delete"}:
+    if verb in {"edit", "clone", "delete"}:
         fields.append({"key": "item_id", "label": "Agent ID", "data_type": "number", "required": True})
     if verb in {"create", "edit"}:
         fields.extend(

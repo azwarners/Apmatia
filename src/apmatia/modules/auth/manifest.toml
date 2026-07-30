@@ -1,0 +1,19 @@
+[module]
+module_id = "auth"
+name = "Authentication"
+version = "0.1.0"
+description = "Provide authentication sessions and the Apmatia login view."
+author = "Nick"
+status = "stable"
+category = "infrastructure"
+default_enabled = true
+tags = ["authentication", "sessions", "login", "access-control"]
+
+[metadata]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = ["users"]
+tools = []

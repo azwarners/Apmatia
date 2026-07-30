@@ -6,29 +6,23 @@ import streamlit as st
 from apmatia.api.internal.ipe import ensure_ipe_coach_agent_for_user
 from apmatia.interfaces.streamlit.api_client import (
     ApiError,
-    create_discussion,
-    discussion_state,
     get_auth_session,
     get_settings,
-    list_agents,
-    list_groups,
-    list_group_members,
+    list_auth_views,
     list_module_view_items,
     list_modules as list_module_catalog,
     logout,
-    open_discussion,
-    discussion_tree,
+    login,
+    register,
 )
-from apmatia.interfaces.streamlit.module_views.adapter import adapt_module_view
+from apmatia.interfaces.streamlit.module_views.contract_renderer import render_view_document
 from apmatia.interfaces.streamlit.module_views.renderers import render_navigation_pane
 from apmatia.interfaces.streamlit.page_runtime import sync_page_generation
-from apmatia.interfaces.streamlit.module_views.auth import show_auth_form
 from apmatia.interfaces.streamlit.pages import module_views
 from apmatia.modules.persistence.logger import get_logger
 
 FAVICON_PATH = Path(__file__).resolve().parents[4] / "assets" / "favicon.png"
 PAGE_OPTIONS = [
-    "discussion",
     "module_view",
 ]
 THEME_OPTIONS = ["dark", "light", "system"]
@@ -56,6 +50,60 @@ def require_auth():
     st.session_state["auth_token"] = "api-session"
     st.session_state["authenticated_user"] = session
     return True
+
+
+def render_auth_views() -> None:
+    """Render the public auth module views and dispatch their API intents."""
+    try:
+        views = list_auth_views()
+    except ApiError as error:
+        st.error(f"Unable to load authentication views: {error.detail}")
+        return
+
+    if not views:
+        st.error("The authentication module does not expose a login view.")
+        return
+
+    tabs = st.tabs([str(view.get("title") or "Authentication") for view in views])
+    for tab, view in zip(tabs, views):
+        with tab:
+            intents = render_view_document(view)
+        for intent in intents:
+            _handle_auth_intent(dict(intent.get("payload") or {}))
+
+
+def _handle_auth_intent(payload: dict[str, object]) -> None:
+    action = str(payload.get("auth_action") or "").strip()
+    username = str(payload.get("username") or "").strip()
+    password = str(payload.get("password") or "")
+    if not username or not password:
+        st.warning("Please enter both username and password.")
+        return
+
+    try:
+        if action == "login":
+            response = login(username, password)
+            success_message = f"Welcome back, {response.get('username', username)}!"
+        elif action == "register":
+            if password != str(payload.get("password_confirm") or ""):
+                st.warning("Passwords do not match.")
+                return
+            response = register(username, password)
+            user = response.get("user", {})
+            success_message = f"Account created for {user.get('username', username)}! You are now signed in."
+        else:
+            st.error("The authentication view requested an unsupported action.")
+            return
+        session = get_auth_session()
+    except ApiError as error:
+        st.error(error.detail)
+        return
+
+    if session.get("authenticated"):
+        st.session_state["auth_token"] = "api-session"
+        st.session_state["authenticated_user"] = session
+    st.success(success_message)
+    st.rerun()
 
 
 def initialize_ui_preferences():
@@ -486,10 +534,6 @@ def render_sidebar():
             st.session_state["selected_module_view_id"] = (
                 str(first_views[0].get("view_id") or "") if first_views else None
             )
-    if _contacts_shell_active():
-        return _render_contacts_sidebar()
-    if _agent_loops_shell_active():
-        return _render_agent_loops_sidebar()
 
     st.sidebar.title("Apmatia")
 
@@ -499,179 +543,6 @@ def render_sidebar():
         for module in visible_modules:
             _render_module_sidebar_section(module)
     return st.session_state["selected_page"]
-
-
-def _contacts_shell_active() -> bool:
-    return bool(st.session_state.get("contacts_shell_active"))
-
-
-def _agent_loops_shell_active() -> bool:
-    return st.session_state.get("selected_page") == "module_view" and st.session_state.get("selected_module_id") == "agent_loops"
-
-
-def _current_user_id() -> int | None:
-    authenticated_user = st.session_state.get("authenticated_user")
-    if not isinstance(authenticated_user, dict):
-        return None
-    try:
-        user_id = authenticated_user.get("user_id")
-        return None if user_id is None else int(user_id)
-    except (TypeError, ValueError):
-        return None
-
-
-def _visible_agent(agent: dict[str, object], current_user_id: int | None, visible_group_ids: set[int]) -> bool:
-    if current_user_id is None:
-        return True
-    try:
-        owner_user_id = agent.get("owner_user_id")
-        owner_group_id = agent.get("owner_group_id")
-    except AttributeError:
-        return False
-    if owner_user_id == current_user_id:
-        return True
-    if owner_group_id is not None and owner_group_id in visible_group_ids:
-        return True
-    return False
-
-
-def _render_contacts_sidebar():
-    try:
-        contacts = _contact_roster()
-    except ApiError as error:
-        st.sidebar.title("Contacts")
-        st.sidebar.error(f"Unable to load contacts: {error.detail}")
-        return st.session_state["selected_page"]
-
-    if st.sidebar.button("Back to Apmatia", key="contacts_exit_top", use_container_width=True):
-        _deactivate_contacts_shell()
-        st.rerun()
-
-    st.sidebar.divider()
-    st.sidebar.title("Contacts")
-
-    active_contact_id = str(st.session_state.get("contacts_active_contact_id") or "")
-    active_contact_type = str(st.session_state.get("contacts_active_contact_type") or "")
-    contacts = _filter_contacts_for_active_group(
-        contacts,
-        active_contact_type=active_contact_type,
-        active_contact_id=active_contact_id,
-    )
-    if active_contact_type == "group" and active_contact_id:
-        st.sidebar.caption(f"Showing members of {str(st.session_state.get('contacts_active_contact_label') or 'this group')}.")
-
-    current_speaker_contact_id = None
-    try:
-        snapshot = discussion_state()
-    except ApiError:
-        snapshot = None
-    if isinstance(snapshot, dict):
-        activity = snapshot.get("activity") if isinstance(snapshot.get("activity"), dict) else None
-        speaker_name = str(activity.get("speaker_name") or "").strip().lower() if isinstance(activity, dict) else ""
-        if speaker_name:
-            for contact in contacts:
-                if str(contact.get("contact_type") or "") != "agent":
-                    continue
-                if str(contact.get("label") or "").strip().lower() == speaker_name:
-                    current_speaker_contact_id = str(contact.get("contact_id") or "")
-                    break
-
-    if contacts and (not active_contact_id or active_contact_id not in {str(contact.get("contact_id") or "") for contact in contacts}):
-        _activate_contacts_contact(contacts[0])
-        st.rerun()
-
-    if not contacts:
-        pass
-    else:
-        for contact in contacts:
-            contact_id = str(contact.get("contact_id") or "")
-            contact_label = str(contact.get("label") or contact_id or "Contact")
-            button_type = (
-                "primary"
-                if (active_contact_id and contact_id == active_contact_id)
-                or (current_speaker_contact_id and contact_id == current_speaker_contact_id)
-                else "secondary"
-            )
-            if st.sidebar.button(
-                contact_label,
-                key=f"contacts_nav_{contact_id or contact_label}",
-                type=button_type,
-                use_container_width=True,
-            ):
-                _activate_contacts_contact(contact)
-                st.rerun()
-
-    st.sidebar.divider()
-    if st.sidebar.button("Back to Apmatia", key="contacts_exit_bottom", use_container_width=True):
-        _deactivate_contacts_shell()
-        st.rerun()
-
-    return "discussion"
-
-
-def _render_agent_loops_sidebar() -> str:
-    if st.sidebar.button("Back to Apmatia", key="agent_loops_exit_top", use_container_width=True):
-        _deactivate_agent_loops_shell()
-        st.rerun()
-
-    st.sidebar.divider()
-    st.sidebar.title("Agent Loops")
-
-    try:
-        modules = _visible_module_catalog()
-    except ApiError as error:
-        st.sidebar.error(f"Unable to load module views: {error.detail}")
-        return st.session_state["selected_page"]
-
-    module = next((item for item in modules if str(item.get("module_id") or "") == "agent_loops"), None)
-    if module is None:
-        st.sidebar.info("Agent Loops is not available yet.")
-        return st.session_state["selected_page"]
-
-    contacts_view = next(
-        (
-            view
-            for view in list(module.get("views") or [])
-            if str((view.get("metadata") or {}).get("object_type") or "").strip().lower() == "contact"
-            and not bool(view.get("effective_hidden", False))
-        ),
-        None,
-    )
-    if contacts_view is None:
-        st.sidebar.info("Agent Loops does not currently expose a contact list.")
-        return st.session_state["selected_page"]
-
-    contact_items = list_module_view_items(str(contacts_view.get("view_id") or ""))
-
-    active_contact_id = str(st.session_state.get("agent_loops_selected_contact_id") or "")
-    valid_contact_ids = {str(item.get("id") or "").strip() for item in contact_items if str(item.get("id") or "").strip()}
-    if contact_items and (not active_contact_id or active_contact_id not in valid_contact_ids):
-        _activate_agent_loops_contact(contact_items[0])
-        st.rerun()
-
-    st.session_state["agent_loops_shell_active"] = True
-    st.session_state["agent_loops_shell_sidebar_rendered"] = True
-
-    if contact_items:
-        for contact in contact_items:
-            contact_id = str(contact.get("id") or "")
-            contact_label = str(contact.get("title") or contact.get("label") or contact_id or "Contact")
-            button_type = "primary" if active_contact_id and contact_id == active_contact_id else "secondary"
-            if st.sidebar.button(
-                contact_label,
-                key=f"agent_loops_nav_{contact_id or contact_label}",
-                type=button_type,
-                use_container_width=True,
-            ):
-                _activate_agent_loops_contact(contact)
-                st.rerun()
-
-    st.sidebar.divider()
-    if st.sidebar.button("Back to Apmatia", key="agent_loops_exit_bottom", use_container_width=True):
-        _deactivate_agent_loops_shell()
-        st.rerun()
-
-    return "module_view"
 
 
 def _visible_module_catalog() -> list[dict[str, object]]:
@@ -688,289 +559,12 @@ def _visible_module_catalog() -> list[dict[str, object]]:
             view
             for view in list(module.get("views") or [])
             if not bool(view.get("effective_hidden", False))
+            and str((view.get("metadata") or {}).get("ui", {}).get("navigation") or "")
+            != "pre_authentication"
         ]
-        visible_modules.append({**module, "views": visible_views})
+        if visible_views or not list(module.get("views") or []):
+            visible_modules.append({**module, "views": visible_views})
     return visible_modules
-
-
-def _contact_roster() -> list[dict[str, object]]:
-    try:
-        groups = list_groups()
-    except ApiError:
-        groups = []
-    current_user_id = _current_user_id()
-    visible_group_ids = {
-        int(group.get("id"))
-        for group in groups
-        if isinstance(group, dict) and group.get("id") is not None
-    }
-    agents = [
-        agent
-        for agent in list_agents()
-        if _visible_agent(agent, current_user_id, visible_group_ids)
-    ]
-    contacts: list[dict[str, object]] = []
-
-    for agent in agents:
-        agent_id = agent.get("id")
-        if agent_id is None:
-            continue
-        agent_key = str(agent_id)
-        contacts.append(
-            {
-                "contact_id": f"agent:{agent_key}",
-                "contact_type": "agent",
-                "label": str(agent.get("name") or f"Agent {agent_key}"),
-                "discussion_id": None,
-            }
-        )
-
-    for group in groups:
-        group_id = group.get("id")
-        if group_id is None:
-            continue
-        group_key = str(group_id)
-        contacts.append(
-            {
-                "contact_id": f"group:{group_key}",
-                "contact_type": "group",
-                "label": str(group.get("name") or f"Group {group_key}"),
-                "discussion_id": None,
-            }
-        )
-
-    return sorted(
-        contacts,
-        key=lambda contact: str(contact.get("label") or "").lower(),
-    )
-
-
-def _group_member_agent_ids(group_id: int) -> set[int]:
-    try:
-        memberships = list_group_members(group_id)
-    except ApiError:
-        return set()
-
-    member_ids: set[int] = set()
-    for membership in memberships:
-        if not isinstance(membership, dict):
-            continue
-        if not bool(membership.get("is_enabled", False)):
-            continue
-        if str(membership.get("member_kind") or "user").strip().lower() != "agent":
-            continue
-        try:
-            agent_id = int(membership.get("agent_id"))
-        except (TypeError, ValueError):
-            continue
-        member_ids.add(agent_id)
-    return member_ids
-
-
-def _filter_contacts_for_active_group(
-    contacts: list[dict[str, object]],
-    *,
-    active_contact_type: str,
-    active_contact_id: str,
-) -> list[dict[str, object]]:
-    if active_contact_type != "group":
-        return contacts
-
-    try:
-        group_id = int(active_contact_id.split(":", 1)[1])
-    except (IndexError, ValueError):
-        return contacts
-
-    member_agent_ids = _group_member_agent_ids(group_id)
-    if not member_agent_ids:
-        return [contact for contact in contacts if str(contact.get("contact_id") or "") == active_contact_id]
-
-    filtered_contacts: list[dict[str, object]] = []
-    for contact in contacts:
-        contact_id = str(contact.get("contact_id") or "").strip()
-        if contact_id == active_contact_id:
-            filtered_contacts.append(contact)
-            continue
-        if str(contact.get("contact_type") or "") != "agent":
-            continue
-        agent_id = _contacts_agent_id(contact)
-        if agent_id is not None and agent_id in member_agent_ids:
-            filtered_contacts.append(contact)
-    return filtered_contacts or contacts
-
-
-def _activate_contacts_contact(contact: dict[str, object]) -> None:
-    contact_id = str(contact.get("contact_id") or "").strip()
-    if not contact_id:
-        return
-    st.session_state["contacts_shell_active"] = True
-    st.session_state["contacts_active_contact_id"] = contact_id
-    st.session_state["contacts_active_contact_label"] = str(contact.get("label") or contact_id)
-    st.session_state["contacts_active_contact_type"] = str(contact.get("contact_type") or "")
-    contact_type, raw_contact_id = contact_id.split(":", 1)
-    try:
-        numeric_contact_id = int(raw_contact_id)
-    except ValueError:
-        numeric_contact_id = None
-    if contact_type == "agent" and numeric_contact_id is not None:
-        st.session_state["contacts_active_agent_id"] = numeric_contact_id
-    else:
-        st.session_state["contacts_active_agent_id"] = None
-
-    contact_discussion_ids = st.session_state.get("contacts_contact_discussion_ids")
-    if not isinstance(contact_discussion_ids, dict):
-        contact_discussion_ids = {}
-        st.session_state["contacts_contact_discussion_ids"] = contact_discussion_ids
-
-    discussion_id = str(contact_discussion_ids.get(contact_id) or "").strip() or None
-    if discussion_id is None:
-        discussion_id = _open_or_create_contact_discussion(
-            contact_type=contact_type,
-            contact_id=numeric_contact_id,
-            label=str(contact.get("label") or contact_id),
-        )
-    if discussion_id:
-        contact_discussion_ids[contact_id] = discussion_id
-        st.session_state["contacts_contact_discussion_ids"] = contact_discussion_ids
-        st.session_state["contacts_active_discussion_id"] = discussion_id
-
-
-def _contacts_agent_id(contact: dict[str, object]) -> int | None:
-    if str(contact.get("contact_type") or "") != "agent":
-        return None
-    contact_id = str(contact.get("contact_id") or "")
-    if ":" not in contact_id:
-        return None
-    try:
-        return int(contact_id.split(":", 1)[1])
-    except ValueError:
-        return None
-
-
-def _discussion_matches_contact(
-    discussion: dict[str, object],
-    *,
-    contact_type: str,
-    contact_id: int,
-) -> bool:
-    if contact_type == "group":
-        return int(discussion.get("group_id") or 0) == contact_id
-
-    if contact_type != "agent":
-        return False
-
-    participant_agent_ids = discussion.get("participant_agent_ids") or []
-    try:
-        return contact_id in {int(candidate) for candidate in participant_agent_ids if candidate is not None}
-    except (TypeError, ValueError):
-        return False
-
-
-def _find_existing_contact_discussion_id(*, contact_type: str, contact_id: int | None) -> str | None:
-    if contact_id is None:
-        return None
-
-    try:
-        tree = discussion_tree()
-    except ApiError:
-        return None
-
-    discussions = tree.get("discussions")
-    if not isinstance(discussions, list):
-        return None
-
-    matching_discussions = [
-        discussion
-        for discussion in discussions
-        if isinstance(discussion, dict) and _discussion_matches_contact(
-            discussion,
-            contact_type=contact_type,
-            contact_id=contact_id,
-        )
-    ]
-    if not matching_discussions:
-        return None
-
-    def _discussion_sort_key(discussion: dict[str, object]) -> tuple[str, str]:
-        return (
-            str(discussion.get("updated_at") or ""),
-            str(discussion.get("created_at") or ""),
-        )
-
-    matching_discussions.sort(key=_discussion_sort_key, reverse=True)
-    return str(matching_discussions[0].get("discussion_id") or "").strip() or None
-
-
-def _open_or_create_contact_discussion(*, contact_type: str, contact_id: int | None, label: str) -> str | None:
-    if contact_id is None:
-        return None
-
-    existing_discussion_id = _find_existing_contact_discussion_id(
-        contact_type=contact_type,
-        contact_id=contact_id,
-    )
-    if existing_discussion_id is not None:
-        try:
-            open_discussion(existing_discussion_id)
-        except ApiError:
-            pass
-        return existing_discussion_id
-
-    create_payload: dict[str, object] = {"title": label, "chat_mode": "round_robin"}
-    if contact_type == "agent":
-        create_payload["agent_id"] = contact_id
-        create_payload["participant_agent_ids"] = [contact_id]
-    elif contact_type == "group":
-        create_payload["group_id"] = contact_id
-    else:
-        return None
-
-    try:
-        created = create_discussion(**create_payload)
-    except ApiError:
-        return None
-    discussion_id = str(created.get("discussion", {}).get("discussion_id") or "").strip() or None
-    if discussion_id is not None:
-        try:
-            open_discussion(discussion_id)
-        except ApiError:
-            pass
-    return discussion_id
-
-
-def _deactivate_contacts_shell() -> None:
-    for key in (
-        "contacts_shell_active",
-        "contacts_active_contact_id",
-        "contacts_active_contact_label",
-        "contacts_active_contact_type",
-        "contacts_active_agent_id",
-        "contacts_active_discussion_id",
-    ):
-        st.session_state.pop(key, None)
-
-
-def _deactivate_agent_loops_shell() -> None:
-    for key in (
-        "agent_loops_shell_active",
-        "agent_loops_shell_sidebar_rendered",
-        "agent_loops_selected_contact_id",
-        "selected_module_id",
-        "selected_module_view_id",
-    ):
-        st.session_state.pop(key, None)
-    st.session_state["selected_page"] = "module_view"
-    st.session_state["selected_module_id"] = "module_manager"
-    st.session_state["selected_module_view_id"] = "module_manager.module_manager.view"
-
-
-def _activate_agent_loops_contact(contact: dict[str, object]) -> None:
-    contact_id = str(contact.get("id") or "").strip()
-    if not contact_id:
-        return
-    st.session_state["agent_loops_shell_active"] = True
-    st.session_state["agent_loops_selected_contact_id"] = contact_id
-    st.session_state["selected_module_id"] = "agent_loops"
 
 
 def _render_module_sidebar_section(module: dict[str, object]) -> None:
@@ -988,7 +582,7 @@ def _render_module_sidebar_section(module: dict[str, object]) -> None:
         use_container_width=True,
         type="primary" if is_active_module else "secondary",
     ):
-        _select_module_for_navigation(module_id, module_views)
+            _select_module_for_navigation(module_id, module_views)
 
     if not is_active_module:
         return
@@ -1012,48 +606,15 @@ def _render_module_sidebar_section(module: dict[str, object]) -> None:
 
 
 def _select_module_for_navigation(module_id: str, module_views: list[dict[str, object]]) -> None:
-    if module_id == "contacts_and_discussions":
-        LOGGER.info(
-            "Module navigation selected discussion shell",
-            extra={
-                "selected_page": "discussion",
-                "selected_module_id": module_id,
-                "selected_module_view_id": "contacts_and_discussions.chat_targets.view",
-            },
-        )
-        st.session_state["selected_page"] = "discussion"
-        st.session_state["selected_module_id"] = module_id
-        st.session_state["selected_module_view_id"] = "contacts_and_discussions.chat_targets.view"
-        st.session_state["contacts_shell_active"] = True
-    elif module_id == "agent_loops":
-        selected_module_view_id = None if not module_views else str(module_views[0].get("view_id") or "")
-        LOGGER.info(
-            "Module navigation selected module view shell",
-            extra={
-                "selected_page": "module_view",
-                "selected_module_id": module_id,
-                "selected_module_view_id": selected_module_view_id or "",
-            },
-        )
-        st.session_state["selected_page"] = "module_view"
-        st.session_state["selected_module_id"] = module_id
-        st.session_state["selected_module_view_id"] = selected_module_view_id
-        st.session_state["agent_loops_shell_active"] = True
-    else:
-        current_view_id = st.session_state.get("selected_module_view_id")
-        visible_view_ids = {str(view.get("view_id") or "") for view in module_views}
-        next_view_id = current_view_id if current_view_id in visible_view_ids else None if not module_views else str(module_views[0].get("view_id") or "")
-        LOGGER.info(
-            "Module navigation selected module view shell",
-            extra={
-                "selected_page": "module_view",
-                "selected_module_id": module_id,
-                "selected_module_view_id": next_view_id or "",
-            },
-        )
-        st.session_state["selected_page"] = "module_view"
-        st.session_state["selected_module_id"] = module_id
-        st.session_state["selected_module_view_id"] = next_view_id
+    """Select a module and its first visible view through the generic route state."""
+    visible_views = [
+        view for view in module_views if not bool(view.get("effective_hidden", False))
+    ]
+    st.session_state["selected_page"] = "module_view"
+    st.session_state["selected_module_id"] = module_id
+    st.session_state["selected_module_view_id"] = (
+        str(visible_views[0].get("view_id") or "") if visible_views else None
+    )
     st.rerun()
 
 
@@ -1154,7 +715,7 @@ def main():
 
     # Show login if not authenticated.
     if not require_auth():
-        show_auth_form()
+        render_auth_views()
         return
 
     session_user = st.session_state.get("authenticated_user") or {}
@@ -1191,9 +752,6 @@ def main():
             module_views.render()
             return
 
-        if selected_page == "discussion":
-            module_views.render()
-            return
 
 if __name__ == "__main__":
     main()

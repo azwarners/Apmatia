@@ -198,7 +198,7 @@ class ApmatiaAdminToolProvider:
             }
 
         if self.action == "set_agent_mode":
-            from apmatia.modules.contacts_and_discussions.services import set_agent_mode as _set_agent_mode
+            from apmatia.modules.discuss.services import set_agent_mode as _set_agent_mode
 
             discussion_id = str(getattr(tool_call, "discussion_id", "") or "").strip()
             if not discussion_id:
@@ -267,7 +267,7 @@ def _resolve_owner_context(agent: Any, arguments: dict[str, Any], tool_call: Any
 
     if (owner_user_id is None or owner_group_id is None) and getattr(tool_call, "discussion_id", None):
         try:
-            from apmatia.modules.contacts_and_discussions.services import get_discussion as _get_discussion
+            from apmatia.modules.discuss.services import get_discussion as _get_discussion
 
             discussion = _get_discussion(tool_call.discussion_id)
         except Exception:

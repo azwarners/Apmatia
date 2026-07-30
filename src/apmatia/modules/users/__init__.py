@@ -1,6 +1,5 @@
-"""Stable user, group, membership, and authentication infrastructure."""
+"""Stable user, group, and membership infrastructure."""
 
-from .auth import AuthSession, SessionManager
 from .manager import AccessController, GroupManager, UserManager
 from .models import (
     Group,
@@ -26,7 +25,6 @@ from .sqlite_repositories import (
 __all__ = [
     "AccessControlService",
     "AccessController",
-    "AuthSession",
     "Group",
     "GroupId",
     "GroupManager",
@@ -38,7 +36,6 @@ __all__ = [
     "GroupService",
     "MembershipId",
     "PasswordScheme",
-    "SessionManager",
     "SQLiteGroupMembershipRepository",
     "SQLiteGroupRepository",
     "SQLiteUserManagementBundle",

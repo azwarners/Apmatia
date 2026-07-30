@@ -11,7 +11,7 @@ from apmatia.modules.users.runtime import get_group_manager
 from apmatia.core.registry import CommandContribution, ViewContribution
 
 from .commands import COMMAND_DESCRIPTORS
-from .runner import get_agent_loop_runner
+from .runner import LoopTaskRequest, get_agent_loop_runner
 from .state import ContactRoots, resolve_agent_loop_workspace_root
 
 
@@ -43,6 +43,22 @@ class ApmatiaAgentLoopsModuleViewProvider:
         payload: Mapping[str, Any],
         context: ModuleViewContext,
     ) -> dict[str, Any] | None:
+        if command.command_id == "agent_loops.start":
+            contact = str(payload.get("contact_id") or "")
+            contact_kind, _, contact_value = contact.partition(":")
+            if contact_kind not in {"agent", "group"} or not contact_value:
+                raise ValueError("contact_id must identify an agent or group contact.")
+            return get_agent_loop_runner().start_task(
+                LoopTaskRequest(
+                    owner_user_id=context.user_id,
+                    contact_kind=contact_kind,
+                    contact_id=int(contact_value),
+                    title=str(payload.get("title") or "Untitled task"),
+                    prompt=str(payload.get("prompt") or ""),
+                    max_iterations=int(payload.get("max_iterations") or 10),
+                    member_group_ids=set(context.group_ids),
+                )
+            )
         if command.command_id == "agent_loops.stop":
             task_id = str(payload.get("task_id") or "").strip()
             if not task_id:

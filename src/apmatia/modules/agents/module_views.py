@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from dataclasses import asdict
+import json
 from typing import Any
 
 from apmatia.core.module_view_runtime import ModuleViewContext
@@ -23,7 +25,8 @@ class AgentsModuleViewProvider:
 
     def list_items(self, *, view: ViewContribution, context: ModuleViewContext) -> list[dict[str, Any]]:
         del view
-        return [_serialize_agent(agent) for agent in self.manager.list_agents() if _is_visible(agent, context)]
+        manager = self.manager
+        return [_serialize_agent(agent, manager) for agent in manager.list_agents() if _is_visible(agent, context)]
 
     def execute_command(
         self,
@@ -48,9 +51,20 @@ class AgentsModuleViewProvider:
         if agent is None:
             raise ValueError(f"Agent not found: {agent_id}")
         _require_write_access(agent, context)
+        if verb == "clone":
+            cloned = self.manager.clone_agent(agent_id, f"Copy of {agent.name}", owner_user_id=user_id)
+            return {"status": "created", "item": _serialize_agent(cloned, self.manager)}
         if verb == "edit":
-            agent = self.manager.update_agent(agent_id, **_agent_values(payload, include_name=True))
-            return {"status": "updated", "item": _serialize_agent(agent)}
+            values = _agent_values(payload, include_name=True)
+            prompt_values = {key: values.pop(key) for key in tuple(values) if key in _PROMPT_FIELDS}
+            if prompt_values:
+                if agent.prompt_id is None:
+                    _prompt, prompt_id = self.manager.create_prompt(**prompt_values)
+                    values["prompt_id"] = prompt_id
+                else:
+                    self.manager.update_prompt(agent.prompt_id, **prompt_values)
+            agent = self.manager.update_agent(agent_id, **values)
+            return {"status": "updated", "item": _serialize_agent(agent, self.manager)}
         if verb == "delete":
             deleted = self.manager.delete_agent(agent_id)
             return {"status": "deleted" if deleted else "not_found", "deleted": bool(deleted)}
@@ -69,10 +83,19 @@ def _agent_values(payload: Mapping[str, Any], *, include_name: bool = False) -> 
         "workspace_root",
         "knowledge_root",
         "metadata",
+        *_PROMPT_FIELDS,
     }
     if include_name:
         keys.update(("name", "owner_user_id", "owner_group_id"))
-    return {key: payload[key] for key in keys if key in payload}
+    values = {key: payload[key] for key in keys if key in payload}
+    for key, fallback in (("rag_root_ids", []), ("tool_ids", []), ("metadata", {})):
+        value = values.get(key)
+        if isinstance(value, str):
+            values[key] = json.loads(value) if value.strip() else fallback
+    for key in ("owner_user_id", "owner_group_id", "memory_id", "default_model_id", "active_model_id"):
+        if key in values and values[key] in ("", 0, "0"):
+            values[key] = None if key != "memory_id" else 0
+    return values
 
 
 def _is_visible(agent: Agent, context: ModuleViewContext) -> bool:
@@ -95,8 +118,8 @@ def _require_write_access(agent: Agent, context: ModuleViewContext) -> None:
     raise ValueError("Agent access denied.")
 
 
-def _serialize_agent(agent: Agent) -> dict[str, Any]:
-    return {
+def _serialize_agent(agent: Agent, manager: AgentManager | None = None) -> dict[str, Any]:
+    result = {
         "id": agent.id,
         "name": agent.name,
         "owner_user_id": agent.owner_user_id,
@@ -112,6 +135,20 @@ def _serialize_agent(agent: Agent) -> dict[str, Any]:
         "knowledge_root": agent.knowledge_root,
         "metadata": dict(agent.metadata),
     }
+    if manager is not None and agent.prompt_id is not None:
+        prompt = manager.get_prompt(agent.prompt_id)
+        if prompt is not None:
+            result.update(asdict(prompt))
+    return result
+
+
+_PROMPT_FIELDS = {
+    "personality", "skills", "purpose", "backstory", "communication_style",
+    "operating_principles", "autonomy_level", "decision_making_style", "memory_policy",
+    "domain_priorities", "relationship_to_user", "tool_use_policy", "capability_boundaries",
+    "output_preferences", "safety_ethics", "selfhood_truthfulness", "conflict_resolution_rules",
+    "use_raw_prompt_override", "raw_prompt_override",
+}
 
 
 def _require_authenticated_user(context: ModuleViewContext) -> int:

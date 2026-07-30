@@ -1,3 +1,3 @@
 # Preferences
 
-The stable Preferences module exposes Apmatia's local configuration as a registry-backed module view. Its schema-driven form is rendered by the shared Streamlit module-view adapter and saves through the module command API.
+The stable Preferences module exposes local configuration and module navigation controls as registry-backed module views. Its schema-driven settings form and Modules view operate through the module command API.

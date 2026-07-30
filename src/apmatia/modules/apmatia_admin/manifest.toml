@@ -20,5 +20,5 @@ provider_ids = [
 python = ">=3.10"
 python_packages = []
 system_packages = []
-modules = ["contacts_and_discussions"]
+modules = ["discuss"]
 tools = []

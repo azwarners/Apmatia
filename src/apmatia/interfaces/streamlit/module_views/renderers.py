@@ -9,7 +9,7 @@ from typing import Any, Mapping
 
 import streamlit as st
 
-from apmatia.interfaces.streamlit.module_views.models import (
+from apmatia.core.view_contract.models import (
     CollectionViewDescriptor,
     ModuleViewFormDescriptor,
     ModuleViewFormFieldDescriptor,
@@ -34,10 +34,6 @@ def render_module_view(
 
     if not spec.is_supported:
         render_unsupported_view(spec)
-        return intents
-
-    if spec.view_id == "agent_config.agent_config.view":
-        render_agent_config_view(spec, on_intent=emit)
         return intents
 
     if spec.render_mode == "form":
@@ -259,34 +255,6 @@ def render_collection_view(
     for index, item in enumerate(spec.items):
         with st.container(border=True):
             render_collection_row(spec, item, row_index=index, on_intent=on_intent)
-
-    troubleshooting_items = _troubleshooting_items(spec.items)
-    if troubleshooting_items:
-        st.subheader("Troubleshooting")
-        for index, item in enumerate(troubleshooting_items):
-            with st.container(border=True):
-                summary = str(_item_value(item, "host_summary") or _item_value(item, spec.item_key) or f"Row {index + 1}").strip()
-                error = str(_item_value(item, "resource_error") or "").strip()
-                hint = str(_item_value(item, "troubleshooting_hint") or "").strip()
-                connection_test = str(_item_value(item, "ssh_connection_test_command") or "").strip()
-                install_command = str(_item_value(item, "ssh_public_key_install_command") or "").strip()
-                resource_probe = str(_item_value(item, "ssh_resource_probe_command") or "").strip()
-                if summary:
-                    st.write(summary)
-                if hint:
-                    st.write(hint)
-                if error:
-                    st.write(error)
-                if connection_test:
-                    st.caption("Copy and run this from the machine running Apmatia to inspect the SSH handshake.")
-                    st.code(connection_test, language="bash")
-                if install_command:
-                    st.caption("Copy and run this from the machine running Apmatia after the key has been created.")
-                    st.code(install_command, language="bash")
-                if resource_probe:
-                    st.caption("Copy and run this exact probe from the machine running Apmatia to reproduce the resource check.")
-                    st.code(resource_probe, language="bash")
-
 
 def render_collection_row(
     spec: CollectionViewDescriptor,
@@ -731,14 +699,3 @@ def _item_key(item: Any, key: str, *, row_index: int) -> str:
     if item_id:
         return item_id
     return f"row-{row_index}"
-
-
-def _troubleshooting_items(items: tuple[Any, ...]) -> list[Any]:
-    matches: list[Any] = []
-    for item in items:
-        error = _item_value(item, "resource_error")
-        if error is None:
-            continue
-        if str(error).strip():
-            matches.append(item)
-    return matches

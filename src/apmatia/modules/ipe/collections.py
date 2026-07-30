@@ -50,6 +50,7 @@ class IpeCollectionViewSpec:
         }
 
         metadata = {
+            "view_contract_ready": True,
             "object_type": self.object_type,
             "singular_label": self.singular_label,
             "plural_label": self.plural_label,

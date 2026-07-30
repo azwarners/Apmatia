@@ -4,8 +4,8 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from apmatia.core.registry import ViewContribution
-from apmatia.interfaces.streamlit.module_views.adapter import adapt_module_view
-from apmatia.interfaces.streamlit.module_views.models import ModuleViewIntent
+from apmatia.core.view_contract.normalization import adapt_module_view
+from apmatia.core.view_contract.models import ModuleViewIntent
 from apmatia.interfaces.streamlit.module_views.renderers import render_module_view
 
 

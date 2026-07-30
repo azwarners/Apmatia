@@ -30,7 +30,7 @@ def test_direct_loopback_addresses_are_loopback(host):
     [
         "0.0.0.0",
         "::",
-        "192.168.86.10",
+        "10.0.0.10",
         "10.0.0.4",
         "2001:db8::1",
         "8.8.8.8",
@@ -58,7 +58,7 @@ def test_hostname_with_any_non_loopback_address_is_not_loopback_only(monkeypatch
         assert host == "mixed.example"
         return [
             _addrinfo("127.0.0.1"),
-            _addrinfo("192.168.86.10"),
+        _addrinfo("10.0.0.10"),
         ]
 
     monkeypatch.setattr("apmatia.core.security.transport.socket.getaddrinfo", fake_getaddrinfo)

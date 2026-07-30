@@ -1,0 +1,65 @@
+"""Framework-neutral, versioned view descriptions shared by modules and interfaces."""
+
+from .models import (
+    VIEW_CONTRACT_VERSION,
+    CollectionColumnDescriptor,
+    CollectionViewDescriptor,
+    ModuleViewActionDescriptor,
+    ModuleViewFormActionDescriptor,
+    ModuleViewFormDescriptor,
+    ModuleViewFormFieldDescriptor,
+    ModuleViewIntent,
+    ModuleViewNavigationPaneDescriptor,
+    ModuleViewRenderModel,
+    ViewAction,
+    ViewBinding,
+    ViewComponent,
+    ViewCondition,
+    ViewDataSource,
+    ViewDocument,
+    ViewEffect,
+    ViewRefreshPolicy,
+    ViewStateDefinition,
+)
+from .compatibility import (
+    NegotiatedViewContract,
+    RendererCapabilities,
+    ViewContractCompatibilityError,
+    negotiate_view_contract,
+)
+from .inventory import LEGACY_ADAPTER_FIELD_INVENTORY, legacy_adapter_field_inventory
+from .normalization import adapt_module_view, normalize_view_document
+from .validation import ViewContractIssue, ViewContractValidationError, validate_view_document
+
+__all__ = [
+    "VIEW_CONTRACT_VERSION",
+    "CollectionColumnDescriptor",
+    "CollectionViewDescriptor",
+    "ModuleViewActionDescriptor",
+    "ModuleViewFormActionDescriptor",
+    "ModuleViewFormDescriptor",
+    "ModuleViewFormFieldDescriptor",
+    "ModuleViewIntent",
+    "ModuleViewNavigationPaneDescriptor",
+    "ModuleViewRenderModel",
+    "NegotiatedViewContract",
+    "RendererCapabilities",
+    "ViewAction",
+    "ViewBinding",
+    "ViewComponent",
+    "ViewCondition",
+    "ViewContractIssue",
+    "ViewContractCompatibilityError",
+    "ViewContractValidationError",
+    "ViewDataSource",
+    "ViewDocument",
+    "ViewEffect",
+    "ViewRefreshPolicy",
+    "ViewStateDefinition",
+    "adapt_module_view",
+    "LEGACY_ADAPTER_FIELD_INVENTORY",
+    "legacy_adapter_field_inventory",
+    "negotiate_view_contract",
+    "normalize_view_document",
+    "validate_view_document",
+]

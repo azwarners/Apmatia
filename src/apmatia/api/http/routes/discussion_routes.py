@@ -4,14 +4,14 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from apmatia.modules.contacts_and_discussions.services import (
+from apmatia.modules.discuss.services import (
     get_discussion,
     set_agent_mode,
     prompt_llm,
     TopicManagementBundle,
-    CONTACTS_AND_DISCUSSIONS_DB,
+    DISCUSS_DB,
 )
-from apmatia.modules.contacts_and_discussions.models import DiscussionTurn
+from apmatia.modules.discuss.models import DiscussionTurn
 from apmatia.core.models import utc_now
 from apmatia.api.internal.agent_management import get_agent
 from apmatia.api.internal.agent_prompts import get_agent_system_prompt
@@ -139,8 +139,8 @@ def discussion_snapshot(request: Request, discussion_id: str = Query(None)):
     turns = []
     if discussion_id and discussion_id.strip():
         try:
-            from apmatia.modules.contacts_and_discussions.services import TopicManagementBundle, CONTACTS_AND_DISCUSSIONS_DB
-            bundle = TopicManagementBundle(CONTACTS_AND_DISCUSSIONS_DB)
+            from apmatia.modules.discuss.services import TopicManagementBundle, DISCUSS_DB
+            bundle = TopicManagementBundle(DISCUSS_DB)
             turns = bundle.turns.list_by_discussion(discussion_id.strip())
         except Exception:
             turns = []
@@ -240,7 +240,7 @@ def discussion_prompt(request: Request, payload: PromptPayload):
         chat_messages.append({"role": "system", "content": agent_system_prompt.strip()})
     if discussion_id and discussion_id.strip():
         try:
-            bundle = TopicManagementBundle(CONTACTS_AND_DISCUSSIONS_DB)
+            bundle = TopicManagementBundle(DISCUSS_DB)
             turns = sorted(
                 bundle.turns.list_by_discussion(discussion_id.strip()),
                 key=lambda t: t.turn_index,
@@ -271,10 +271,10 @@ def discussion_prompt(request: Request, payload: PromptPayload):
     user_turn_index = None
     if discussion_id and discussion_id.strip():
         try:
-            from apmatia.modules.contacts_and_discussions.models import DiscussionTurn
+            from apmatia.modules.discuss.models import DiscussionTurn
             from apmatia.core.models import utc_now
 
-            turn_bundle = TopicManagementBundle(CONTACTS_AND_DISCUSSIONS_DB)
+            turn_bundle = TopicManagementBundle(DISCUSS_DB)
             existing_turns = turn_bundle.turns.list_by_discussion(discussion_id.strip())
             user_turn_index = max((t.turn_index for t in existing_turns), default=-1) + 1
             turn_bundle.turns.create(DiscussionTurn(
@@ -344,7 +344,7 @@ def discussion_prompt(request: Request, payload: PromptPayload):
     # intentionally saved before model execution above.
     if turn_bundle is not None and user_turn_index is not None:
         try:
-            from apmatia.modules.contacts_and_discussions.models import DiscussionTurn
+            from apmatia.modules.discuss.models import DiscussionTurn
             from apmatia.core.models import utc_now
 
             assistant_turn = DiscussionTurn(
@@ -390,7 +390,7 @@ def group_discussion_prompt(request: Request, payload: GroupPromptPayload):
     if not agent_ids:
         raise HTTPException(status_code=400, detail="The group has no enabled agent members.")
 
-    bundle = TopicManagementBundle(CONTACTS_AND_DISCUSSIONS_DB)
+    bundle = TopicManagementBundle(DISCUSS_DB)
     discussion_id = payload.discussion_id.strip() if payload.discussion_id else ""
     existing_turns = (
         sorted(bundle.turns.list_by_discussion(discussion_id), key=lambda turn: turn.turn_index)
@@ -635,12 +635,12 @@ def delete_discussion_message(
 
     try:
         from dataclasses import replace as dc_replace
-        from apmatia.modules.contacts_and_discussions.services import (
+        from apmatia.modules.discuss.services import (
             TopicManagementBundle,
-            CONTACTS_AND_DISCUSSIONS_DB,
+            DISCUSS_DB,
         )
 
-        bundle = TopicManagementBundle(CONTACTS_AND_DISCUSSIONS_DB)
+        bundle = TopicManagementBundle(DISCUSS_DB)
         all_turns = bundle.turns.list_by_discussion(discussion_id)
 
         # Sort turns by index
@@ -691,12 +691,12 @@ def delete_discussion_messages(
 
     try:
         from dataclasses import replace as dc_replace
-        from apmatia.modules.contacts_and_discussions.services import (
+        from apmatia.modules.discuss.services import (
             TopicManagementBundle,
-            CONTACTS_AND_DISCUSSIONS_DB,
+            DISCUSS_DB,
         )
 
-        bundle = TopicManagementBundle(CONTACTS_AND_DISCUSSIONS_DB)
+        bundle = TopicManagementBundle(DISCUSS_DB)
         all_turns = bundle.turns.list_by_discussion(discussion_id)
         sorted_turns = sorted(all_turns, key=lambda t: t.turn_index)
 

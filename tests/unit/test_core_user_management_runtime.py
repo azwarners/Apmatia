@@ -7,14 +7,16 @@ def test_runtime_initializes_singletons_and_reuses_instances(tmp_path, monkeypat
 
     runtime = importlib.import_module("apmatia.modules.users.runtime")
     runtime = importlib.reload(runtime)
+    auth_runtime = importlib.import_module("apmatia.modules.auth.runtime")
+    auth_runtime = importlib.reload(auth_runtime)
 
     user_manager_first = runtime.get_user_manager()
     group_manager_first = runtime.get_group_manager()
-    session_manager_first = runtime.get_session_manager()
+    session_manager_first = auth_runtime.get_session_manager()
 
     user_manager_second = runtime.get_user_manager()
     group_manager_second = runtime.get_group_manager()
-    session_manager_second = runtime.get_session_manager()
+    session_manager_second = auth_runtime.get_session_manager()
 
     assert user_manager_first is user_manager_second
     assert group_manager_first is group_manager_second

@@ -44,7 +44,7 @@ class ApmatiaAgentConfigModuleViewProvider:
         if verb != "save":
             raise ValueError(f"Unsupported module command verb for now: {verb}")
 
-        agent_id = _require_int(payload.get("agent_id"))
+        agent_id = _require_int(payload.get("agent_id", payload.get("item_id")))
         workspace_root = str(payload.get("workspace_root") or "").strip()
         knowledge_root = str(payload.get("knowledge_root") or "").strip()
         agent = self.agent_manager.get_agent(agent_id)

@@ -12,7 +12,14 @@ from apmatia.api.internal.module_management import (
     update_module_order,
     update_development_modules,
 )
-from apmatia.api.internal.module_views import get_module_view_items, list_module_commands, run_module_command
+from apmatia.api.internal.module_views import (
+    get_module_view_document,
+    get_module_view_items,
+    list_module_commands,
+    list_module_view_documents,
+    run_module_command,
+)
+from apmatia.api.internal.view_sources import load_view_source
 
 from .shared import require_session
 
@@ -35,10 +42,34 @@ class DevelopmentModulesPayload(BaseModel):
     enabled: bool
 
 
+class ViewSourcePayload(BaseModel):
+    parameters: dict = Field(default_factory=dict)
+
+
 @router.get("/module-commands", response_model=list[dict])
 def get_module_commands() -> list[dict]:
     """Return the active command catalog used to assemble interface clients."""
     return list_module_commands()
+
+
+@router.get("/module-view-documents", response_model=list[dict])
+def get_view_documents(request: Request) -> list[dict]:
+    """Return the portable view contract for every active module view."""
+    require_session(request)
+    return list_module_view_documents()
+
+
+@router.post("/module-view-sources/{operation}")
+def post_view_source(
+    request: Request,
+    operation: str = Path(..., description="Declared view source operation"),
+    payload: ViewSourcePayload | None = None,
+):
+    session = require_session(request)
+    try:
+        return load_view_source(operation, user_id=int(session.user_id), parameters=(payload.parameters if payload else {}))
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @router.get("/modules/activation", response_model=dict)
@@ -125,6 +156,19 @@ def get_view_items(
         return get_module_view_items(view_id, user_id=int(session.user_id))
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.get("/module-views/{view_id}/document", response_model=dict)
+def get_view_document(
+    request: Request,
+    view_id: str = Path(..., description="View ID"),
+) -> dict:
+    """Return one active module view using the portable view contract."""
+    require_session(request)
+    try:
+        return get_module_view_document(view_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
 
 
 @router.post("/module-commands/{command_id}", response_model=dict)

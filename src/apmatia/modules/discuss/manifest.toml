@@ -1,0 +1,19 @@
+[module]
+module_id = "discuss"
+name = "Discuss"
+version = "0.1.0"
+description = "A topic-centered discussion system for organizing work, conversations, summaries, and chat targets."
+author = "Nick"
+status = "stable"
+category = "feature"
+default_enabled = true
+tags = ["topics", "discussions", "summaries", "chat-targets", "turns", "migration"]
+
+[metadata]
+
+[dependencies]
+python = ">=3.10"
+python_packages = []
+system_packages = []
+modules = ["persistence", "ysparr"]
+tools = []

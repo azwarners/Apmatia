@@ -101,7 +101,7 @@ class IpeToolProvider:
         discussion_id = getattr(tool_call, "discussion_id", None)
         if not discussion_id:
             return agent
-        from apmatia.modules.contacts_and_discussions.services import get_discussion as _get_discussion
+        from apmatia.modules.discuss.services import get_discussion as _get_discussion
 
         discussion = _get_discussion(discussion_id)
         if discussion is None or discussion.owner_user_id is None:

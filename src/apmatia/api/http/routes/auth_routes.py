@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
-from apmatia.api.internal.auth import login_user, logout_session, register_user
+from apmatia.api.internal.auth import list_auth_views, login_user, logout_session, register_user
 
 from .shared import serialize_user, session_payload
 
@@ -12,6 +12,11 @@ AUTH_SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
 class AuthPayload(BaseModel):
     username: str
     password: str
+
+
+@router.get("/auth/views")
+def api_auth_views():
+    return list_auth_views()
 
 
 @router.get("/auth/session")

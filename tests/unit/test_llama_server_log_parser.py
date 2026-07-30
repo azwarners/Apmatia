@@ -17,7 +17,7 @@ slot launch_slot_: id  0 | task 220 | processing task, is_child = 0
 slot update_slots: id  0 | task 220 | new prompt, n_ctx_slot = 96000, n_keep = 0, task.n_tokens = 951
 slot update_slots: id  0 | task 220 | prompt processing progress, n_tokens = 947, batch.n_tokens = 256, progress = 0.995794
 slot init_sampler: id  0 | task 220 | init sampler, took 0.24 ms, tokens: text = 951, total = 951
-srv  log_server_r: done request: POST /v1/chat/completions 192.168.86.55 200
+srv  log_server_r: done request: POST /v1/chat/completions 192.0.2.55 200
 slot print_timing: id  0 | task 220 |
 prompt eval time =    4670.03 ms /   951 tokens (    4.91 ms per token,   203.64 tokens per second)
        eval time =   26942.63 ms /   609 tokens (   44.24 ms per token,    22.60 tokens per second)
@@ -66,7 +66,7 @@ init: chat template, thinking = 1
 slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
 slot update_slots: id  0 | task 0 | prompt processing progress, n_tokens = 4, batch.n_tokens = 4, progress = 1.0
 slot init_sampler: id  0 | task 0 | init sampler, took 0.24 ms, tokens: text = 4, total = 4
-srv  log_server_r: done request: POST /v1/chat/completions 192.168.86.55 200
+srv  log_server_r: done request: POST /v1/chat/completions 192.0.2.55 200
 slot print_timing: id  0 | task 0 |
 prompt eval time =    10.00 ms /     4 tokens (    2.50 ms per token,   400.00 tokens per second)
        eval time =    20.00 ms /     5 tokens (    4.00 ms per token,   250.00 tokens per second)
@@ -75,7 +75,7 @@ slot      release: id  0 | task 0 | stop processing: n_tokens = 9, truncated = 0
 slot launch_slot_: id  0 | task 1 | processing task, is_child = 0
 slot update_slots: id  0 | task 1 | prompt processing progress, n_tokens = 5, batch.n_tokens = 1, progress = 1.0
 slot init_sampler: id  0 | task 1 | init sampler, took 0.30 ms, tokens: text = 5, total = 5
-srv  log_server_r: done request: POST /v1/chat/completions 192.168.86.55 200
+srv  log_server_r: done request: POST /v1/chat/completions 192.0.2.55 200
 slot print_timing: id  0 | task 1 |
 prompt eval time =    11.00 ms /     5 tokens (    2.20 ms per token,   454.55 tokens per second)
        eval time =    22.00 ms /     6 tokens (    3.67 ms per token,   272.73 tokens per second)

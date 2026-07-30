@@ -11,4 +11,11 @@ ACTION_DESCRIPTORS: tuple[ActionContribution, ...] = (
         description="Configure Apmatia preferences.",
         metadata={"object_type": "preferences"},
     ),
+    ActionContribution(
+        module_id="preferences",
+        action_id="preferences.modules",
+        name="Modules",
+        description="Configure module activation, visibility, and navigation order.",
+        metadata={"object_type": "module_catalog"},
+    ),
 )

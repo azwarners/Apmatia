@@ -190,7 +190,7 @@ def _delete_confirmation_target() -> dict[str, object] | None:
     return target if isinstance(target, dict) else None
 
 
-def render(items: Iterable[dict[str, object]]) -> None:
+def render_legacy(items: Iterable[dict[str, object]]) -> None:
     agents = [dict(item) for item in items if isinstance(item, dict)]
     try:
         model_configs = list_llm_configs()
@@ -565,3 +565,6 @@ def _render_directory_check(label: str, path_text: str) -> None:
         st.success(f"{label} root exists: {path}")
     else:
         st.warning(f"{label} root does not exist yet: {path}")
+
+
+render = render_legacy

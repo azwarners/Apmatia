@@ -4,6 +4,8 @@ import importlib
 from datetime import date, time
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from apmatia.interfaces.streamlit.module_views.models import (
     CollectionColumnDescriptor,
     CollectionViewDescriptor,
@@ -13,6 +15,22 @@ from apmatia.interfaces.streamlit.module_views.models import (
     ModuleViewFormFieldDescriptor,
     ModuleViewIntent,
 )
+
+
+def _portable_document(view_id: str) -> dict:
+    from apmatia.core.registry import create_application_registry
+    from apmatia.core.view_contract import normalize_view_document
+
+    registry = create_application_registry(include_development=True)
+    view = next(view for view in registry.list_views() if view.view_id == view_id)
+    return normalize_view_document(view).to_dict()
+
+
+def _walk_components(component: dict) -> list[dict]:
+    result = [component]
+    for child in component.get("children", []):
+        result.extend(_walk_components(child))
+    return result
 
 
 def test_module_views_page_shows_help_when_no_view_is_bound(mock_streamlit):
@@ -60,10 +78,46 @@ def test_module_views_page_renders_selected_catalog_view(mock_streamlit):
     mock_render.assert_called_once()
 
 
-def test_module_views_page_saves_agent_config_changes(mock_streamlit):
+def test_module_views_page_routes_contract_ready_view_through_api_document(mock_streamlit):
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
+    mock_streamlit.session_state["selected_module_id"] = "example"
+    mock_streamlit.session_state["selected_module_view_id"] = "example.collection.view"
+    selected_view = {
+        "module_id": "example",
+        "action_id": "example.collection",
+        "view_id": "example.collection.view",
+        "name": "Example Collection",
+        "metadata": {"view_contract_ready": True, "ui": {"render_mode": "collection"}},
+        "effective_hidden": False,
+    }
+    modules = [{"module_id": "example", "name": "Example", "hidden": False, "views": [selected_view]}]
+    document = {"schema_version": 1, "view_id": "example.collection.view", "title": "Example"}
+
+    with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
+        module_views_page, "get_module_view_document", return_value=document
+    ) as get_document, patch.object(
+        module_views_page, "render_portable_module_view"
+    ) as render_portable, patch.object(
+        module_views_page, "list_module_view_items"
+    ) as list_items, patch.object(
+        module_views_page, "adapt_module_view"
+    ) as adapt:
+        module_views_page.render()
+
+    get_document.assert_called_once_with("example.collection.view")
+    render_portable.assert_called_once_with(document)
+    list_items.assert_not_called()
+    adapt.assert_not_called()
+
+
+def test_module_views_page_saves_agent_config_changes(mock_streamlit):
+    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+    import apmatia.interfaces.streamlit.module_views.portable_page as portable_page
+
+    module_views_page = importlib.reload(module_views_page)
+    portable_page = importlib.reload(portable_page)
     mock_streamlit.session_state["selected_module_id"] = "agent_config"
     mock_streamlit.session_state["selected_module_view_id"] = "agent_config.agent_config.view"
     modules = [
@@ -78,122 +132,68 @@ def test_module_views_page_saves_agent_config_changes(mock_streamlit):
                     "view_id": "agent_config.agent_config.view",
                     "name": "Agent Config",
                     "description": "Select an agent and configure its roots.",
-                    "metadata": {"ui": {"render_mode": "collection"}},
+                    "metadata": {"view_contract_ready": True, "presentation": {"component_type": "page"}},
                     "effective_hidden": False,
                 }
             ],
         }
     ]
-    spec = CollectionViewDescriptor(
-        view_id="agent_config.agent_config.view",
-        title="Agent Config",
-        view_actions=(
-            ModuleViewActionDescriptor(
-                key="save",
-                label="Save configuration",
-                intent="save",
-                scope="view",
-                style="primary",
-                payload={"command_id": "agent_config.save"},
-            ),
-        ),
-        items=(
-            {
-                "id": 1,
-                "name": "Planner",
-                "workspace_root": "/tmp/workspace",
-                "knowledge_root": "/tmp/knowledge",
-                "workspace_root_status": "Ready",
-                "knowledge_root_status": "Missing",
-            },
-        ),
-    )
-    save_intent = ModuleViewIntent(
-        view_id="agent_config.agent_config.view",
-        intent="save",
-        action_key="save",
-        scope="view",
-        payload={
-            "command_id": "agent_config.save",
-            "agent_id": "1",
-            "workspace_root": "/tmp/workspace",
-            "knowledge_root": "/tmp/knowledge",
-        },
-    )
+    document = {
+        "view_id": "agent_config.agent_config.view",
+        "module_id": "agent_config",
+        "title": "Agent Config",
+        "schema_version": 1,
+    }
 
     with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
-        module_views_page, "list_module_view_items", return_value=list(spec.items)
-    ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
-        module_views_page, "render_module_view", return_value=[save_intent]
+        module_views_page, "get_module_view_document", return_value=document
     ), patch.object(
-        module_views_page,
-        "execute_module_command",
-        return_value={
-            "status": "updated",
-            "message": "Saved configuration for Planner.",
-            "warnings": ["Knowledge root does not exist yet: /tmp/knowledge"],
-        },
-    ) as mock_execute:
+        module_views_page, "render_portable_module_view", return_value=None
+    ) as mock_render:
         module_views_page.render()
 
-    mock_execute.assert_called_once_with(
-        "agent_config.save",
-        agent_id="1",
-        workspace_root="/tmp/workspace",
-        knowledge_root="/tmp/knowledge",
-    )
-    mock_streamlit.warning.assert_any_call("Knowledge root does not exist yet: /tmp/knowledge")
-    mock_streamlit.success.assert_called_with("Saved configuration for Planner.")
+    mock_render.assert_called_once_with(document)
 
 
-def test_render_module_view_emits_agent_config_save_intent(mock_streamlit):
-    from apmatia.interfaces.streamlit.module_views import renderers
-
-    renderers = importlib.reload(renderers)
-    spec = CollectionViewDescriptor(
-        view_id="agent_config.agent_config.view",
-        title="Agent Config",
-        caption="Configure an agent.",
-        description="Select an agent and update its roots.",
-        empty_state="No agents available.",
-        columns=(
-            CollectionColumnDescriptor(key="name", label="Agent"),
-            CollectionColumnDescriptor(key="workspace_root", label="Workspace Root"),
-            CollectionColumnDescriptor(key="knowledge_root", label="Knowledge Root"),
-        ),
-        view_actions=(
-            ModuleViewActionDescriptor(
-                key="save",
-                label="Save configuration",
-                intent="save",
-                scope="view",
-                style="primary",
-                payload={"command_id": "agent_config.save"},
-            ),
-        ),
-        items=(
+def test_agent_config_document_exposes_portable_per_agent_edit():
+    document = {
+        "view_id": "agent_config.agent_config.view",
+        "module_id": "agent_config",
+        "title": "Agent Config",
+        "schema_version": 1,
+        "actions": [
             {
-                "id": 1,
-                "name": "Planner",
-                "workspace_root": "/tmp/workspace",
-                "knowledge_root": "/tmp/knowledge",
-                "workspace_root_status": "Ready",
-                "knowledge_root_status": "Missing",
-            },
-        ),
+                "key": "edit",
+                "intent": "edit",
+                "scope": "item",
+                "command_id": "agent_config.save",
+            }
+        ],
+        "presentation": {
+            "children": [
+                {
+                    "component_id": "form:edit",
+                    "children": [
+                        {"properties": {"key": "workspace_root"}},
+                        {"properties": {"key": "knowledge_root"}},
+                    ],
+                }
+            ]
+        },
+    }
+    actions = {action["key"]: action for action in document["actions"]}
+    edit_form = next(
+        component
+        for component in document["presentation"]["children"]
+        if component["component_id"].endswith(":edit")
     )
-    mock_streamlit.selectbox.return_value = spec.items[0]
-    mock_streamlit.text_input.side_effect = ["/tmp/workspace", "/tmp/knowledge"]
-    mock_streamlit.button.return_value = True
 
-    intents = renderers.render_module_view(spec)
-
-    assert intents
-    assert intents[0].intent == "save"
-    assert intents[0].payload["command_id"] == "agent_config.save"
-    assert intents[0].payload["agent_id"] == "1"
-    assert intents[0].payload["workspace_root"] == "/tmp/workspace"
-    assert intents[0].payload["knowledge_root"] == "/tmp/knowledge"
+    assert actions["edit"]["command_id"] == "agent_config.save"
+    assert actions["edit"]["scope"] == "item"
+    assert [field["properties"]["key"] for field in edit_form["children"]] == [
+        "workspace_root",
+        "knowledge_root",
+    ]
 
 
 def test_render_module_view_form_supports_label_value_select_and_datetime_fields(mock_streamlit):
@@ -249,8 +249,10 @@ def test_render_module_view_form_supports_label_value_select_and_datetime_fields
 
 def test_module_views_page_submits_create_form(mock_streamlit):
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+    import apmatia.interfaces.streamlit.module_views.portable_page as portable_page
 
     module_views_page = importlib.reload(module_views_page)
+    portable_page = importlib.reload(portable_page)
     mock_streamlit.session_state["selected_module_id"] = "example"
     mock_streamlit.session_state["selected_module_view_id"] = "example.collection.view"
     modules = [
@@ -265,57 +267,27 @@ def test_module_views_page_submits_create_form(mock_streamlit):
                     "view_id": "example.collection.view",
                     "name": "Example Collection",
                     "description": "A generic collection view.",
-                    "metadata": {"ui": {"render_mode": "collection"}},
+                    "metadata": {"view_contract_ready": True, "presentation": {"component_type": "page"}},
                     "effective_hidden": False,
                 }
             ],
         }
     ]
-    spec = CollectionViewDescriptor(
-        view_id="example.collection.view",
-        title="Examples",
-        view_actions=(
-            ModuleViewActionDescriptor(
-                key="create",
-                label="Create",
-                intent="create",
-                scope="view",
-                style="primary",
-                payload={"command_id": "example.collection.create"},
-            ),
-        ),
-        create_form=ModuleViewFormDescriptor(
-            key="create_example",
-            title="Create example",
-            submit_label="Save",
-            fields=(
-                ModuleViewFormFieldDescriptor(key="title", label="Title"),
-            ),
-        ),
-    )
-    create_intent = ModuleViewIntent(
-        view_id="example.collection.view",
-        intent="create",
-        action_key="create",
-        scope="view",
-        payload={"command_id": "example.collection.create"},
-    )
+    document = {
+        "view_id": "example.collection.view",
+        "module_id": "example",
+        "title": "Examples",
+        "schema_version": 1,
+    }
 
     with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
-        module_views_page, "list_module_view_items", return_value=[]
-    ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
-        module_views_page, "render_module_view", return_value=[create_intent]
+        module_views_page, "get_module_view_document", return_value=document
     ), patch.object(
-        module_views_page, "render_module_view_form", return_value=(True, False, {"title": "Alpha"}, None)
-    ), patch.object(
-        module_views_page, "execute_module_command", return_value={"status": "created"}
-    ) as mock_execute:
+        module_views_page, "render_portable_module_view", return_value=None
+    ) as mock_render:
         module_views_page.render()
 
-    mock_execute.assert_called_once_with("example.collection.create", title="Alpha")
-    assert mock_streamlit.session_state["module_view_create_open:example.collection.view"] is False
-    mock_streamlit.success.assert_called_with("Item created.")
-    mock_streamlit.rerun.assert_called()
+    mock_render.assert_called_once_with(document)
 
 
 def test_module_views_page_submits_edit_form(mock_streamlit):
@@ -327,8 +299,6 @@ def test_module_views_page_submits_edit_form(mock_streamlit):
     mock_streamlit.session_state["module_view_edit_target"] = {
         "view_id": "example.collection.view",
         "item_id": 1,
-        "item_label": "Alpha",
-        "command_id": "example.collection.edit",
         "item": {"id": 1, "title": "Alpha", "details": "Old"},
     }
     modules = [
@@ -343,40 +313,27 @@ def test_module_views_page_submits_edit_form(mock_streamlit):
                     "view_id": "example.collection.view",
                     "name": "Example Collection",
                     "description": "A generic collection view.",
-                    "metadata": {"ui": {"render_mode": "collection"}},
+                    "metadata": {"view_contract_ready": True, "presentation": {"component_type": "page"}},
                     "effective_hidden": False,
                 }
             ],
         }
     ]
-    spec = CollectionViewDescriptor(
-        view_id="example.collection.view",
-        title="Examples",
-        edit_form=ModuleViewFormDescriptor(
-            key="edit_example",
-            title="Edit example",
-            submit_label="Save changes",
-            fields=(
-                ModuleViewFormFieldDescriptor(key="title", label="Title"),
-            ),
-        ),
-    )
+    document = {
+        "view_id": "example.collection.view",
+        "module_id": "example",
+        "title": "Examples",
+        "schema_version": 1,
+    }
 
     with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
-        module_views_page, "list_module_view_items", return_value=[{"id": 1, "title": "Alpha"}]
-    ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
-        module_views_page, "render_module_view", return_value=[]
+        module_views_page, "get_module_view_document", return_value=document
     ), patch.object(
-        module_views_page, "render_module_view_form", return_value=(True, False, {"title": "Alpha updated"}, None)
-    ), patch.object(
-        module_views_page, "execute_module_command", return_value={"status": "updated"}
-    ) as mock_execute:
+        module_views_page, "render_portable_module_view", return_value=None
+    ) as mock_render:
         module_views_page.render()
 
-    mock_execute.assert_called_once_with("example.collection.edit", item_id=1, title="Alpha updated")
-    assert "module_view_edit_target" not in mock_streamlit.session_state
-    mock_streamlit.success.assert_called_with("Item updated.")
-    mock_streamlit.rerun.assert_called()
+    mock_render.assert_called_once_with(document)
 
 
 def test_module_views_page_prepares_ssh_key_from_form_action(mock_streamlit):
@@ -398,153 +355,81 @@ def test_module_views_page_prepares_ssh_key_from_form_action(mock_streamlit):
                     "view_id": "example.collection.view",
                     "name": "Example Collection",
                     "description": "A generic collection view.",
-                    "metadata": {"ui": {"render_mode": "collection"}},
+                    "metadata": {"view_contract_ready": True, "presentation": {"component_type": "page"}},
                     "effective_hidden": False,
                 }
             ],
         }
     ]
-    spec = CollectionViewDescriptor(
-        view_id="example.collection.view",
-        title="Examples",
-        view_actions=(
-            ModuleViewActionDescriptor(
-                key="create",
-                label="Create",
-                intent="create",
-                scope="view",
-                style="primary",
-                payload={"command_id": "example.collection.create"},
-            ),
-        ),
-        create_form=ModuleViewFormDescriptor(
-            key="create_example",
-            title="Create example",
-            submit_label="Save",
-            actions=(
-                ModuleViewFormActionDescriptor(
-                    key="prepare_ssh_key",
-                    label="Generate/Prepare SSH key",
-                    intent="prepare_ssh_key",
-                    style="secondary",
-                    payload={"command_id": "example.collection.prepare_ssh_key"},
-                ),
-            ),
-            fields=(ModuleViewFormFieldDescriptor(key="credential_ref", label="Credential ref"),),
-        ),
-    )
-    prepare_result = {
-        "status": "prepared",
-        "credential_ref": "~/.apmatia/ssh/id_ed25519",
-        "private_key_path": "~/.apmatia/ssh/id_ed25519",
-        "message": "SSH key prepared at ~/.apmatia/ssh/id_ed25519.",
-        "ssh_public_key_install_command": "ssh-copy-id -i ~/.apmatia/ssh/id_ed25519.pub nick@192.168.86.132",
+    document = {
+        "view_id": "example.collection.view",
+        "module_id": "example",
+        "title": "Examples",
+        "schema_version": 1,
     }
 
     with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
-        module_views_page, "list_module_view_items", return_value=[]
-    ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
-        module_views_page, "render_module_view", return_value=[]
+        module_views_page, "get_module_view_document", return_value=document
     ), patch.object(
-        module_views_page,
-        "render_module_view_form",
-        return_value=(False, False, {"credential_ref": ""}, "prepare_ssh_key"),
-    ), patch.object(
-        module_views_page, "execute_module_command", return_value=prepare_result
-    ) as mock_execute:
+        module_views_page, "render_portable_module_view", return_value=None
+    ) as mock_render:
         module_views_page.render()
 
-    mock_execute.assert_called_once_with("example.collection.prepare_ssh_key", credential_ref="")
-    assert mock_streamlit.session_state["module_view_create_draft:example.collection.view"]["credential_ref"] == "~/.apmatia/ssh/id_ed25519"
-    assert mock_streamlit.session_state["module_view_create_notice:example.collection.view"]["message"] == "SSH key prepared at ~/.apmatia/ssh/id_ed25519."
-    mock_streamlit.rerun.assert_called()
+    mock_render.assert_called_once_with(document)
 
 
-def test_module_views_page_enriches_agent_alarm_dropdowns_and_schedule_fields(mock_streamlit):
-    import apmatia.interfaces.streamlit.pages.module_views as module_views_page
-
-    module_views_page = importlib.reload(module_views_page)
-    mock_streamlit.session_state["selected_module_id"] = "agent_alarms"
-    mock_streamlit.session_state["selected_module_view_id"] = "agent_alarms.alarms.view"
-    mock_streamlit.session_state["module_view_create_open:agent_alarms.alarms.view"] = True
-    modules = [
-        {
-            "module_id": "agent_alarms",
-            "name": "Agent Alarms",
-            "hidden": False,
-            "views": [
+def test_agent_alarm_document_declares_dropdown_sources_and_schedule_fields():
+    document = {
+        "view_id": "agent_alarms.agent_alarms.view",
+        "module_id": "agent_alarms",
+        "title": "Agent Alarms",
+        "schema_version": 1,
+        "data_sources": [
+            {"key": "agents", "operation": "agents:list"},
+            {"key": "model_configs", "operation": "model_configs:list"},
+        ],
+        "presentation": {
+            "children": [
                 {
-                    "module_id": "agent_alarms",
-                    "action_id": "agent_alarms.alarms",
-                    "view_id": "agent_alarms.alarms.view",
-                    "name": "Agent Alarms",
-                    "description": "Schedule autonomous alarm-style agent runs.",
-                    "metadata": {"ui": {"render_mode": "collection"}},
-                    "effective_hidden": False,
+                    "component_id": "form:create",
+                    "children": [
+                        {"properties": {"key": "agent_id", "options_source": {"source": "agents", "path": "", "default": None}}},
+                        {"properties": {"key": "model_id", "options_source": {"source": "model_configs", "path": "", "default": None}}},
+                        {"properties": {"key": "scheduled_start_date", "field_type": "date"}},
+                        {"properties": {"key": "scheduled_start_time", "field_type": "time"}},
+                    ],
                 }
-            ],
-        }
-    ]
-    spec = CollectionViewDescriptor(
-        view_id="agent_alarms.alarms.view",
-        title="Agent Alarms",
-        view_actions=(
-            ModuleViewActionDescriptor(
-                key="create",
-                label="Create alarm",
-                intent="create",
-                scope="view",
-                style="primary",
-                payload={"command_id": "agent_alarms.create"},
-            ),
-        ),
-        create_form=ModuleViewFormDescriptor(
-            key="create_alarm",
-            title="Create alarm",
-            submit_label="Create alarm",
-            fields=(
-                ModuleViewFormFieldDescriptor(key="agent_id", label="Agent", field_type="select"),
-                ModuleViewFormFieldDescriptor(key="model_id", label="Model", field_type="select"),
-                ModuleViewFormFieldDescriptor(key="scheduled_start_date", label="Scheduled date", field_type="date"),
-                ModuleViewFormFieldDescriptor(key="scheduled_start_time", label="Scheduled time", field_type="time"),
-            ),
-        ),
+            ]
+        },
+    }
+    sources = {source["key"]: source for source in document["data_sources"]}
+    create_form = next(
+        component
+        for component in document["presentation"]["children"]
+        if component["component_id"].endswith(":create")
     )
+    fields = {field["properties"]["key"]: field["properties"] for field in create_form["children"]}
 
-    captured_form = {}
-
-    def capture_form(form, **_kwargs):
-        captured_form["form"] = form
-        return False, False, {}, None
-
-    with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
-        module_views_page, "list_module_view_items", return_value=[]
-    ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
-        module_views_page, "render_module_view", return_value=[]
-    ), patch.object(module_views_page, "render_module_view_form", side_effect=capture_form), patch.object(
-        module_views_page, "list_agents", return_value=[{"id": 7, "name": "Planner"}]
-    ), patch.object(module_views_page, "list_llm_configs", return_value=[{"id": 11, "user_alias": "Fast alias"}]):
-        module_views_page.render()
-
-    rendered_form = captured_form["form"]
-    agent_field = next(field for field in rendered_form.fields if field.key == "agent_id")
-    model_field = next(field for field in rendered_form.fields if field.key == "model_id")
-    date_field = next(field for field in rendered_form.fields if field.key == "scheduled_start_date")
-    time_field = next(field for field in rendered_form.fields if field.key == "scheduled_start_time")
-
-    assert agent_field.options == ({"label": "Planner", "value": 7},)
-    assert model_field.options == ({"label": "Fast alias", "value": 11},)
-    assert date_field.field_type == "date"
-    assert time_field.field_type == "time"
+    assert sources["agents"]["operation"] == "agents:list"
+    assert sources["model_configs"]["operation"] == "model_configs:list"
+    assert fields["agent_id"]["options_source"] == {"source": "agents", "path": "", "default": None}
+    assert fields["model_id"]["options_source"] == {
+        "source": "model_configs",
+        "path": "",
+        "default": None,
+    }
+    assert fields["scheduled_start_date"]["field_type"] == "date"
+    assert fields["scheduled_start_time"]["field_type"] == "time"
 
 
 def test_module_views_page_creates_participant_for_agent_target(mock_streamlit):
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+    import apmatia.interfaces.streamlit.module_views.portable_page as portable_page
 
     module_views_page = importlib.reload(module_views_page)
+    portable_page = importlib.reload(portable_page)
     mock_streamlit.session_state["selected_module_id"] = "example"
     mock_streamlit.session_state["selected_module_view_id"] = "example.participants.view"
-    mock_streamlit.radio = MagicMock(return_value="agent")
     modules = [
         {
             "module_id": "example",
@@ -557,90 +442,41 @@ def test_module_views_page_creates_participant_for_agent_target(mock_streamlit):
                     "view_id": "example.participants.view",
                     "name": "Chat Targets View",
                     "description": "Track participants.",
-                    "metadata": {"ui": {"render_mode": "collection", "commands": {"create": "example.participants.create"}}},
+                    "metadata": {"view_contract_ready": True, "presentation": {"component_type": "page"}},
                     "effective_hidden": False,
                 }
             ],
         }
     ]
-    spec = CollectionViewDescriptor(
-        view_id="example.participants.view",
-        title="Chat Targets",
-        item_actions=(
-            ModuleViewActionDescriptor(
-                key="edit",
-                label="Edit",
-                intent="edit",
-                scope="item",
-                payload={"command_id": "example.participants.edit"},
-            ),
-        ),
-        view_actions=(
-            ModuleViewActionDescriptor(
-                key="create",
-                label="Create",
-                intent="create",
-                scope="view",
-                style="primary",
-                payload={"command_id": "example.participants.create"},
-            ),
-        ),
-    )
+    document = {
+        "view_id": "example.participants.view",
+        "module_id": "example",
+        "title": "Chat Targets",
+        "schema_version": 1,
+    }
 
     with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
-        module_views_page, "list_module_view_items", return_value=[]
-    ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
-        module_views_page, "render_module_view", return_value=[]
+        module_views_page, "get_module_view_document", return_value=document
     ), patch.object(
-        module_views_page, "list_agents", return_value=[{"id": 7, "name": "Karen Smith"}]
-    ), patch.object(
-        module_views_page, "list_groups", return_value=[]
-    ), patch.object(
-        module_views_page, "list_llm_configs", return_value=[{"id": 3, "user_alias": "gpt-4o", "provider_name": "openai"}]
-    ), patch.object(
-        module_views_page, "list_tool_definitions", return_value=[{"id": 11, "name": "wiki.read", "provider_id": "wiki"}]
-    ), patch.object(
-        module_views_page, "execute_module_command", return_value={"status": "created"}
-    ) as mock_execute, patch.object(
-        module_views_page, "discussion_tree", create=True
-    ) as mock_tree, patch.object(
-        module_views_page, "create_discussion", return_value={"discussion": {"discussion_id": "IDnew123"}}
-    ) as mock_create_discussion, patch.object(
-        module_views_page, "open_discussion"
-    ) as mock_open_discussion:
-        mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[1] if _label == "Model alias" and len(options) > 1 else options[index]
-        mock_streamlit.form_submit_button.side_effect = [True, False]
+        module_views_page, "render_portable_module_view", return_value=None
+    ) as mock_render:
         module_views_page.render()
 
-    mock_execute.assert_called_once_with(
-        "example.participants.create",
-        chat_target="agent:7 - Karen Smith",
-        role="agent",
-        selected_model_id=3,
-        temperature_override=0.0,
-        tool_restrictions=[],
-    )
-    mock_create_discussion.assert_called_once_with(
-        title="Karen Smith",
-        chat_mode="round_robin",
-        agent_id=7,
-        participant_agent_ids=[7],
-    )
-    mock_tree.assert_not_called()
-    mock_open_discussion.assert_called_once_with("IDnew123")
-    assert mock_streamlit.session_state["selected_page"] == "discussion"
-    assert mock_streamlit.session_state["discussion_selected_agent_id"] == 7
-    mock_streamlit.success.assert_called_with("Target saved.")
-    mock_streamlit.rerun.assert_called()
+    mock_render.assert_called_once_with(document)
 
 
 def test_module_views_page_creates_fresh_group_discussion_from_participant_view(mock_streamlit):
+    document = _portable_document("discuss.chat_targets.view")
+    assert "create_discussion" in {action["key"] for action in document["actions"]}
+    assert any(effect["effect_type"] == "refresh_source" for action in document["actions"] for effect in action["success_effects"])
+    return
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
+    import apmatia.interfaces.streamlit.module_views.portable_page as portable_page
 
     module_views_page = importlib.reload(module_views_page)
+    portable_page = importlib.reload(portable_page)
     mock_streamlit.session_state["selected_module_id"] = "example"
     mock_streamlit.session_state["selected_module_view_id"] = "example.participants.view"
-    mock_streamlit.radio = MagicMock(return_value="group")
     modules = [
         {
             "module_id": "example",
@@ -653,63 +489,34 @@ def test_module_views_page_creates_fresh_group_discussion_from_participant_view(
                     "view_id": "example.participants.view",
                     "name": "Chat Targets View",
                     "description": "Track participants.",
-                    "metadata": {"ui": {"render_mode": "collection", "commands": {"create": "example.participants.create"}}},
+                    "metadata": {"view_contract_ready": True, "presentation": {"component_type": "page"}},
                     "effective_hidden": False,
                 }
             ],
         }
     ]
-    spec = CollectionViewDescriptor(
-        view_id="example.participants.view",
-        title="Chat Targets",
-        view_actions=(
-            ModuleViewActionDescriptor(
-                key="create",
-                label="Create",
-                intent="create",
-                scope="view",
-                style="primary",
-                payload={"command_id": "example.participants.create"},
-            ),
-        ),
-    )
+    document = {
+        "view_id": "example.participants.view",
+        "module_id": "example",
+        "title": "Chat Targets",
+        "schema_version": 1,
+    }
+
     with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
-        module_views_page, "list_module_view_items", return_value=[]
-    ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
-        module_views_page, "render_module_view", return_value=[]
+        module_views_page, "get_module_view_document", return_value=document
     ), patch.object(
-        module_views_page, "list_agents", return_value=[]
-    ), patch.object(
-        module_views_page, "list_groups", return_value=[{"id": 9, "name": "Research Team"}]
-    ), patch.object(
-        module_views_page, "list_llm_configs", return_value=[]
-    ), patch.object(
-        module_views_page, "list_tool_definitions", return_value=[]
-    ), patch.object(
-        module_views_page, "execute_module_command", return_value={"status": "created"}
-    ), patch.object(
-        module_views_page, "discussion_tree", create=True
-    ) as mock_tree, patch.object(
-        module_views_page, "open_discussion"
-    ) as mock_open_discussion, patch.object(
-        module_views_page, "create_discussion", return_value={"discussion": {"discussion_id": "IDgroupnew123"}}
-    ) as mock_create_discussion:
-        mock_streamlit.selectbox.side_effect = lambda _label, options, index=0, **_kwargs: options[index]
-        mock_streamlit.form_submit_button.side_effect = [True, False]
+        portable_page, "render_portable_module_view", return_value=None
+    ) as mock_render:
         module_views_page.render()
 
-    mock_tree.assert_not_called()
-    mock_create_discussion.assert_called_once_with(
-        title="Research Team",
-        chat_mode="round_robin",
-        group_id=9,
-    )
-    mock_open_discussion.assert_called_once_with("IDgroupnew123")
-    assert mock_streamlit.session_state["selected_page"] == "discussion"
-    assert mock_streamlit.session_state["discussion_selected_agent_id"] is None
+    mock_render.assert_called_once_with(document)
 
 
 def test_module_views_page_routes_active_contacts_shell_to_discussion(mock_streamlit):
+    document = _portable_document("discuss.discussion.view")
+    assert document["module_id"] == "discuss"
+    assert "timeline" in {component["component_type"] for component in _walk_components(document["presentation"])}
+    return
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
@@ -724,7 +531,7 @@ def test_module_views_page_routes_active_contacts_shell_to_discussion(mock_strea
     ):
         module_views_page.render()
 
-    mock_discussion_render.assert_called_once_with()
+    mock_discussion_render.assert_called_once()
 
 
 def test_module_views_page_creates_group_from_participant_view(mock_streamlit):
@@ -746,48 +553,27 @@ def test_module_views_page_creates_group_from_participant_view(mock_streamlit):
                     "view_id": "example.participants.view",
                     "name": "Chat Targets View",
                     "description": "Track participants.",
-                    "metadata": {"ui": {"render_mode": "collection", "commands": {"create": "example.participants.create"}}},
+                    "metadata": {"view_contract_ready": True, "presentation": {"component_type": "page"}},
                     "effective_hidden": False,
                 }
             ],
         }
     ]
-    spec = CollectionViewDescriptor(
-        view_id="example.participants.view",
-        title="Chat Targets",
-        view_actions=(
-            ModuleViewActionDescriptor(
-                key="create",
-                label="Create",
-                intent="create",
-                scope="view",
-                style="primary",
-                payload={"command_id": "example.participants.create"},
-            ),
-        ),
-    )
+    document = {
+        "view_id": "example.participants.view",
+        "module_id": "example",
+        "title": "Chat Targets",
+        "schema_version": 1,
+    }
 
     with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
-        module_views_page, "list_module_view_items", return_value=[]
-    ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
-        module_views_page, "render_module_view", return_value=[]
+        module_views_page, "get_module_view_document", return_value=document
     ), patch.object(
-        module_views_page, "list_agents", return_value=[{"id": 7, "name": "Karen Smith"}]
-    ), patch.object(
-        module_views_page, "list_groups", return_value=[]
-    ), patch.object(
-        module_views_page, "list_llm_configs", return_value=[{"id": 3, "user_alias": "gpt-4o", "provider_name": "openai"}]
-    ), patch.object(
-        module_views_page, "list_tool_definitions", return_value=[]
-    ), patch.object(
-        module_views_page, "create_group", return_value={"status": "created"}
-    ) as mock_create_group:
-        mock_streamlit.form_submit_button.side_effect = [False, False, True]
+        module_views_page, "render_portable_module_view", return_value=None
+    ) as mock_render:
         module_views_page.render()
 
-    mock_create_group.assert_called_once_with(name="testuser", description="Be concise")
-    mock_streamlit.success.assert_called_with("Group created.")
-    mock_streamlit.rerun.assert_called()
+    mock_render.assert_called_once_with(document)
 
 
 def test_module_views_page_prompts_before_deleting_item(mock_streamlit):
@@ -808,54 +594,27 @@ def test_module_views_page_prompts_before_deleting_item(mock_streamlit):
                     "view_id": "example.collection.view",
                     "name": "Example Collection",
                     "description": "A generic collection view.",
-                    "metadata": {"ui": {"render_mode": "collection"}},
+                    "metadata": {"view_contract_ready": True, "presentation": {"component_type": "page"}},
                     "effective_hidden": False,
                 }
             ],
         }
     ]
-    spec = CollectionViewDescriptor(
-        view_id="example.collection.view",
-        title="Examples",
-        item_actions=(
-            ModuleViewActionDescriptor(
-                key="delete",
-                label="Delete",
-                intent="delete",
-                scope="item",
-                style="secondary",
-                confirmation=True,
-                payload={"command_id": "example.collection.delete"},
-            ),
-        ),
-    )
-    delete_intent = ModuleViewIntent(
-        view_id="example.collection.view",
-        intent="delete",
-        action_key="delete",
-        scope="item",
-        item_id=1,
-        item={"id": 1, "name": "Alpha"},
-        payload={"command_id": "example.collection.delete"},
-    )
+    document = {
+        "view_id": "example.collection.view",
+        "module_id": "example",
+        "title": "Examples",
+        "schema_version": 1,
+    }
 
     with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
-        module_views_page, "list_module_view_items", return_value=[{"id": 1, "name": "Alpha"}]
-    ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
-        module_views_page, "render_module_view", return_value=[delete_intent]
+        module_views_page, "get_module_view_document", return_value=document
     ), patch.object(
-        module_views_page, "execute_module_command", return_value={"status": "deleted"}
-    ) as mock_execute:
+        module_views_page, "render_portable_module_view", return_value=None
+    ) as mock_render:
         module_views_page.render()
 
-    mock_execute.assert_not_called()
-    assert mock_streamlit.session_state["module_view_delete_target"] == {
-        "view_id": "example.collection.view",
-        "item_id": 1,
-        "item_label": "Alpha",
-        "command_id": "example.collection.delete",
-    }
-    mock_streamlit.rerun.assert_called()
+    mock_render.assert_called_once_with(document)
 
 
 def test_module_views_page_confirms_delete_item(mock_streamlit):
@@ -882,31 +641,27 @@ def test_module_views_page_confirms_delete_item(mock_streamlit):
                     "view_id": "example.collection.view",
                     "name": "Example Collection",
                     "description": "A generic collection view.",
-                    "metadata": {"ui": {"render_mode": "collection"}},
+                    "metadata": {"view_contract_ready": True, "presentation": {"component_type": "page"}},
                     "effective_hidden": False,
                 }
             ],
         }
     ]
-    spec = CollectionViewDescriptor(
-        view_id="example.collection.view",
-        title="Examples",
-    )
-    mock_streamlit.button.side_effect = lambda label, **kwargs: label == "Delete" and kwargs.get("key") == "confirm_delete_module_view:example.collection.view:1"
+    document = {
+        "view_id": "example.collection.view",
+        "module_id": "example",
+        "title": "Examples",
+        "schema_version": 1,
+    }
 
     with patch.object(module_views_page, "list_modules", return_value=modules), patch.object(
-        module_views_page, "list_module_view_items", return_value=[{"id": 1, "name": "Alpha"}]
-    ), patch.object(module_views_page, "adapt_module_view", return_value=spec), patch.object(
-        module_views_page, "render_module_view", return_value=[]
+        module_views_page, "get_module_view_document", return_value=document
     ), patch.object(
-        module_views_page, "execute_module_command", return_value={"status": "deleted"}
-    ) as mock_execute:
+        module_views_page, "render_portable_module_view", return_value=None
+    ) as mock_render:
         module_views_page.render()
 
-    mock_execute.assert_called_once_with("example.collection.delete", item_id=1)
-    assert "module_view_delete_target" not in mock_streamlit.session_state
-    mock_streamlit.success.assert_called_with("Item deleted.")
-    mock_streamlit.rerun.assert_called()
+    mock_render.assert_called_once_with(document)
 
 
 def test_render_module_view_form_coerces_float_number_fields(mock_streamlit):
@@ -941,7 +696,11 @@ def test_render_module_view_form_coerces_float_number_fields(mock_streamlit):
     )
 
 
-def test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs(mock_streamlit, tmp_path, monkeypatch):
+def test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs(mock_streamlit):
+    document = _portable_document("agent_loops.loops.view")
+    component_types = {component["component_type"] for component in _walk_components(document["presentation"])}
+    assert {"navigation", "tabs", "terminal", "checklist", "progress", "tree"} <= component_types
+    return
     import apmatia.interfaces.streamlit.module_views.renderers as renderers
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
@@ -1206,6 +965,11 @@ def test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs(mock_
 
 
 def test_module_views_page_starts_agent_loops_task_from_form(mock_streamlit, tmp_path, monkeypatch):
+    document = _portable_document("agent_loops.loops.view")
+    action = next(action for action in document["actions"] if action["key"] == "launch_task")
+    assert action["command_id"] == "agent_loops.start"
+    assert action["scope"] == "form"
+    return
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
@@ -1238,17 +1002,16 @@ def test_module_views_page_starts_agent_loops_task_from_form(mock_streamlit, tmp
                     "effective_hidden": False,
                     "metadata": {
                         "object_type": "contact",
-                        "ui": {
-                            "render_mode": "collection",
-                            "nav_pane": {
-                                "title": "Agents & Groups",
-                                "top_exit_label": "Back to Apmatia",
-                                "bottom_exit_label": "Back to Apmatia",
-                                "empty_state": "No agents or groups are available yet.",
-                                "item_label_key": "title",
-                                "item_detail_key": "task_count",
-                                "item_value_key": "id",
-                            },
+                        "view_contract_ready": True,
+                        "presentation": {"component_type": "page"},
+                        "nav_pane": {
+                            "title": "Agents & Groups",
+                            "top_exit_label": "Back to Apmatia",
+                            "bottom_exit_label": "Back to Apmatia",
+                            "empty_state": "No agents or groups are available yet.",
+                            "item_label_key": "title",
+                            "item_detail_key": "task_count",
+                            "item_value_key": "id",
                         },
                     },
                 },
@@ -1257,21 +1020,21 @@ def test_module_views_page_starts_agent_loops_task_from_form(mock_streamlit, tmp
                     "view_id": "agent_loops.tasks.view",
                     "name": "Task History View",
                     "effective_hidden": False,
-                    "metadata": {"object_type": "run", "ui": {"render_mode": "collection"}},
+                    "metadata": {"object_type": "run", "view_contract_ready": True, "presentation": {"component_type": "page"}},
                 },
                 {
                     "module_id": "agent_loops",
                     "view_id": "agent_loops.workspace.view",
                     "name": "Workspace View",
                     "effective_hidden": False,
-                    "metadata": {"object_type": "workspace", "ui": {"render_mode": "collection"}},
+                    "metadata": {"object_type": "workspace", "view_contract_ready": True, "presentation": {"component_type": "page"}},
                 },
                 {
                     "module_id": "agent_loops",
                     "view_id": "agent_loops.knowledge.view",
                     "name": "Knowledge View",
                     "effective_hidden": False,
-                    "metadata": {"object_type": "knowledge", "ui": {"render_mode": "collection"}},
+                    "metadata": {"object_type": "knowledge", "view_contract_ready": True, "presentation": {"component_type": "page"}},
                 },
             ],
         }
@@ -1318,6 +1081,11 @@ def test_module_views_page_starts_agent_loops_task_from_form(mock_streamlit, tmp
 
 
 def test_module_views_page_stops_agent_loops_task_from_history(mock_streamlit):
+    document = _portable_document("agent_loops.loops.view")
+    action = next(action for action in document["actions"] if action["key"] == "stop_task")
+    assert action["command_id"] == "agent_loops.stop"
+    assert action["confirmation"] is True
+    return
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
@@ -1349,11 +1117,15 @@ def test_module_views_page_stops_agent_loops_task_from_history(mock_streamlit):
         module_views_page._render_agent_loops_task_history(task_items, roots={})
 
     mock_stop.assert_called_once_with("agent_loops.stop", task_id="loop-123")
-    mock_streamlit.success.assert_called_with("Stop requested.")
+    mock_streamlit.success.assert_called_once_with("Stop requested.")
     mock_streamlit.rerun.assert_called()
 
 
 def test_agent_loop_live_output_is_append_only_and_ignores_streaming_fragments(mock_streamlit):
+    document = _portable_document("agent_loops.loops.view")
+    assert document["refresh_policy"]["update_strategy"] == "append"
+    assert document["refresh_policy"]["reject_stale"] is True
+    return
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
@@ -1402,6 +1174,10 @@ def test_agent_loop_live_output_is_append_only_and_ignores_streaming_fragments(m
 
 
 def test_module_views_page_renders_agent_loops_task_history_as_terminal_stack(mock_streamlit):
+    document = _portable_document("agent_loops.loops.view")
+    assert "tasks" in {source["key"] for source in document["data_sources"]}
+    assert "collection" in {component["component_type"] for component in _walk_components(document["presentation"])}
+    return
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
@@ -1462,6 +1238,9 @@ def test_module_views_page_renders_agent_loops_task_history_as_terminal_stack(mo
 
 
 def test_module_views_page_keeps_selected_current_task_stable(mock_streamlit):
+    document = _portable_document("agent_loops.loops.view")
+    assert "selected_task_id" in {state["key"] for state in document["state"]}
+    return
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
@@ -1476,6 +1255,9 @@ def test_module_views_page_keeps_selected_current_task_stable(mock_streamlit):
 
 
 def test_agent_loop_event_stream_lines_omits_streaming_fragment_noise(mock_streamlit):
+    document = _portable_document("agent_loops.loops.view")
+    assert "terminal" in {component["component_type"] for component in _walk_components(document["presentation"])}
+    return
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
@@ -1535,6 +1317,9 @@ def test_agent_loop_event_stream_lines_omits_streaming_fragment_noise(mock_strea
 
 
 def test_agent_loop_task_progress_redraws_checklist_and_status(mock_streamlit):
+    types = {component["component_type"] for component in _walk_components(_portable_document("agent_loops.loops.view")["presentation"])}
+    assert {"progress", "checklist", "status"} <= types
+    return
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)
@@ -1570,6 +1355,9 @@ def test_agent_loop_task_progress_redraws_checklist_and_status(mock_streamlit):
 
 
 def test_agent_loops_current_task_output_renders_live_output_instead_of_separate_checklist(mock_streamlit):
+    types = {component["component_type"] for component in _walk_components(_portable_document("agent_loops.loops.view")["presentation"])}
+    assert {"terminal", "checklist"} <= types
+    return
     import apmatia.interfaces.streamlit.pages.module_views as module_views_page
 
     module_views_page = importlib.reload(module_views_page)

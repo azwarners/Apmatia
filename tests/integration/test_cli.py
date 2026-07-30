@@ -165,13 +165,13 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "ai_model_executor",
         "ai_model_manager",
         "apmatia_admin",
-        "contacts_and_discussions",
+        "auth",
         "dev_tools",
+        "discuss",
         "ipe",
         "knowledge_wiki",
         "logging",
         "memory_manager",
-        "module_manager",
         "os_admin",
         "persistence",
         "preferences",
@@ -293,6 +293,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     }
     assert agents["actions"] == ["agents.agents"]
     assert agents["commands"] == [
+        "agents.clone",
         "agents.create",
         "agents.delete",
         "agents.edit",
@@ -376,82 +377,110 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "python": ">=3.10",
         "python_packages": [],
         "system_packages": [],
-        "modules": ["contacts_and_discussions"],
+        "modules": ["discuss"],
         "tools": [],
     }
     assert payload[4]["actions"] == []
     assert payload[4]["commands"] == []
     assert payload[4]["views"] == []
     payload.pop(4)
-    assert payload[4]["module"]["module_id"] == "contacts_and_discussions"
-    assert payload[4]["module"]["name"] == "Contacts and Discussions"
-    assert payload[4]["module"]["version"] == "0.1.0"
-    assert payload[4]["module"]["description"] == "A topic-centered discussion system for organizing work, conversations, summaries, and chat targets."
-    assert payload[4]["module"]["author"] == "Nick"
-    assert payload[4]["module"]["status"] == "stable"
-    assert payload[4]["module"]["category"] == "feature"
-    assert payload[4]["module"]["tags"] == ["topics", "discussions", "summaries", "chat-targets", "turns", "migration"]
-    assert payload[4]["module"]["metadata"] == {}
-    assert payload[4]["module"]["dependencies"] == {
+    auth = payload.pop(4)
+    assert auth["module"] == {
+        "module_id": "auth",
+        "name": "Authentication",
+        "version": "0.1.0",
+        "description": "Provide authentication sessions and the Apmatia login view.",
+        "author": "Nick",
+        "status": "stable",
+        "category": "infrastructure",
+        "default_enabled": True,
+        "tags": ["authentication", "sessions", "login", "access-control"],
+        "metadata": {},
+        "dependencies": {
+            "python": ">=3.10",
+            "python_packages": [],
+            "system_packages": [],
+            "modules": ["users"],
+            "tools": [],
+        },
+    }
+    assert auth["actions"] == ["auth.login", "auth.register"]
+    assert auth["commands"] == []
+    assert auth["views"] == ["auth.login.view", "auth.register.view"]
+    assert auth["source"] == "bundled"
+    assert auth["is_workspace"] is False
+    assert payload[5]["module"]["module_id"] == "discuss"
+    assert payload[5]["module"]["name"] == "Discuss"
+    assert payload[5]["module"]["version"] == "0.1.0"
+    assert payload[5]["module"]["description"] == "A topic-centered discussion system for organizing work, conversations, summaries, and chat targets."
+    assert payload[5]["module"]["author"] == "Nick"
+    assert payload[5]["module"]["status"] == "stable"
+    assert payload[5]["module"]["category"] == "feature"
+    assert payload[5]["module"]["tags"] == ["topics", "discussions", "summaries", "chat-targets", "turns", "migration"]
+    assert payload[5]["module"]["metadata"] == {}
+    assert payload[5]["module"]["dependencies"] == {
         "python": ">=3.10",
         "python_packages": [],
         "system_packages": [],
         "modules": ["persistence", "ysparr"],
         "tools": [],
     }
-    assert payload[4]["actions"] == [
-        "contacts_and_discussions.chat_targets",
-        "contacts_and_discussions.discussions",
-        "contacts_and_discussions.summaries",
-        "contacts_and_discussions.topics",
-        "contacts_and_discussions.turns",
+    assert payload[5]["actions"] == [
+        "discuss.chat_targets",
+        "discuss.discussions",
+        "discuss.summaries",
+        "discuss.topics",
+        "discuss.turns",
     ]
-    assert payload[4]["commands"] == [
-        "contacts_and_discussions.chat_targets.create",
-        "contacts_and_discussions.chat_targets.delete",
-        "contacts_and_discussions.chat_targets.edit",
-        "contacts_and_discussions.chat_targets.list",
-        "contacts_and_discussions.discussions.create",
-        "contacts_and_discussions.discussions.delete",
-        "contacts_and_discussions.discussions.edit",
-        "contacts_and_discussions.discussions.list",
-        "contacts_and_discussions.summaries.create",
-        "contacts_and_discussions.summaries.delete",
-        "contacts_and_discussions.summaries.edit",
-        "contacts_and_discussions.summaries.list",
-        "contacts_and_discussions.topics.assess_transition",
-        "contacts_and_discussions.topics.create",
-        "contacts_and_discussions.topics.delete",
-        "contacts_and_discussions.topics.edit",
-        "contacts_and_discussions.topics.list",
-        "contacts_and_discussions.topics.summarize",
-        "contacts_and_discussions.turns.create",
-        "contacts_and_discussions.turns.delete",
-        "contacts_and_discussions.turns.edit",
-        "contacts_and_discussions.turns.list",
+    assert payload[5]["commands"] == [
+        "discuss.chat_targets.create",
+        "discuss.chat_targets.delete",
+        "discuss.chat_targets.edit",
+        "discuss.chat_targets.list",
+        "discuss.discussion.create",
+        "discuss.discussion.open",
+        "discuss.discussions.create",
+        "discuss.discussions.delete",
+        "discuss.discussions.edit",
+        "discuss.discussions.list",
+        "discuss.summaries.create",
+        "discuss.summaries.delete",
+        "discuss.summaries.edit",
+        "discuss.summaries.list",
+        "discuss.topics.assess_transition",
+        "discuss.topics.create",
+        "discuss.topics.delete",
+        "discuss.topics.edit",
+        "discuss.topics.list",
+        "discuss.topics.summarize",
+        "discuss.turns.create",
+        "discuss.turns.delete",
+        "discuss.turns.edit",
+        "discuss.turns.list",
     ]
-    assert payload[4]["views"] == [
-        "contacts_and_discussions.chat_targets.view",
+    assert payload[5]["views"] == [
+        "discuss.chat_targets.view",
+        "discuss.discussion.view",
     ]
-    assert payload[5]["module"]["module_id"] == "dev_tools"
-    assert payload[5]["module"]["name"] == "Dev Tools"
-    assert payload[5]["module"]["version"] == "0.1.0"
-    assert payload[5]["module"]["description"] == "Developer tools for tree inspection, source reading, and dependency tracing."
-    assert payload[5]["module"]["author"] == "Nick"
-    assert payload[5]["module"]["status"] == "development"
-    assert payload[5]["module"]["category"] == "development"
-    assert payload[5]["module"]["tags"] == ["tree", "source", "imports", "inspection"]
-    assert payload[5]["module"]["metadata"] == {}
-    assert payload[5]["module"]["dependencies"] == {
+    assert payload[4]["module"]["module_id"] == "dev_tools"
+    assert payload[4]["module"]["name"] == "Dev Tools"
+    assert payload[4]["module"]["version"] == "0.1.0"
+    assert payload[4]["module"]["description"] == "Developer tools for tree inspection, source reading, and dependency tracing."
+    assert payload[4]["module"]["author"] == "Nick"
+    assert payload[4]["module"]["status"] == "development"
+    assert payload[4]["module"]["category"] == "development"
+    assert payload[4]["module"]["tags"] == ["tree", "source", "imports", "inspection"]
+    assert payload[4]["module"]["metadata"] == {}
+    assert payload[4]["module"]["dependencies"] == {
         "python": ">=3.10",
         "python_packages": [],
         "system_packages": [],
         "modules": [],
         "tools": [],
     }
-    assert payload[5]["actions"] == []
-    assert payload[5]["commands"] == []
-    assert payload[5]["views"] == []
+    assert payload[4]["actions"] == []
+    assert payload[4]["commands"] == []
+    assert payload[4]["views"] == []
     assert payload[6]["module"]["module_id"] == "ipe"
     assert payload[6]["module"]["name"] == "Integrated Productivity Environment"
     assert payload[6]["module"]["version"] == "0.1.0"
@@ -510,35 +539,19 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert payload[9]["actions"] == []
     assert payload[9]["commands"] == []
     assert payload[9]["views"] == []
-    assert payload[10]["module"]["module_id"] == "module_manager"
-    assert payload[10]["module"]["name"] == "Module Manager"
+    assert payload[10]["module"]["module_id"] == "os_admin"
+    assert payload[10]["module"]["name"] == "OS Admin"
     assert payload[10]["module"]["version"] == "0.1.0"
-    assert payload[10]["module"]["status"] == "stable"
-    assert payload[10]["module"]["category"] == "core"
-    assert payload[10]["module"]["default_enabled"] is True
-    assert payload[10]["module"]["tags"] == ["modules", "configuration", "navigation"]
-    assert payload[10]["actions"] == ["module_manager.module_manager"]
-    assert payload[10]["commands"] == [
-        "module_manager.set_activation",
-        "module_manager.set_module_order",
-        "module_manager.set_module_visibility",
-        "module_manager.set_view_order",
-        "module_manager.set_view_visibility",
-    ]
-    assert payload[10]["views"] == ["module_manager.module_manager.view"]
-    assert payload[11]["module"]["module_id"] == "os_admin"
-    assert payload[11]["module"]["name"] == "OS Admin"
-    assert payload[11]["module"]["version"] == "0.1.0"
-    assert payload[11]["module"]["description"] == "Read-only operating system administration and diagnostic tools."
-    assert payload[11]["module"]["author"] == "Nick"
-    assert payload[11]["module"]["status"] == "development"
-    assert payload[11]["module"]["category"] == "infrastructure"
-    assert payload[11]["module"]["tags"] == ["operating-system", "administration", "diagnostics", "inspection"]
-    assert payload[11]["module"]["metadata"] == {}
-    assert payload[11]["actions"] == []
-    assert payload[11]["commands"] == []
-    assert payload[11]["views"] == []
-    persistence = payload.pop(12)
+    assert payload[10]["module"]["description"] == "Read-only operating system administration and diagnostic tools."
+    assert payload[10]["module"]["author"] == "Nick"
+    assert payload[10]["module"]["status"] == "development"
+    assert payload[10]["module"]["category"] == "infrastructure"
+    assert payload[10]["module"]["tags"] == ["operating-system", "administration", "diagnostics", "inspection"]
+    assert payload[10]["module"]["metadata"] == {}
+    assert payload[10]["actions"] == []
+    assert payload[10]["commands"] == []
+    assert payload[10]["views"] == []
+    persistence = payload.pop(11)
     assert persistence["module"] == {
         "module_id": "persistence",
         "name": "Persistence",
@@ -561,16 +574,24 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert persistence["actions"] == []
     assert persistence["commands"] == []
     assert persistence["views"] == []
-    preferences = payload.pop(12)
+    preferences = payload.pop(11)
     assert preferences["module"]["module_id"] == "preferences"
     assert preferences["module"]["name"] == "Preferences"
     assert preferences["module"]["status"] == "stable"
     assert preferences["module"]["category"] == "core"
     assert preferences["module"]["default_enabled"] is True
-    assert preferences["actions"] == ["preferences.preferences"]
-    assert preferences["commands"] == ["preferences.save"]
-    assert preferences["views"] == ["preferences.preferences.view"]
-    runtime_telemetry = payload.pop(12)
+    assert preferences["actions"] == ["preferences.modules", "preferences.preferences"]
+    assert preferences["commands"] == [
+        "preferences.save",
+        "preferences.set_activation",
+        "preferences.set_module_order",
+        "preferences.set_module_visibility",
+        "preferences.set_view_order",
+        "preferences.set_view_visibility",
+        "preferences.update_catalog_item",
+    ]
+    assert preferences["views"] == ["preferences.modules.view", "preferences.preferences.view"]
+    runtime_telemetry = payload.pop(11)
     assert runtime_telemetry["module"] == {
         "module_id": "runtime_telemetry",
         "name": "Runtime Telemetry",
@@ -593,48 +614,50 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
     assert runtime_telemetry["actions"] == []
     assert runtime_telemetry["commands"] == []
     assert runtime_telemetry["views"] == []
-    assert payload[12]["module"]["module_id"] == "users"
-    assert payload[12]["module"]["name"] == "Users"
-    assert payload[12]["module"]["version"] == "0.1.0"
-    assert payload[12]["module"]["description"] == "Provide authentication plus user, group, and membership management."
-    assert payload[12]["module"]["author"] == "Nick"
-    assert payload[12]["module"]["status"] == "stable"
-    assert payload[12]["module"]["category"] == "infrastructure"
-    assert payload[12]["module"]["tags"] == [
-        "authentication",
+    assert payload[11]["module"]["module_id"] == "users"
+    assert payload[11]["module"]["name"] == "Users"
+    assert payload[11]["module"]["version"] == "0.1.0"
+    assert payload[11]["module"]["description"] == "Provide user, group, and membership management."
+    assert payload[11]["module"]["author"] == "Nick"
+    assert payload[11]["module"]["status"] == "stable"
+    assert payload[11]["module"]["category"] == "infrastructure"
+    assert payload[11]["module"]["tags"] == [
         "users",
         "groups",
         "memberships",
         "access-control",
     ]
-    assert payload[12]["module"]["metadata"] == {}
-    assert payload[12]["module"]["dependencies"]["modules"] == ["persistence"]
-    assert payload[12]["actions"] == ["users.users"]
-    assert payload[12]["commands"] == [
+    assert payload[11]["module"]["metadata"] == {}
+    assert payload[11]["module"]["dependencies"]["modules"] == ["persistence"]
+    assert payload[11]["actions"] == ["users.users"]
+    assert payload[11]["commands"] == [
         "users.add_member",
+        "users.create",
         "users.create_group",
         "users.create_user",
+        "users.delete",
         "users.delete_group",
         "users.delete_user",
+        "users.edit",
         "users.edit_group",
         "users.edit_user",
         "users.list",
         "users.set_membership_enabled",
     ]
-    assert payload[12]["views"] == ["users.users.view"]
-    assert payload[13]["module"]["module_id"] == "worksim"
-    assert payload[13]["module"]["name"] == "Worksim"
-    assert payload[13]["module"]["version"] == "0.1.0"
-    assert payload[13]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
-    assert payload[13]["module"]["author"] == "Nick"
-    assert payload[13]["module"]["status"] == "development"
-    assert payload[13]["module"]["category"] == "feature"
-    assert payload[13]["module"]["tags"] == ["wiki", "org-chart", "agents", "teams", "simulation"]
-    assert payload[13]["module"]["metadata"] == {}
-    assert payload[13]["actions"] == []
-    assert payload[13]["commands"] == []
-    assert payload[13]["views"] == []
-    assert payload[14]["module"] == {
+    assert payload[11]["views"] == ["users.users.view"]
+    assert payload[12]["module"]["module_id"] == "worksim"
+    assert payload[12]["module"]["name"] == "Worksim"
+    assert payload[12]["module"]["version"] == "0.1.0"
+    assert payload[12]["module"]["description"] == "A workplace simulation module centered on a persistent org chart wiki."
+    assert payload[12]["module"]["author"] == "Nick"
+    assert payload[12]["module"]["status"] == "development"
+    assert payload[12]["module"]["category"] == "feature"
+    assert payload[12]["module"]["tags"] == ["wiki", "org-chart", "agents", "teams", "simulation"]
+    assert payload[12]["module"]["metadata"] == {}
+    assert payload[12]["actions"] == []
+    assert payload[12]["commands"] == []
+    assert payload[12]["views"] == []
+    assert payload[13]["module"] == {
         "module_id": "ysparr",
         "name": "Ysparr",
         "version": "0.1.0",
@@ -653,9 +676,9 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
             "tools": [],
         },
     }
-    assert payload[14]["actions"] == []
-    assert payload[14]["commands"] == []
-    assert payload[14]["views"] == []
+    assert payload[13]["actions"] == []
+    assert payload[13]["commands"] == []
+    assert payload[13]["views"] == []
 
 
 def test_cli_module_show_displays_worksim_module_details(capsys):

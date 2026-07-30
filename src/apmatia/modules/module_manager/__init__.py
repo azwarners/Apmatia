@@ -1,1 +1,0 @@
-"""Apmatia module manager module."""

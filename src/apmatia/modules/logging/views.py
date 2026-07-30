@@ -11,6 +11,7 @@ VIEW_DESCRIPTORS: tuple[ViewContribution, ...] = (
         name="Application Logs",
         description="Browse recent structured application log events.",
         metadata={
+            "view_contract_ready": True,
             "object_type": "log_entry",
             "singular_label": "Log entry",
             "plural_label": "Log entries",

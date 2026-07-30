@@ -14,12 +14,12 @@ APMATIA_USERS_MODULE = ModuleMetadata(
     module_id="users",
     name="Users",
     version="0.1.0",
-    description="Provide authentication plus user, group, and membership management.",
+    description="Provide user, group, and membership management.",
     author="Nick",
     status="stable",
     category="infrastructure",
     default_enabled=True,
-    tags=("authentication", "users", "groups", "memberships", "access-control"),
+    tags=("users", "groups", "memberships", "access-control"),
     metadata={},
 )
 

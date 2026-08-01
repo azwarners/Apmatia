@@ -1,9 +1,11 @@
 #!/bin/bash
 
 # Apmatia Docker startup script
+# Usage: ./start.sh [core|streamlit|flet|dev]
 # Usage: ./start.sh [core|streamlit|dev]
 #   core     - Start the Apmatia core container on localhost:8000 (default)
 #   streamlit - Start the Streamlit interface container
+#   flet     - Start the Flet interface container
 #   dev      - Start both the core and Streamlit containers
 
 set -e
@@ -13,17 +15,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
 CORE_IMAGE_NAME="apmatia"
 STREAMLIT_IMAGE_NAME="apmatia-streamlit"
+FLET_IMAGE_NAME="apmatia-flet"
 CORE_CONTAINER_NAME="apmatia"
 STREAMLIT_CONTAINER_NAME="apmatia-streamlit"
+FLET_CONTAINER_NAME="apmatia-flet"
 
 for arg in "$@"; do
     case "$arg" in
-        core|streamlit|dev)
+        core|streamlit|flet|dev)
             MODE="$arg"
             ;;
         *)
             echo "Unknown argument: $arg"
-            echo "Usage: ./start.sh [core|streamlit|dev]"
+            echo "Usage: ./start.sh [core|streamlit|flet|dev]"
             exit 1
             ;;
     esac
@@ -32,6 +36,8 @@ done
 IMAGE_NAME="$CORE_IMAGE_NAME"
 if [ "$MODE" = "streamlit" ]; then
     IMAGE_NAME="$STREAMLIT_IMAGE_NAME"
+elif [ "$MODE" = "flet" ]; then
+    IMAGE_NAME="$FLET_IMAGE_NAME"
 fi
 
 build_image() {
@@ -47,12 +53,14 @@ if [ "$MODE" = "core" ]; then
     build_image "$CORE_IMAGE_NAME" "core" "Building Apmatia core container..."
 elif [ "$MODE" = "streamlit" ]; then
     build_image "$STREAMLIT_IMAGE_NAME" "streamlit" "Building Apmatia Streamlit interface container..."
+elif [ "$MODE" = "flet" ]; then
+    build_image "$FLET_IMAGE_NAME" "flet" "Building Apmatia Flet interface container..."
 elif [ "$MODE" = "dev" ]; then
     build_image "$CORE_IMAGE_NAME" "core" "Building Apmatia core container..."
     build_image "$STREAMLIT_IMAGE_NAME" "streamlit" "Building Apmatia Streamlit interface container..."
 else
     echo "Unknown mode: $MODE"
-    echo "Usage: ./start.sh [core|streamlit|dev]"
+    echo "Usage: ./start.sh [core|streamlit|flet|dev]"
     exit 1
 fi
 
@@ -235,6 +243,31 @@ run_streamlit_container() {
         "$image_name" /app/scripts/entrypoint.sh
 }
 
+run_flet_container() {
+    local image_name="$1"
+
+    build_runtime_args
+    docker run \
+        --name "$FLET_CONTAINER_NAME" \
+        -p "$APMATIA_DOCKER_BIND_HOST":8502:8502 \
+        -v "$REPO_ROOT":/app \
+        -v "$APMATIA_WORKSPACE_DIR_HOST":"$APMATIA_CONTAINER_WORKSPACE_DIR" \
+        -v "$APMATIA_HOME_HOST":"$APMATIA_CONTAINER_HOME_DIR" \
+        -v "$APMATIA_CONFIG_DIR_HOST":"$APMATIA_CONTAINER_CONFIG_DIR" \
+        -v "$APMATIA_DATA_DIR_HOST":"$APMATIA_CONTAINER_DATA_DIR" \
+        -e HOME="$APMATIA_CONTAINER_HOME" \
+        -e APMATIA_HOME="$APMATIA_CONTAINER_HOME_DIR" \
+        -e APMATIA_DATA_DIR="$APMATIA_CONTAINER_DATA_DIR" \
+        -e APMATIA_WORKSPACE_ROOT="$APMATIA_CONTAINER_WORKSPACE_DIR/modules" \
+        -e APMATIA_FLET_HOST=0.0.0.0 \
+        "${TRANSPORT_SECURITY_ARGS[@]}" \
+        --user "$(id -u):$(id -g)" \
+        "${LOG_DIR_ARGS[@]}" \
+        "${GGUF_DIR_ARGS[@]}" \
+        --entrypoint /bin/bash \
+        "$image_name" /app/scripts/entrypoint.sh
+}
+
 run_dev_mode() {
     cleanup_dev_mode() {
         docker stop "$CORE_CONTAINER_NAME" >/dev/null 2>&1 || true
@@ -318,6 +351,10 @@ elif [ "$MODE" = "streamlit" ]; then
     stop_container_if_exists "$STREAMLIT_CONTAINER_NAME"
     echo "Starting $STREAMLIT_CONTAINER_NAME..."
     run_streamlit_container "$STREAMLIT_IMAGE_NAME"
+elif [ "$MODE" = "flet" ]; then
+    stop_container_if_exists "$FLET_CONTAINER_NAME"
+    echo "Starting $FLET_CONTAINER_NAME..."
+    run_flet_container "$FLET_IMAGE_NAME"
 else
     stop_container_if_exists "$CORE_CONTAINER_NAME"
     echo "Starting $CORE_CONTAINER_NAME..."

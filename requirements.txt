@@ -2,3 +2,4 @@ streamlit==1.58.0
 fastapi
 uvicorn
 python-dotenv
+flet==0.86.4

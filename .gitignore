@@ -5,3 +5,4 @@ __pycache__/
 docker-compose.override.yml
 .codex/
 .streamlit/
+flet_debug.log

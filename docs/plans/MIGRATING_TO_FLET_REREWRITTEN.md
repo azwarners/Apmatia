@@ -635,6 +635,12 @@ Prefer a module with:
 
 Do not begin with Discussions or Agent Loops.
 
+The selected Phase 4 module is **Users**. Its manifest is marked `stable`, and
+its existing portable view provides a compact production workflow: users,
+groups, and memberships in one collection with create, edit, and delete/disable
+actions. IPE is intentionally excluded because it is still under active
+development.
+
 ## Likely component expansion
 
 Implement only what the chosen module requires, such as:
@@ -668,6 +674,44 @@ Use desktop-appropriate presentation, including:
 - Data refreshes without restarting the client.
 - Component additions have renderer tests.
 - No module-specific logic is added to the shell.
+
+The first Phase 4 implementation adds generic Flet support for collection/table
+data, portable forms, field variants, view state visibility, and Core command
+execution. The Linux shell loads the selected view's declared data sources and
+routes intents through the shared API adapter.
+
+---
+
+# Phase 4.5: AI Model Management on Linux
+
+## Goal
+
+Port the stable AI Model Manager before Discussions and Agent Loops so those
+later phases have model inventory, remote endpoint configuration, and task-size
+routing data available for play testing.
+
+## Scope
+
+- GGUF Models view
+- LLM Configs view
+- Task Preferences view
+- generic schema-generated collection and form rendering
+- create, edit, delete, scan, show, and test actions where exposed by the
+  portable contract
+- password-safe handling of LLM API keys
+
+## Acceptance criteria
+
+- The three stable AI Model Manager views appear in Linux navigation.
+- Existing model/config/preference records load from Core.
+- Forms submit through the shared module-command API path.
+- Editing an LLM config does not display or log its API key.
+- Model and endpoint data can be created or updated without restarting the
+  client.
+- The shared renderer remains module-neutral.
+
+This phase is intentionally prioritized ahead of Discussions and Agent Loops;
+it supplies the configuration and model records those phases depend on.
 
 ---
 
@@ -723,6 +767,22 @@ Verify with the installed Flet version:
 - Polling or streaming stops when leaving the view.
 - Re-entering reconstructs current server-authoritative state.
 
+## Phase 5 implementation note
+
+The Linux client now renders the shared Discussions contract through the common
+Flet renderer. It loads agents, discussions, messages, and activity through the
+Core view-source API; preserves server message order; tracks the selected agent,
+discussion, chat mode, pause state, and composer text; and sends prompts through
+the existing `/discussion/prompt` API. Re-entering the view reconstructs the
+current server state, and changing the selected discussion refreshes its source
+data. The timeline uses a scrollable control so previously loaded messages are
+not forcibly repositioned by the client.
+
+The contract already describes polling and lifecycle effects. The current Linux
+slice uses the synchronous prompt endpoint and refresh-on-navigation/send path;
+incremental live polling and cancellation remain follow-up work for the
+discussion streaming portion of this phase before production release.
+
 ---
 
 # Phase 6: Agent Loops on Linux
@@ -777,6 +837,21 @@ Verify:
 - Leaving the view cleans up subscriptions or polling.
 - Re-entering reconstructs current server-authoritative state.
 
+## Phase 6 implementation note
+
+The Linux client now supports the Agent Loops contract through the shared Flet
+renderer. Contacts can be selected, task launch and stop actions use the Core
+module-command API, and the client renders terminal-style event output,
+checklists, progress, task history, workspace files, and knowledge files. The
+Linux shell starts a one-second refresh task while a loop is running and cancels
+it when the user leaves the Agent Loops view or stops the task. Re-entering the
+view reloads the current server-authoritative task data.
+
+The first Linux slice intentionally renders the server's retained event history
+on each refresh instead of attempting client-side event merging. This keeps
+ordering and reconnect behavior server-authoritative while leaving efficient
+incremental event-window optimization for later production tuning.
+
 ---
 
 # Phase 7: Expand Linux Contract Coverage
@@ -815,6 +890,28 @@ Maintain an authoritative support matrix:
 | navigate effect | yes/no | yes/no | views | notes |
 
 The matrix should measure migration status, not the number of renderer files created.
+
+## Stage 7 implementation note
+
+The shared Linux renderer now covers the component vocabulary used by the
+registered production views: page, panel, card, form, text, markdown, expander,
+field variants, actions, notices, collections, tables, columns, navigation,
+tabs, timeline, messages, status, terminal, checklist, progress, and tree.
+Form field identifiers are translated from schema component IDs into the API
+field names expected by Core, including compound names such as `is_enabled`.
+Visibility operators including `in` and `not_in` are evaluated by the client.
+
+The current support matrix is:
+
+| Contract feature | Linux supported | Tested | Known limitation |
+|---|---:|---:|---|
+| page/panel/card/columns | yes | yes | none |
+| form/actions/field variants | yes | yes | file fields remain text-path inputs until native file dialogs are needed |
+| collection/table | yes | yes | large-list virtualization is not yet implemented |
+| markdown/expander | yes | yes | basic contract properties only |
+| navigation/tabs | yes | yes | state-driven selection, no animated transitions |
+| timeline/message/status | yes | yes | module-neutral rendering |
+| terminal/checklist/progress/tree | yes | yes | retained server data is redrawn on refresh |
 
 ## Acceptance criteria
 
@@ -905,6 +1002,27 @@ Remove or archive Streamlit only after:
 - remaining unsupported workflows are explicitly approved
 
 Do not remove Streamlit merely because the Flet shell launches.
+
+## Phase 8 implementation note
+
+The Linux client now has release-oriented configuration and recovery behavior:
+
+- `APMATIA_API_URL` configures the Core API endpoint.
+- `APMATIA_FLET_WINDOW_WIDTH`, `APMATIA_FLET_WINDOW_HEIGHT`,
+  `APMATIA_FLET_MIN_WINDOW_WIDTH`, and `APMATIA_FLET_MIN_WINDOW_HEIGHT`
+  configure window sizing.
+- Client logs default to `~/.apmatia/logs/flet.log` instead of writing into the
+  checkout; `APMATIA_FLET_LOG_FILE` can override the path.
+- Authenticated module/API failures offer an in-client retry action.
+- `build-flet-linux.sh` documents the Flet 0.86.4 Linux packaging workflow and
+  produces an artifact under `build/flet-linux` when the matching CLI and Linux
+  Flutter build dependencies are available.
+
+Wayland window placement remains compositor-controlled; sizing works, but the
+client does not promise programmatic positioning. Native file dialogs,
+notifications, and a fully verified packaged artifact remain release validation
+items rather than being claimed as complete here. Streamlit remains available
+as the rollback interface.
 
 ---
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -15,11 +16,18 @@ from .startup import connected_view, disconnected_view
 from .shell import ApmatiaShell
 
 
+def _log_file() -> Path:
+    configured = os.environ.get("APMATIA_FLET_LOG_FILE")
+    path = Path(configured).expanduser() if configured else Path.home() / ".apmatia" / "logs" / "flet.log"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 logging.basicConfig(
     level=logging.WARNING,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("flet_debug.log"),
+        logging.FileHandler(_log_file()),
         logging.StreamHandler(sys.stdout),
     ],
 )

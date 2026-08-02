@@ -1,0 +1,6 @@
+build/
+.flet/
+.venv/
+__pycache__/
+*.pyc
+flet_debug.log

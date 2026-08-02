@@ -53,6 +53,43 @@ class ApmatiaApiClient:
     def get_auth_views(self) -> list[dict[str, Any]]:
         return self._request("GET", "/auth/views")
 
+    def list_modules(self) -> list[dict[str, Any]]:
+        payload = self._request("GET", "/modules")
+        if not isinstance(payload, list):
+            raise ApiConnectionError("Apmatia Core returned an invalid module catalog.")
+        return payload
+
+    def get_module_view_document(self, view_id: str) -> dict[str, Any]:
+        payload = self._request("GET", f"/module-views/{view_id}/document")
+        if not isinstance(payload, dict):
+            raise ApiConnectionError("Apmatia Core returned an invalid view document.")
+        return payload
+
+    def list_module_view_items(self, view_id: str) -> list[dict[str, Any]]:
+        payload = self._request("GET", f"/module-views/{view_id}/items")
+        if not isinstance(payload, list):
+            raise ApiConnectionError("Apmatia Core returned invalid view items.")
+        return payload
+
+    def execute_module_command(self, command_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        result = self._request("POST", f"/module-commands/{command_id}", json={"payload": payload})
+        if not isinstance(result, dict):
+            raise ApiConnectionError("Apmatia Core returned an invalid command result.")
+        return result
+
+    def load_view_source(self, operation: str, parameters: dict[str, Any] | None = None) -> Any:
+        return self._request("POST", f"/module-view-sources/{operation}", json={"parameters": parameters or {}})
+
+    def send_discussion_prompt(self, prompt: str, *, agent_id: Any = None, discussion_id: Any = None, model_id: Any = None) -> dict[str, Any]:
+        result = self._request(
+            "POST",
+            "/discussion/prompt",
+            json={"prompt": prompt, "agent_id": agent_id, "discussion_id": discussion_id, "model_id": model_id},
+        )
+        if not isinstance(result, dict):
+            raise ApiConnectionError("Apmatia Core returned an invalid discussion response.")
+        return result
+
     def get_version(self) -> str:
         """Return the Core version used as the startup connectivity probe."""
         payload = self._request("GET", "/version")

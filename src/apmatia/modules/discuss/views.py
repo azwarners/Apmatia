@@ -143,6 +143,7 @@ _DISCUSSION_PRESENTATION = ViewComponent(
                     component_id="stop-action",
                     component_type="actions",
                     properties={"label": "Stop", "visible_when": "$state.is_streaming"},
+                    visible_when=ViewCondition(operator="truthy", operands=("$state.is_streaming",)),
                     action_keys=("stop_message",),
                 ),
             ),
@@ -278,7 +279,7 @@ _DISCUSSION_ACTIONS = (
         label="Send message",
         scope="form",
         command_id="discuss.message.send",
-        payload={"prompt": "$state.message_input", "agent_id": "$state.selected_agent_id", "discussion_id": "$state.selected_discussion_id"},
+        payload={"api_operation": "discussion_prompt", "prompt": "$state.message_input", "agent_id": "$state.selected_agent_id", "discussion_id": "$state.selected_discussion_id"},
         confirmation=False,
         prevent_duplicate_submission=True,
         success_effects=(

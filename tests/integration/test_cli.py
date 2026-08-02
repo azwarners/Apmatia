@@ -644,7 +644,7 @@ def test_cli_module_list_json_output_is_valid_json(capsys):
         "users.list",
         "users.set_membership_enabled",
     ]
-    assert payload[11]["views"] == ["users.users.view"]
+    assert payload[11]["views"] == ["users.groups.view", "users.users.view"]
     assert payload[12]["module"]["module_id"] == "worksim"
     assert payload[12]["module"]["name"] == "Worksim"
     assert payload[12]["module"]["version"] == "0.1.0"

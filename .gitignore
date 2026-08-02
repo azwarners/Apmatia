@@ -6,3 +6,7 @@ docker-compose.override.yml
 .codex/
 .streamlit/
 flet_debug.log
+
+# Generated Flet packaging output.
+/build/
+src/apmatia/interfaces/flet/linux/build/

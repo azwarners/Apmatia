@@ -245,6 +245,7 @@ def test_load_bundled_modules_loads_bundled_modules():
         "memory_manager.memory.view",
         "preferences.modules.view",
         "preferences.preferences.view",
+        "users.groups.view",
         "users.users.view",
         "worksim.org_chart_node.view",
     ]

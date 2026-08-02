@@ -11,6 +11,12 @@ Usage: ./run-flet.sh
 
 Launches the native Apmatia Linux Client using the project-local Python environment.
 Start Apmatia Core separately with ./start.sh core before launching the client.
+
+Environment:
+  APMATIA_API_URL                 Core API URL (default: http://127.0.0.1:8000/api)
+  APMATIA_FLET_WINDOW_WIDTH      Initial window width (default: 1100)
+  APMATIA_FLET_WINDOW_HEIGHT     Initial window height (default: 700)
+  APMATIA_FLET_LOG_FILE          Client log path (default: ~/.apmatia/logs/flet.log)
 USAGE
     exit 0
 fi

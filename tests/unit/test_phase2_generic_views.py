@@ -33,6 +33,7 @@ CONTRACT_READY_VIEW_IDS = {
     "preferences.preferences.view",
     "discuss.chat_targets.view",
     "discuss.discussion.view",
+    "users.groups.view",
     "users.users.view",
     "worksim.org_chart_node.view",
 }

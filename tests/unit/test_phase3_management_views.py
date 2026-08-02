@@ -162,7 +162,16 @@ def test_users_groups_and_memberships_are_a_portable_crud_document():
 
     assert view.metadata["view_contract_ready"] is True
     assert view.metadata["presentation"].component_type == "page"
-    assert {"item_kind", "group_id", "member_kind", "agent_id", "role"} <= fields
+    assert {"username", "password", "is_enabled"} <= fields
+    group_view = next(view for view in USER_VIEW_DESCRIPTORS if view.view_id == "users.groups.view")
+    group_document = normalize_view_document(group_view).to_dict()
+    group_fields = {
+        child["properties"]["key"]
+        for component in group_document["presentation"]["children"]
+        if component["component_type"] == "form"
+        for child in component["children"]
+    }
+    assert {"group_name", "group_description", "group_workspace_root"} <= group_fields
 
 
 def test_module_management_is_a_portable_catalog_document():

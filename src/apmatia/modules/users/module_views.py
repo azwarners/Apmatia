@@ -31,8 +31,17 @@ class UsersModuleViewProvider:
         return self._group_manager_factory()
 
     def list_items(self, *, view: ViewContribution, context: ModuleViewContext) -> list[dict[str, Any]]:
-        del view
-        items: list[dict[str, Any]] = [_serialize_user(user) for user in self.users.list_users()]
+        users = [_serialize_user(user) for user in self.users.list_users()]
+        if view.view_id == "users.users.view":
+            return users
+        if view.view_id == "users.groups.view":
+            return [
+                _serialize_group(group)
+                for group in self.groups.list_groups()
+                if group.id is not None and group.id in context.group_ids
+            ]
+
+        items: list[dict[str, Any]] = users
         visible_groups = [
             group
             for group in self.groups.list_groups()

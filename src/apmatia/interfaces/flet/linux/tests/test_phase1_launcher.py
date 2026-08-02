@@ -16,6 +16,18 @@ def test_normalize_core_url_accepts_server_and_api_roots() -> None:
     assert normalize_core_url("http://localhost:8000/api/") == "http://localhost:8000/api"
 
 
+def test_client_configuration_reads_release_runtime_environment(monkeypatch) -> None:
+    monkeypatch.setenv("APMATIA_API_URL", "http://core:8000")
+    monkeypatch.setenv("APMATIA_FLET_WINDOW_WIDTH", "1280")
+    monkeypatch.setenv("APMATIA_FLET_WINDOW_HEIGHT", "800")
+
+    configuration = ClientConfiguration.from_environment()
+
+    assert configuration.core_url == "http://core:8000/api"
+    assert configuration.window_width == 1280
+    assert configuration.window_height == 800
+
+
 def test_api_client_uses_api_root_by_default() -> None:
     client = ApmatiaApiClient()
     assert client.base_url == "http://127.0.0.1:8000/api"

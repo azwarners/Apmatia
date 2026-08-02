@@ -33,7 +33,7 @@ def test_users_module_is_stable_infrastructure_with_users_view():
     assert APMATIA_USERS_MODULE.status == "stable"
     assert APMATIA_USERS_MODULE.category == "infrastructure"
     assert [module.module_id for module in registry.list_modules()] == ["users"]
-    assert [view.view_id for view in registry.list_views()] == ["users.users.view"]
+    assert [view.view_id for view in registry.list_views()] == ["users.groups.view", "users.users.view"]
 
 
 def test_users_view_lists_safe_users_groups_and_owned_memberships(tmp_path):
@@ -48,9 +48,15 @@ def test_users_view_lists_safe_users_groups_and_owned_memberships(tmp_path):
         context=ModuleViewContext(user_id=owner.id, group_ids=frozenset({group.id or 0})),
     )
 
-    assert {item["item_kind"] for item in items} == {"user", "group", "membership"}
+    assert {item["item_kind"] for item in items} == {"user"}
     assert all("password_hash" not in item for item in items)
-    assert len([item for item in items if item["item_kind"] == "membership"]) == 2
+
+    groups_view = next(view for view in VIEW_DESCRIPTORS if view.view_id == "users.groups.view")
+    group_items = provider.list_items(
+        view=groups_view,
+        context=ModuleViewContext(user_id=owner.id, group_ids=frozenset({group.id or 0})),
+    )
+    assert {item["item_kind"] for item in group_items} == {"group"}
 
 
 def test_users_view_commands_enforce_account_and_group_ownership(tmp_path):

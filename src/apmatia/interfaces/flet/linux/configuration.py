@@ -35,4 +35,16 @@ class ClientConfiguration:
     @classmethod
     def from_environment(cls) -> "ClientConfiguration":
         """Load client configuration from the process environment."""
-        return cls(core_url=normalize_core_url(os.environ.get("APMATIA_API_URL")))
+        def number(name: str, default: float) -> float:
+            try:
+                return float(os.environ.get(name, default))
+            except (TypeError, ValueError):
+                return default
+
+        return cls(
+            core_url=normalize_core_url(os.environ.get("APMATIA_API_URL")),
+            window_width=number("APMATIA_FLET_WINDOW_WIDTH", cls.window_width),
+            window_height=number("APMATIA_FLET_WINDOW_HEIGHT", cls.window_height),
+            minimum_window_width=number("APMATIA_FLET_MIN_WINDOW_WIDTH", cls.minimum_window_width),
+            minimum_window_height=number("APMATIA_FLET_MIN_WINDOW_HEIGHT", cls.minimum_window_height),
+        )

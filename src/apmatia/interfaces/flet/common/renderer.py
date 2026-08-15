@@ -277,17 +277,13 @@ class ViewRenderer:
                 items = self._value_at_path(items, binding["path"])
             if not items:
                 return ft.Text((component.get("properties") or {}).get("empty_state", "No items yet."))
-            controls: list[ft.Control] = []
-            previous_item = self._item_context
-            for item in items:
-                if not isinstance(item, Mapping):
-                    continue
-                self._item_context = item
-                controls.append(ft.Card(content=ft.Container(content=ft.Column(
-                    [self.render(child) for child in component["children"]], spacing=8
-                ), padding=ft.Padding(12, 12, 12, 12))))
-            self._item_context = previous_item
-            return ft.Column(controls=controls, expand=True, scroll=ft.ScrollMode.AUTO)
+            # The child table binds to the whole collection. Rendering it once
+            # is intentional; rendering it once per item duplicates the table.
+            return ft.Column(
+                controls=[self.render(child) for child in component["children"]],
+                expand=True,
+                scroll=ft.ScrollMode.AUTO,
+            )
         properties = component.get("properties", {})
         binding = component.get("binding") or {}
         items = self._data_sources.get(binding.get("source"), [])

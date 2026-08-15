@@ -73,6 +73,15 @@ for the journey is in `tests/unit/test_flet_phase2.py`; the full suite passed
 The Linux placeholder is intentionally diagnostic. The desktop shell and real
 module navigation remain Phase 3 work.
 
+### Flet session persistence
+
+The Linux client persists only the revocable `apmatia_session` cookie, never
+the user's password. By default it stores the cookie in
+`~/.config/apmatia/flet-session.json` with user-only permissions. Set
+`APMATIA_FLET_SESSION_FILE` to override the path for isolated development or
+testing. The server currently expires these sessions after 30 days; logging
+out removes the local cookie file.
+
 ## Phase 3: Linux Desktop Shell and Module Navigation
 
 The authenticated Linux client now loads the generic module catalog from Core,
@@ -129,3 +138,42 @@ Play-test with Core running:
 Verify that the three AI Model Manager views appear in the navigation, existing
 records load, forms open and submit, model records can be edited, and LLM API
 keys remain masked and absent from terminal output.
+
+
+Google's recommendation for a Flet agent loop output shell:
+
+```
+import flet as ft
+
+def main(page: ft.Page):
+    page.title = "Flet Shell"
+    
+    output_list = ft.ListView(expand=True, auto_scroll=True)
+    input_field = ft.TextField(hint_text="Enter command...", border="none")
+
+    def run_command(e):
+        cmd = input_field.value
+        output_list.controls.append(ft.Text(f"$ {cmd}"))
+        # Process command logic here
+        output_list.controls.append(ft.Text(f"Output for: {cmd}"))
+        input_field.value = ""
+        page.update()
+
+    input_field.on_submit = run_command
+
+    # Stack layout for layering terminal elements
+    shell_stack = ft.Stack(
+        [
+            ft.Container(content=output_list, padding=10),
+            ft.Positioned(
+                bottom=0, left=0, right=0,
+                child=ft.Container(content=input_field, bgcolor=ft.colors.BLACK12)
+            ),
+        ],
+        expand=True,
+    )
+
+    page.add(shell_stack)
+
+ft.app(target=main)
+```

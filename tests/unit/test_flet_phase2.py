@@ -213,6 +213,27 @@ def test_generic_collection_renderer_binds_rows_and_item_actions() -> None:
     ]
 
 
+def test_collection_wrapper_renders_a_child_table_once() -> None:
+    root = ViewRenderer(lambda _intent: None).render(
+        {
+            "component_type": "collection",
+            "binding": {"source": "items", "path": "items"},
+            "children": [
+                {
+                    "component_type": "table",
+                    "binding": {"source": "items", "path": "items"},
+                    "properties": {"columns": [{"key": "name", "label": "Name"}]},
+                }
+            ],
+        },
+        data_sources={"items": [{"id": 1, "name": "First"}, {"id": 2, "name": "Second"}]},
+    )
+
+    assert len(root.controls) == 1
+    table = root.controls[0]
+    assert len(table.content.controls) == 5
+
+
 def test_generic_collection_renderer_accepts_plain_list_for_items_binding() -> None:
     root = ViewRenderer(lambda _intent: None).render(
         {
@@ -296,6 +317,47 @@ def test_authenticated_shell_loads_catalog_and_resolves_portable_view() -> None:
     assert page.route == "/view/example.items.view"
 
 
+def test_preferences_catalog_source_falls_back_to_module_view_items() -> None:
+    from apmatia.interfaces.flet.common.errors import ApiConnectionError
+
+    page = FakePage()
+    api = _api(authenticated=True)
+    api.list_modules.return_value = []
+    api.get_module_view_document.return_value = {
+        "view_id": "preferences.modules.view",
+        "title": "Modules",
+        "data_sources": [{"key": "modules", "operation": "preferences:list_catalog"}],
+        "presentation": {"component_type": "page", "children": []},
+    }
+    api.load_view_source.side_effect = ApiConnectionError("source endpoint unavailable")
+    api.list_module_view_items.return_value = [{"id": "module:preferences", "item_kind": "module"}]
+    shell = ApmatiaShell(page, api)
+
+    shell.start()
+    shell._navigate("/view/preferences.modules.view")
+
+    api.list_module_view_items.assert_called_once_with("preferences.modules.view")
+
+
+def test_navigation_omits_modules_without_visible_views() -> None:
+    page = FakePage()
+    api = _api(authenticated=True)
+    shell = ApmatiaShell(page, api)
+    shell._modules = [
+        {"module_id": "persistence", "name": "Persistence", "views": []},
+        {"module_id": "telemetry", "name": "Runtime Telemetry", "views": []},
+        {
+            "module_id": "example",
+            "name": "Example",
+            "views": [{"view_id": "example.items.view", "effective_hidden": False, "metadata": {}}],
+        },
+    ]
+
+    visible = shell._visible_modules()
+
+    assert [module["module_id"] for module in visible] == ["example"]
+
+
 def test_sidebar_resize_is_clamped_to_desktop_bounds() -> None:
     page = FakePage()
     shell = ApmatiaShell(page, _api(authenticated=True))
@@ -304,6 +366,12 @@ def test_sidebar_resize_is_clamped_to_desktop_bounds() -> None:
     assert shell._sidebar_width == 480
     shell._resize_sidebar(Mock(delta_x=-500))
     assert shell._sidebar_width == 200
+
+
+def test_message_view_is_centered_in_the_content_pane() -> None:
+    message_view = ApmatiaShell._message_view("Apmatia Linux Client", "Select a module view")
+
+    assert message_view.alignment == ft.Alignment.CENTER
 
 
 def test_sidebar_resize_uses_flet_pan_local_delta() -> None:

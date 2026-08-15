@@ -170,8 +170,27 @@ class ApmatiaShell:
                             "contact_id": self._view_state.get("selected_contact_id"),
                         },
                     )
-                except AdapterError:
-                    data_sources[source_key] = []
+                except AuthenticationError:
+                    raise
+                except AdapterError as error:
+                    logger.warning("Unable to load Flet view source %s: %s", operation, error)
+                    # Preferences' catalog predates the generic source endpoint and is
+                    # also available through the canonical module-view-items endpoint.
+                    # Keep that compatibility path for a Core instance that has not yet
+                    # been restarted with the source dispatcher change.
+                    if operation == "preferences:list_catalog":
+                        try:
+                            data_sources[source_key] = self._api.list_module_view_items(
+                                "preferences.modules.view"
+                            )
+                        except AdapterError as fallback_error:
+                            logger.warning(
+                                "Unable to load Preferences module catalog fallback: %s",
+                                fallback_error,
+                            )
+                            data_sources[source_key] = []
+                    else:
+                        data_sources[source_key] = []
             actions = {str(action.get("key")): action for action in document.get("actions", [])}
         except AuthenticationError:
             self._state.clear_authentication()
@@ -234,7 +253,7 @@ class ApmatiaShell:
                 if not view.get("effective_hidden")
                 and (view.get("metadata") or {}).get("ui", {}).get("navigation") != "pre_authentication"
             ]
-            if views or not module.get("views"):
+            if views:
                 visible.append({**module, "views": views})
         return visible
 
@@ -325,6 +344,7 @@ class ApmatiaShell:
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 spacing=16,
             ),
+            alignment=ft.Alignment.CENTER,
             expand=True,
         )
 

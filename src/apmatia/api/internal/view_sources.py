@@ -12,6 +12,7 @@ from apmatia.modules.agent_loops.module_views import ApmatiaAgentLoopsModuleView
 from apmatia.core.module_view_runtime import ModuleViewContext
 from apmatia.modules.discuss.services import DISCUSS_DB, TopicManagementService, get_discussion
 from apmatia.api.internal.model_management import list_llm_configs
+from apmatia.api.internal.module_views import get_module_view_items
 
 
 def load_view_source(operation: str, *, user_id: int, parameters: dict[str, Any] | None = None) -> Any:
@@ -21,6 +22,8 @@ def load_view_source(operation: str, *, user_id: int, parameters: dict[str, Any]
         return [_serialize(agent) for agent in list_agents()]
     if operation in {"model_configs:list", "list_llm_configs"}:
         return [_serialize(config) for config in list_llm_configs()]
+    if operation == "preferences:list_catalog":
+        return get_module_view_items("preferences.modules.view", user_id=user_id)
     if operation == "discussion_tree":
         return _discussion_tree()
     if operation == "discussion_state":

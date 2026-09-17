@@ -116,8 +116,3 @@ def logout() -> dict[str, Any]:
 
 def session() -> dict[str, Any]:
     return dict(_request("GET", "/auth/session") or {})
-
-
-def prompt(prompt_text: str, output_dir: str | None = None) -> str:
-    payload = _request("GET", "/prompt", params={"prompt": prompt_text, "output_dir": output_dir})
-    return str((payload or {}).get("message") or "")

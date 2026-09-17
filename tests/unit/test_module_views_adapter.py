@@ -256,26 +256,6 @@ def test_render_module_view_renders_rows_and_emits_intents(mock_streamlit):
     )
 
 
-def test_ai_host_resource_document_declares_troubleshooting_fields():
-    from apmatia.core.view_contract import normalize_view_document
-    from apmatia.modules.ai_host_management.views import VIEW_DESCRIPTORS
-
-    resource_view = next(view for view in VIEW_DESCRIPTORS if view.view_id.endswith("resources.view"))
-    document = normalize_view_document(resource_view).to_dict()
-    collection = document["presentation"]["children"][0]
-    table = collection["children"][0]
-    column_keys = {column["key"] for column in table["properties"]["columns"]}
-
-    assert resource_view.metadata["view_contract_ready"] is True
-    assert {
-        "resource_error",
-        "troubleshooting_hint",
-        "ssh_connection_test_command",
-        "ssh_public_key_install_command",
-        "ssh_resource_probe_command",
-    } <= column_keys
-
-
 def test_render_module_view_form_renders_action_button(mock_streamlit):
     import apmatia.interfaces.streamlit.module_views.renderers as renderers
 

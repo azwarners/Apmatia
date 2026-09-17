@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from apmatia.core.settings_service import (
     get_settings_payload as _get_settings_payload,
     save_settings_payload as _save_settings_payload,
@@ -12,11 +14,8 @@ def get_settings_payload() -> dict:
 
 def save_settings_payload(
     *,
-    llama_server_log_dir: str,
     gguf_directories: str,
     auto_scan_gguf_directory: bool,
-    llama_server_executable_path: str,
-    llama_server_default_args: str,
     workspace_root: str,
     knowledge_root: str,
     timezone: str,
@@ -30,13 +29,11 @@ def save_settings_payload(
     terminal_text_color: str = "#9dffad",
     terminal_border_color: str = "rgba(110, 255, 170, 0.35)",
     terminal_muted_color: str = "rgba(157, 255, 173, 0.72)",
+    **_legacy_settings: Any,
 ) -> None:
     _save_settings_payload(
-        llama_server_log_dir=llama_server_log_dir,
         gguf_directories=gguf_directories,
         auto_scan_gguf_directory=auto_scan_gguf_directory,
-        llama_server_executable_path=llama_server_executable_path,
-        llama_server_default_args=llama_server_default_args,
         workspace_root=workspace_root,
         knowledge_root=knowledge_root,
         timezone=timezone,

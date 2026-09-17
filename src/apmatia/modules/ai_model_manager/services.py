@@ -810,31 +810,10 @@ def delete_llm_config(config_id: int) -> bool:
 
 
 def probe_llm_config(config_id: int) -> dict[str, Any]:
-    """Test connectivity to an LLM endpoint."""
-    from apmatia.modules.discuss.services import prompt_llm
-
-    config = get_llm_config(config_id)
-    if config is None:
+    """Report that endpoint probing is owned by the external model adapter."""
+    if get_llm_config(config_id) is None:
         raise ValueError(f"LLM config not found: {config_id}")
-
-    limited_config = LLMConfig(
-        **{**asdict(config), "max_response_size": max(16, min(int(config.max_response_size or 64), 64))}
-    )
-    reply = prompt_llm(
-        prompt=(
-            "Reply in one short sentence, under 30 words, confirming connectivity "
-            "and include the word ready exactly once."
-        ),
-        llm_config=limited_config,
-    ).strip()
-    preview = reply[:240]
-    return {
-        "config_id": int(config_id),
-        "user_alias": config.user_alias,
-        "model_url": config.model_url,
-        "reply_preview": preview,
-        "reply_length": len(reply),
-    }
+    raise RuntimeError("LLM endpoint probing requires the external Ysparr adapter.")
 
 
 class LLMManager:
@@ -861,30 +840,4 @@ class LLMManager:
         return delete_llm_config(config_id)
 
     def probe_config(self, config_id: int) -> dict[str, Any]:
-        from apmatia.modules.discuss.services import prompt_llm
-
-        config = self.get_config(config_id)
-        if config is None:
-            raise ValueError(f"LLM config not found: {config_id}")
-
-        from dataclasses import replace as dc_replace
-
-        limited_config = dc_replace(
-            config,
-            max_response_size=max(16, min(int(config.max_response_size or 64), 64)),
-        )
-        reply = prompt_llm(
-            prompt=(
-                "Reply in one short sentence, under 30 words, confirming connectivity "
-                "and include the word ready exactly once."
-            ),
-            llm_config=limited_config,
-        ).strip()
-        preview = reply[:240]
-        return {
-            "config_id": int(config_id),
-            "user_alias": config.user_alias,
-            "model_url": config.model_url,
-            "reply_preview": preview,
-            "reply_length": len(reply),
-        }
+        return probe_llm_config(config_id)

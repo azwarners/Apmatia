@@ -56,11 +56,8 @@ class ApmatiaPreferencesModuleViewProvider:
             raise ValueError(f"Unsupported Preferences command verb: {verb}")
 
         save_settings_payload(
-            llama_server_log_dir=str(payload.get("llama_server_log_dir") or ""),
             gguf_directories=str(payload.get("gguf_directories") or payload.get("gguf_directory") or ""),
             auto_scan_gguf_directory=bool(payload.get("auto_scan_gguf_directory", True)),
-            llama_server_executable_path=str(payload.get("llama_server_executable_path") or "llama-server"),
-            llama_server_default_args=str(payload.get("llama_server_default_args") or ""),
             workspace_root=str(payload.get("workspace_root") or ""),
             knowledge_root=str(payload.get("knowledge_root") or ""),
             timezone=str(payload.get("timezone") or "America/Phoenix"),

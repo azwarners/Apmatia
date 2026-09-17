@@ -141,16 +141,6 @@ class ApmatiaApiClient:
     def load_view_source(self, operation: str, parameters: dict[str, Any] | None = None) -> Any:
         return self._request("POST", f"/module-view-sources/{operation}", json={"parameters": parameters or {}})
 
-    def send_discussion_prompt(self, prompt: str, *, agent_id: Any = None, discussion_id: Any = None, model_id: Any = None) -> dict[str, Any]:
-        result = self._request(
-            "POST",
-            "/discussion/prompt",
-            json={"prompt": prompt, "agent_id": agent_id, "discussion_id": discussion_id, "model_id": model_id},
-        )
-        if not isinstance(result, dict):
-            raise ApiConnectionError("Apmatia Core returned an invalid discussion response.")
-        return result
-
     def get_version(self) -> str:
         """Return the Core version used as the startup connectivity probe."""
         payload = self._request("GET", "/version")

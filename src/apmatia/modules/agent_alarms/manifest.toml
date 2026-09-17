@@ -2,12 +2,12 @@
 module_id = "agent_alarms"
 name = "Agent Alarms"
 version = "0.1.0"
-description = "An experimental alarm scheduler that dispatches prompts to Agent Loops."
+description = "An experimental alarm scheduler for external agent-run adapters."
 author = "Nick"
 status = "development"
 category = "agent"
 default_enabled = true
-tags = ["alarms", "scheduler", "agent-loops", "automation"]
+tags = ["alarms", "scheduler", "automation"]
 
 [metadata]
 
@@ -15,5 +15,5 @@ tags = ["alarms", "scheduler", "agent-loops", "automation"]
 python = ">=3.10"
 python_packages = []
 system_packages = []
-modules = ["agent_loops"]
+modules = []
 tools = []

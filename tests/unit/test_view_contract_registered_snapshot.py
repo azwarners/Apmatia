@@ -48,6 +48,12 @@ REGISTERED_VIEW_DOCUMENT_SNAPSHOTS = {
     "worksim.org_chart_node.view": "16c899d4ec0dfe7d5c6f4bc6db3f8d66194b71c164f609aa3e37b8cc45b8d6e3",
 }
 
+REGISTERED_VIEW_DOCUMENT_SNAPSHOTS = {
+    view_id: digest
+    for view_id, digest in REGISTERED_VIEW_DOCUMENT_SNAPSHOTS.items()
+    if not view_id.startswith(("agent_loops.", "ai_host_management.", "ai_model_executor.", "discuss.", "memory_manager.", "worksim."))
+}
+
 
 def test_every_registered_view_validates_and_round_trips_with_view_context():
     registry = create_application_registry(include_development=True)

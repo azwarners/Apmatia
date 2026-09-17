@@ -29,21 +29,8 @@ def _normalize_hex_color(value: object, *, default: str = DEFAULT_ACCENT_COLOR) 
 
 
 def get_settings_payload() -> dict:
-    llama_server_log_dir = get_config_value("llama_server", "log_dir", default=None)
-    if not llama_server_log_dir:
-        llama_server_log_dir = (
-            os.getenv("APMATIA_LLAMA_SERVER_LOG_DIR")
-            or os.getenv("LLAMA_LOG_DIR")
-            or ""
-        )
     gguf_directories = _get_gguf_directories()
     auto_scan_gguf_directory = bool(get_config_value("ai_model_manager", "auto_scan_gguf_directory", default=True))
-    llama_server_executable_path = get_config_value("ai_model_executor", "runtime_config", "executable_path", default=None)
-    if not llama_server_executable_path:
-        llama_server_executable_path = os.getenv("APMATIA_LLAMA_SERVER_EXECUTABLE_PATH") or "llama-server"
-    llama_server_default_args = _join_args(get_config_value("ai_model_executor", "runtime_config", "default_args", default=[]))
-    if not llama_server_default_args:
-        llama_server_default_args = _join_args(os.getenv("APMATIA_LLAMA_SERVER_DEFAULT_ARGS") or "")
     workspace_root = _ensure_directory(
         get_config_value("workspace", "root", default=None) or os.getenv("APMATIA_WORKSPACE_ROOT"),
         default=get_app_dir() / "workspace",
@@ -76,12 +63,9 @@ def get_settings_payload() -> dict:
         get_config_value("ui", "terminal_muted_color", default=DEFAULT_TERMINAL_MUTED_COLOR) or DEFAULT_TERMINAL_MUTED_COLOR
     )
     return {
-        "llama_server_log_dir": str(llama_server_log_dir or ""),
         "gguf_directories": _join_directories(gguf_directories),
         "gguf_directory": gguf_directories[0] if gguf_directories else "",
         "auto_scan_gguf_directory": auto_scan_gguf_directory,
-        "llama_server_executable_path": str(llama_server_executable_path or "llama-server"),
-        "llama_server_default_args": llama_server_default_args,
         "workspace_root": str(workspace_root),
         "knowledge_root": str(knowledge_root),
         "timezone": timezone_name,
@@ -100,11 +84,8 @@ def get_settings_payload() -> dict:
 
 def save_settings_payload(
     *,
-    llama_server_log_dir: str,
     gguf_directories: str,
     auto_scan_gguf_directory: bool,
-    llama_server_executable_path: str,
-    llama_server_default_args: str,
     workspace_root: str,
     knowledge_root: str,
     timezone: str,
@@ -118,12 +99,10 @@ def save_settings_payload(
     terminal_text_color: str = DEFAULT_TERMINAL_TEXT_COLOR,
     terminal_border_color: str = DEFAULT_TERMINAL_BORDER_COLOR,
     terminal_muted_color: str = DEFAULT_TERMINAL_MUTED_COLOR,
+    **_legacy_settings: Any,
 ) -> None:
-    clean_llama_server_log_dir = llama_server_log_dir.strip()
     clean_gguf_directories = _split_directories(gguf_directories)
     clean_gguf_directory = clean_gguf_directories[0] if clean_gguf_directories else ""
-    clean_llama_server_executable_path = llama_server_executable_path.strip() or "llama-server"
-    clean_llama_server_default_args = [part.strip() for part in llama_server_default_args.splitlines() if part.strip()]
     clean_accent_color = _normalize_hex_color(accent_color)
     clean_terminal_background_color = _normalize_hex_color(
         terminal_background_color,
@@ -154,15 +133,12 @@ def save_settings_payload(
     clean_workspace_root = _ensure_directory(workspace_root, default=get_app_dir() / "workspace")
     clean_knowledge_root = _ensure_directory(knowledge_root, default=get_app_dir() / "knowledge")
 
-    set_config_value("llama_server", "log_dir", value=clean_llama_server_log_dir)
     set_config_value("workspace", "root", value=str(clean_workspace_root))
     set_config_value("knowledge", "root", value=str(clean_knowledge_root))
     set_config_value("ui", "timezone", value=clean_timezone)
     set_config_value("ai_model_manager", "gguf_directories", value=clean_gguf_directories)
     set_config_value("ai_model_manager", "gguf_directory", value=clean_gguf_directory)
     set_config_value("ai_model_manager", "auto_scan_gguf_directory", value=bool(auto_scan_gguf_directory))
-    set_config_value("ai_model_executor", "runtime_config", "executable_path", value=clean_llama_server_executable_path)
-    set_config_value("ai_model_executor", "runtime_config", "default_args", value=clean_llama_server_default_args)
     set_config_value("ui", "theme", value=theme)
     set_config_value("ui", "font_family", value=font_family)
     set_config_value("ui", "accent_color", value=clean_accent_color)

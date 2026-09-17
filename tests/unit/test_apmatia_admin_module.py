@@ -124,11 +124,7 @@ def test_apmatia_admin_module_registers_development_metadata_and_tools():
     assert APMATIA_ADMIN_MODULE.status.value == "development"
     assert APMATIA_ADMIN_MODULE.category.value == "core"
     assert [module.module_id for module in registry.list_modules(include_development=True)] == ["apmatia_admin"]
-    assert [tool.tool_id for tool in registry.list_tools()] == [
-        "apmatia_create_agent",
-        "clone_agent_as",
-        "set_agent_mode",
-    ]
+    assert [tool.tool_id for tool in registry.list_tools()] == ["apmatia_create_agent", "clone_agent_as"]
 
 
 def test_admin_tool_definition_includes_prompt_fields():
@@ -140,8 +136,6 @@ def test_admin_tool_definition_includes_prompt_fields():
     assert "raw_prompt_override" in definition["input_schema"]["properties"]
     assert definitions[1]["name"] == "clone_agent_as"
     assert "source_agent_id" in definitions[1]["input_schema"]["properties"]
-    assert definitions[2]["name"] == "set_agent_mode"
-    assert definitions[2]["input_schema"]["properties"]["mode"]["enum"] == ["discussion", "agentic"]
     assert all(definition["metadata"]["module"] == "apmatia_admin" for definition in definitions)
     assert all("library" not in definition["metadata"] for definition in definitions)
 
@@ -213,39 +207,12 @@ def test_admin_tool_provider_clones_agent_as_new_name():
     assert result["agent"]["id"] == 2
 
 
-def test_admin_tool_provider_inherits_owner_context_from_discussion_when_caller_is_ownerless():
-    agent_service = InMemoryAgentService()
-    agent_service._agents[1] = Agent(id=1, name="Caller", owner_user_id=None, owner_group_id=None)
-    provider = ApmatiaAdminToolProvider(
-        provider_id="builtin.apmatia_create_agent",
-        action="create_agent",
-        agent_service=agent_service,
-    )
-
-    class MockDiscussion:
-        owner_user_id = 77
-        owner_group_id = 88
-        group_id = 91
-
-    with patch("apmatia.modules.discuss.services.get_discussion", return_value=MockDiscussion()):
-        result = provider.execute(
-            {
-                "name": "Discussion Agent",
-            },
-            tool_call=type("ToolCall", (), {"requester_agent_id": 1, "discussion_id": "disc-1"})(),
-        )
-
-    assert result["agent"]["owner_user_id"] == 77
-    assert result["agent"]["owner_group_id"] == 88
-
-
 def test_admin_tool_provider_factory_returns_builtin_provider():
     providers = build_apmatia_admin_tool_providers(InMemoryAgentService())
 
-    assert len(providers) == 3
+    assert len(providers) == 2
     assert providers[0].provider_id == "builtin.apmatia_create_agent"
     assert providers[1].provider_id == "builtin.apmatia_clone_agent_as"
-    assert providers[2].provider_id == "builtin.apmatia_set_agent_mode"
 
 
 def test_runtime_only_seeds_apmatia_admin_when_development_modules_are_enabled(
@@ -285,30 +252,3 @@ def test_stable_mode_disables_persisted_apmatia_admin_tools(tmp_path):
     assert persisted is not None
     assert persisted.enabled is False
     assert persisted.metadata == {"builtin": True, "module": "apmatia_admin"}
-
-
-def test_admin_tool_provider_switches_agent_mode():
-    agent_service = InMemoryAgentService()
-    provider = ApmatiaAdminToolProvider(
-        provider_id="builtin.apmatia_set_agent_mode",
-        action="set_agent_mode",
-        agent_service=agent_service,
-    )
-
-    with patch("apmatia.modules.discuss.services.set_agent_mode") as mock_set_agent_mode:
-        mock_set_agent_mode.return_value = {
-            "previous_mode": "discussion",
-            "current_mode": "agentic",
-            "status": "updated",
-        }
-        result = provider.execute(
-            {"mode": "agentic"},
-            tool_call=type("ToolCall", (), {"requester_agent_id": 1, "discussion_id": "disc-1"})(),
-        )
-
-    assert result == {
-        "previous_mode": "discussion",
-        "current_mode": "agentic",
-        "status": "updated",
-    }
-    mock_set_agent_mode.assert_called_once_with(discussion_id="disc-1", mode="agentic")

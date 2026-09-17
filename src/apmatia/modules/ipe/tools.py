@@ -85,7 +85,7 @@ class IpeToolProvider:
         if agent.owner_user_id is None:
             raise ValueError(
                 f"Calling agent {agent.id} has no owner_user_id. "
-                "Re-save the agent while authenticated, or use it from a discussion owned by a user once so Apmatia can repair it."
+                "Re-save the agent while authenticated so Apmatia can repair its ownership."
             )
         requester_group_ids = {agent.owner_group_id} if agent.owner_group_id is not None else set()
 
@@ -98,22 +98,8 @@ class IpeToolProvider:
         raise ValueError(f"Unsupported IPE action: {self.action}")
 
     def _restore_agent_owner(self, agent: Any, tool_call: Any) -> Any:
-        discussion_id = getattr(tool_call, "discussion_id", None)
-        if not discussion_id:
-            return agent
-        from apmatia.modules.discuss.services import get_discussion as _get_discussion
-
-        discussion = _get_discussion(discussion_id)
-        if discussion is None or discussion.owner_user_id is None:
-            return agent
-        try:
-            repaired = self.agent_service.update_agent(
-                int(agent.id),
-                owner_user_id=discussion.owner_user_id,
-            )
-        except Exception:
-            return agent
-        return repaired
+        del tool_call
+        return agent
 
 
 def build_ipe_tool_providers(

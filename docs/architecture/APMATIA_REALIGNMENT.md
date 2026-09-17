@@ -113,3 +113,13 @@ remove implementation files. Phase 1 intentionally makes no major code deletion.
   they are discoverable.
 - Compatibility with superseded architecture is not a reason to retain obsolete behavior after a
   safe migration path exists.
+
+## Phase 2 temporary adapter gaps
+
+- Agent Alarms execution intentionally awaits a Redless adapter; Apmatia does not implement
+  autonomous loop execution in this phase.
+- LLM/model probing intentionally awaits a Ysparr adapter; model selection and configuration remain
+  available, but endpoint probing is not implemented in Apmatia in this phase.
+
+When obsolete persisted configuration is encountered, Apmatia moves it under the internal
+`legacy.archived_config` namespace without exposing it through active settings or deleting it.

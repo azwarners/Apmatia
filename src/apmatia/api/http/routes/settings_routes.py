@@ -8,12 +8,9 @@ router = APIRouter()
 
 
 class SettingsPayload(BaseModel):
-    llama_server_log_dir: str = ""
     gguf_directories: str = ""
     gguf_directory: str = ""
     auto_scan_gguf_directory: bool = True
-    llama_server_executable_path: str = "llama-server"
-    llama_server_default_args: str = ""
     workspace_root: str = ""
     knowledge_root: str = ""
     timezone: str = "America/Phoenix"
@@ -40,11 +37,8 @@ def save_settings(request: Request, payload: SettingsPayload):
     require_session(request)
     try:
         save_settings_payload(
-            llama_server_log_dir=payload.llama_server_log_dir,
             gguf_directories=payload.gguf_directories or payload.gguf_directory,
             auto_scan_gguf_directory=payload.auto_scan_gguf_directory,
-            llama_server_executable_path=payload.llama_server_executable_path,
-            llama_server_default_args=payload.llama_server_default_args,
             workspace_root=payload.workspace_root,
             knowledge_root=payload.knowledge_root,
             timezone=payload.timezone,

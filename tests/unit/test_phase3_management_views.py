@@ -9,7 +9,6 @@ from apmatia.modules.agent_config.commands import COMMAND_DESCRIPTORS
 from apmatia.modules.agent_config.module_views import ApmatiaAgentConfigModuleViewProvider
 from apmatia.modules.agent_config.views import VIEW_DESCRIPTORS
 from apmatia.modules.agent_alarms.views import VIEW_DESCRIPTORS as ALARM_VIEW_DESCRIPTORS, _ALARM_FORM_FIELDS
-from apmatia.modules.ai_host_management.views import VIEW_DESCRIPTORS as HOST_VIEW_DESCRIPTORS
 from apmatia.modules.agents.views import VIEW_DESCRIPTORS as AGENT_VIEW_DESCRIPTORS
 from apmatia.modules.preferences.views import VIEW_DESCRIPTORS as PREFERENCE_VIEW_DESCRIPTORS
 from apmatia.modules.users.views import VIEW_DESCRIPTORS as USER_VIEW_DESCRIPTORS
@@ -118,22 +117,6 @@ def test_contract_field_renderer_resolves_declared_option_source(mock_streamlit)
     mock_streamlit.selectbox.assert_called_once_with("Agent", ["Planner"], index=0, help=None)
 
 
-def test_ai_host_documents_are_contract_ready_with_executable_form_actions():
-    from apmatia.core.view_contract import normalize_view_document
-
-    host_view = next(view for view in HOST_VIEW_DESCRIPTORS if view.view_id.endswith("hosts.view"))
-    resource_view = next(view for view in HOST_VIEW_DESCRIPTORS if view.view_id.endswith("resources.view"))
-    document = normalize_view_document(host_view).to_dict()
-    actions = {action["key"]: action for action in document["actions"]}
-
-    assert host_view.metadata["view_contract_ready"] is True
-    assert resource_view.metadata["view_contract_ready"] is True
-    assert actions["prepare_ssh_key"]["scope"] == "form"
-    assert actions["prepare_ssh_key"]["command_id"] == "ai_host_management.hosts.prepare_ssh_key"
-    assert actions["prepare_ssh_copy_command"]["scope"] == "form"
-    assert actions["disable"]["confirmation"] is True
-
-
 def test_agents_management_is_a_portable_crud_document():
     from apmatia.core.view_contract import normalize_view_document
 
@@ -186,35 +169,7 @@ def test_module_management_is_a_portable_catalog_document():
     assert actions["edit"]["command_id"] == "preferences.update_catalog_item"
 
 
-def test_discuss_and_agent_loops_registered_documents_preserve_portable_behavior():
+def test_archived_modules_are_absent_from_registered_documents():
     registry = create_application_registry(include_development=True)
-    documents = {
-        view.view_id: normalize_view_document(view).to_dict()
-        for view in registry.list_views()
-        if view.view_id in {"discuss.discussion.view", "agent_loops.loops.view"}
-    }
-
-    discussion = documents["discuss.discussion.view"]
-    discussion_actions = {action["key"] for action in discussion["actions"]}
-    discussion_sources = {source["key"] for source in discussion["data_sources"]}
-    assert {"send_message", "stop_message", "edit_message", "delete_message", "open_discussion"} <= discussion_actions
-    assert {"messages", "activity", "discussions"} <= discussion_sources
-    assert discussion["refresh_policy"]["cursor_key"] == "cursor"
-    assert discussion["refresh_policy"]["generation_key"] == "generation"
-
-    loops = documents["agent_loops.loops.view"]
-    loop_actions = {action["key"] for action in loops["actions"]}
-    loop_sources = {source["key"] for source in loops["data_sources"]}
-    component_types: set[str] = set()
-
-    def visit(component):
-        component_types.add(component["component_type"])
-        for child in component.get("children", []):
-            visit(child)
-
-    visit(loops["presentation"])
-    assert {"launch_task", "stop_task", "select_contact"} <= loop_actions
-    assert {"contacts", "tasks", "current_task", "workspace", "knowledge"} <= loop_sources
-    assert {"terminal", "checklist", "progress", "tree"} <= component_types
-    assert loops["refresh_policy"]["cursor_key"] == "cursor"
-    assert loops["refresh_policy"]["generation_key"] == "generation"
+    archived = {"agent_loops", "ai_host_management", "ai_model_executor", "dev_tools", "discuss", "knowledge_wiki", "memory_manager", "os_admin", "runtime_telemetry", "worksim"}
+    assert not {view.module_id for view in registry.list_views()} & archived

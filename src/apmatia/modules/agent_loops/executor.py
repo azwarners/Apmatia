@@ -50,6 +50,7 @@ class AgentLoopExecutor:
         cancellation: CancellationToken,
     ) -> AgentLoopExecutionResult:
         task = self._load_task(request.task_id)
+        conversation_task = self._is_conversation_task(task)
         task = self._mark_running(task)
         task_started_at = perf_counter()
         self._log(
@@ -76,9 +77,10 @@ class AgentLoopExecutor:
         )
 
         start_time = utc_now()
-        tool_results_for_next_turn: tuple[ToolResult, ...] = ()
-        model_turn_count = 0
-        tool_call_count = 0
+        tool_results_for_next_turn: tuple[ToolResult, ...] = tuple(request.initial_tool_results or ())
+        resuming = bool(tool_results_for_next_turn)
+        model_turn_count = int(task.current_turn or 0) if resuming else 0
+        tool_call_count = int(task.tool_call_count or 0) if resuming else 0
 
         try:
             while model_turn_count < int(task.max_model_turns):
@@ -141,28 +143,18 @@ class AgentLoopExecutor:
                         raw_response=None,
                     )
 
-                def _record_model_activity(activity: dict[str, Any]) -> None:
-                    nonlocal task
+                latest_model_activity: dict[str, Any] = {}
 
+                def _record_model_activity(activity: dict[str, Any]) -> None:
+                    """Keep streaming activity transient; do not grow the transcript."""
+                    nonlocal latest_model_activity
                     payload = {
                         "provider": activity.get("provider"),
                         "endpoint": activity.get("endpoint"),
                         "text": activity.get("text"),
                         "stats": activity.get("stats"),
                     }
-                    task = self._latest_task(task)
-                    metadata = dict(task.metadata)
-                    metadata["live_activity"] = payload
-                    task = replace(task, metadata=metadata, updated_at=utc_now())
-                    self._repository.save(task)
-                    task = self._persist_event(
-                        task,
-                        LoopEvent(
-                            LoopEventType.MODEL_ACTIVITY,
-                            str(task.id or ""),
-                            payload,
-                        ),
-                    )
+                    latest_model_activity = payload
 
                 model_request = ModelRequest(
                     task_id=str(task.id or ""),
@@ -287,30 +279,53 @@ class AgentLoopExecutor:
                                     "tool_name": tool_request.tool_name,
                                     "call_id": tool_request.call_id,
                                     "arguments": tool_request.arguments,
+                                    "diagnostic": tool_request.diagnostic,
                                 },
                             ),
                         )
                         tool_context = self._build_tool_context(task, model_turn_count, tool_call_count)
-                        try:
-                            result = self._tool_executor.execute(tool_request, tool_context, cancellation)
-                        except Exception as exc:  # pragma: no cover - defensive guard
-                            tool_elapsed = perf_counter() - tool_started_at
-                            self._log_exception(
-                                "tool_failed",
-                                exc,
-                                task_id=str(task.id or ""),
-                                turn_index=model_turn_count,
-                                tool_call_index=tool_call_count,
-                                tool_name=tool_request.tool_name,
-                                call_id=tool_request.call_id,
-                                elapsed_seconds=round(tool_elapsed, 6),
-                            )
+                        if tool_request.validation_error:
                             result = ToolResult(
-                                tool_name=tool_request.tool_name,
+                                tool_name=tool_request.tool_name or "malformed_tool_call",
                                 call_id=tool_request.call_id,
                                 status="failed",
-                                error=str(exc),
+                                error={
+                                    "code": "INVALID_TOOL_REQUEST",
+                                    "message": tool_request.validation_error,
+                                },
+                                metadata={"diagnostic": tool_request.diagnostic} if tool_request.diagnostic else {},
                             )
+                        elif not str(tool_request.tool_name or "").strip() or not isinstance(tool_request.arguments, dict):
+                            result = ToolResult(
+                                tool_name=str(tool_request.tool_name or "").strip() or "unknown",
+                                call_id=tool_request.call_id,
+                                status="failed",
+                                error={
+                                    "code": "INVALID_TOOL_REQUEST",
+                                    "message": "Tool name and object arguments are required.",
+                                },
+                            )
+                        else:
+                            try:
+                                result = self._tool_executor.execute(tool_request, tool_context, cancellation)
+                            except Exception as exc:  # pragma: no cover - defensive guard
+                                tool_elapsed = perf_counter() - tool_started_at
+                                self._log_exception(
+                                    "tool_failed",
+                                    exc,
+                                    task_id=str(task.id or ""),
+                                    turn_index=model_turn_count,
+                                    tool_call_index=tool_call_count,
+                                    tool_name=tool_request.tool_name,
+                                    call_id=tool_request.call_id,
+                                    elapsed_seconds=round(tool_elapsed, 6),
+                                )
+                                result = ToolResult(
+                                    tool_name=tool_request.tool_name,
+                                    call_id=tool_request.call_id,
+                                    status="failed",
+                                    error=str(exc),
+                                )
                         self._check_cancelled(task, cancellation)
                         tool_results.append(result)
                         tool_elapsed = max(perf_counter() - tool_started_at, 0.0)
@@ -336,7 +351,72 @@ class AgentLoopExecutor:
                         task = self._latest_task(task)
                         task = replace(task, tool_call_count=tool_call_count, updated_at=utc_now())
                         self._repository.save(task)
-                        event_type = LoopEventType.TOOL_COMPLETED if result.status == "success" else LoopEventType.TOOL_FAILED
+                        if result.status == "pending_confirmation":
+                            tool_definition = next(
+                                (
+                                    definition
+                                    for definition in tool_context.available_tools
+                                    if definition.name == tool_request.tool_name
+                                ),
+                                None,
+                            )
+                            tool_metadata = dict(
+                                getattr(tool_definition, "metadata", {}) or {}
+                            )
+                            tool_description = str(
+                                getattr(tool_definition, "description", "") or ""
+                            )
+                            read_only = bool(tool_metadata.get("read_only", True))
+                            pending_call = {
+                                "tool_id": result.metadata.get("tool_id"),
+                                "arguments": dict(tool_request.arguments),
+                                "requester_agent_id": result.metadata.get(
+                                    "requester_agent_id", getattr(task, "agent_id", 0)
+                                ),
+                                "call_id": tool_request.call_id,
+                                "tool_name": tool_request.tool_name,
+                            }
+                            task = replace(
+                                task,
+                                status=TaskStatus.AWAITING_APPROVAL,
+                                execution_status=ExecutionStatus.PENDING,
+                                pending_tool_call=pending_call,
+                                updated_at=utc_now(),
+                            )
+                            approval_event = LoopEvent(
+                                LoopEventType.TOOL_AWAITING_APPROVAL,
+                                str(task.id or ""),
+                                {
+                                    "tool_name": tool_request.tool_name,
+                                    "description": tool_description,
+                                    "read_only": read_only,
+                                    "call_id": tool_request.call_id,
+                                    "tool_call": pending_call,
+                                    "error": result.error,
+                                    "diagnostic": tool_request.diagnostic,
+                                    "metadata": result.metadata,
+                                },
+                            )
+                            # Publish the event before the awaiting status so
+                            # polling clients never observe an approval state
+                            # without its durable terminal-contract event.
+                            self._repository.append_event(str(task.id or ""), approval_event)
+                            task = replace(task, events=(*task.events, approval_event))
+                            self._repository.save(task)
+                            task = self._latest_task(task)
+                            return AgentLoopExecutionResult(
+                                task_id=str(task.id or ""),
+                                status=ExecutionStatus.PENDING,
+                                final_text=task.final_text,
+                                task=task,
+                                events=task.events,
+                                model_turns=model_turn_count,
+                                tool_calls=tool_call_count,
+                                stop_reason="awaiting_approval",
+                            )
+                        event_type = LoopEventType.TOOL_RESULT if result.status == "success" else LoopEventType.TOOL_FAILED
+                        if not conversation_task and result.status == "success":
+                            event_type = LoopEventType.TOOL_COMPLETED
                         task = self._persist_event(
                             task,
                             LoopEvent(
@@ -349,6 +429,8 @@ class AgentLoopExecutor:
                                     "status": result.status,
                                     "output": result.output,
                                     "error": result.error,
+                                    "arguments": tool_request.arguments,
+                                    "diagnostic": tool_request.diagnostic,
                                     "metadata": result.metadata,
                                 },
                             ),
@@ -397,10 +479,23 @@ class AgentLoopExecutor:
                 task = self._finish_task(
                     task,
                     final_text=visible_final_text,
-                    status=TaskStatus.COMPLETED,
+                    status=TaskStatus.IDLE if conversation_task else TaskStatus.COMPLETED,
                     execution_status=ExecutionStatus.COMPLETED,
                     summary=metadata_updates.get("summary", visible_final_text),
                 )
+                if conversation_task:
+                    task = self._persist_event(
+                        task,
+                        LoopEvent(
+                            LoopEventType.ASSISTANT_MESSAGE,
+                            str(task.id or ""),
+                            {
+                                "text": visible_final_text,
+                                "run_turn_index": model_turn_count,
+                                "usage": None if response.usage is None else response.usage.to_dict(),
+                            },
+                        ),
+                    )
                 task = self._persist_event(
                     task,
                     LoopEvent(
@@ -482,6 +577,13 @@ class AgentLoopExecutor:
         if task is None:
             raise KeyError(f"Task not found: {task_id}")
         return task
+
+    def _is_conversation_task(self, task: AgentLoopTask) -> bool:
+        return task.chat_mode == "conversation" or task.status in {
+            TaskStatus.IDLE,
+            TaskStatus.STOPPED,
+            TaskStatus.AWAITING_APPROVAL,
+        }
 
     def _mark_running(self, task: AgentLoopTask) -> AgentLoopTask:
         task = replace(
@@ -662,10 +764,11 @@ class AgentLoopExecutor:
         latest_task = self._repository.get(str(task.id or "")) or task
         if not cancellation.is_cancelled() and not bool(latest_task.stop_requested) and latest_task.status != TaskStatus.STOPPING:
             return
+        conversation_task = self._is_conversation_task(latest_task)
         task = self._finish_task(
             latest_task,
             final_text=task.final_text,
-            status=TaskStatus.CANCELLED,
+            status=TaskStatus.STOPPED if conversation_task else TaskStatus.CANCELLED,
             execution_status=ExecutionStatus.CANCELLED,
             last_error="Execution cancelled.",
         )
@@ -677,6 +780,15 @@ class AgentLoopExecutor:
                 {},
             ),
         )
+        if conversation_task:
+            task = self._persist_event(
+                task,
+                LoopEvent(
+                    LoopEventType.TASK_STOPPED,
+                    str(task.id or ""),
+                    {"reason": "cancelled"},
+                ),
+            )
         raise _CancelledExecution(task)
 
     def _check_timeout(self, task: AgentLoopTask, start_time: datetime) -> None:

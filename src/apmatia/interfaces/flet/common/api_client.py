@@ -77,10 +77,16 @@ class ApmatiaApiClient:
         )
         self._save_persisted_cookie(token)
 
-    def _request(self, method: str, path: str, json: dict[str, Any] | None = None) -> dict[str, Any]:
+    def _request(
+        self,
+        method: str,
+        path: str,
+        json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         url = f"{self.base_url}{path}"
         try:
-            response = self.session.request(method, url, json=json, timeout=30)
+            response = self.session.request(method, url, json=json, params=params, timeout=30)
             response.raise_for_status()
             self._persist_current_cookie(clear=path == "/auth/logout")
             return response.json()
@@ -115,7 +121,10 @@ class ApmatiaApiClient:
         return self._request("GET", "/auth/views")
 
     def list_modules(self) -> list[dict[str, Any]]:
-        payload = self._request("GET", "/modules")
+        # The API only returns development modules when explicitly requested.
+        # Bootstrap still enforces activation, so this includes development
+        # modules only after the user enables them in Module Management.
+        payload = self._request("GET", "/modules", params={"include_development": True})
         if not isinstance(payload, list):
             raise ApiConnectionError("Apmatia Core returned an invalid module catalog.")
         return payload
@@ -158,3 +167,61 @@ class ApmatiaApiClient:
         if version is None:
             raise ApiConnectionError("Apmatia Core returned no version.")
         return str(version)
+
+    def list_agents(self) -> list[dict[str, Any]]:
+        """List agents available to the authenticated Flet user."""
+        result = self.execute_module_command("agents.list", {})
+        items = result.get("items", [])
+        if not isinstance(items, list):
+            raise ApiConnectionError("Apmatia Core returned invalid agents.")
+        return [dict(item) for item in items if isinstance(item, dict)]
+
+    def list_agent_loop_tasks(self, agent_id: int) -> list[dict[str, Any]]:
+        result = self._request("GET", f"/agent-loops/tasks?agent_id={int(agent_id)}")
+        if not isinstance(result, list):
+            raise ApiConnectionError("Apmatia Core returned invalid Agent Loop tasks.")
+        return [dict(item) for item in result if isinstance(item, dict)]
+
+    def create_agent_loop_task(self, agent_id: int, title: str = "") -> dict[str, Any]:
+        result = self._request(
+            "POST", "/agent-loops/tasks", json={"agent_id": int(agent_id), "title": str(title or "")}
+        )
+        if not isinstance(result, dict):
+            raise ApiConnectionError("Apmatia Core returned an invalid Agent Loop task.")
+        return result
+
+    def get_agent_loop_task(self, task_id: str) -> dict[str, Any]:
+        result = self._request("GET", f"/agent-loops/tasks/{task_id}")
+        if not isinstance(result, dict):
+            raise ApiConnectionError("Apmatia Core returned an invalid Agent Loop task.")
+        return result
+
+    def send_agent_loop_message(self, task_id: str, text: str) -> dict[str, Any]:
+        result = self._request(
+            "POST", f"/agent-loops/tasks/{task_id}/messages", json={"text": str(text)}
+        )
+        if not isinstance(result, dict):
+            raise ApiConnectionError("Apmatia Core returned an invalid Agent Loop response.")
+        return result
+
+    def stop_agent_loop_task(self, task_id: str) -> dict[str, Any]:
+        result = self._request("POST", f"/agent-loops/tasks/{task_id}/stop")
+        if not isinstance(result, dict):
+            raise ApiConnectionError("Apmatia Core returned an invalid stopped task.")
+        return result
+
+    def archive_agent_loop_task(self, task_id: str) -> dict[str, Any]:
+        result = self._request("POST", f"/agent-loops/tasks/{task_id}/archive")
+        if not isinstance(result, dict):
+            raise ApiConnectionError("Apmatia Core returned an invalid archived task.")
+        return result
+
+    def decide_agent_loop_approval(self, task_id: str, decision: str) -> dict[str, Any]:
+        if decision not in {"approve", "deny"}:
+            raise ValueError("Agent Loop approval must be 'approve' or 'deny'.")
+        result = self._request(
+            "POST", f"/agent-loops/tasks/{task_id}/approval", json={"decision": decision}
+        )
+        if not isinstance(result, dict):
+            raise ApiConnectionError("Apmatia Core returned an invalid approval response.")
+        return result

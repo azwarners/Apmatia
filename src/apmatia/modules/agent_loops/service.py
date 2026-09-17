@@ -6,7 +6,7 @@ import re
 import uuid
 from dataclasses import dataclass, replace
 from pathlib import Path
-from threading import Event, Lock, Thread
+from threading import Event, Lock, RLock, Thread
 from typing import Any, Callable
 
 from apmatia.modules.agents.runtime import get_agent_manager
@@ -32,7 +32,7 @@ from .models import (
     new_task_id,
 )
 from .ports import AgentLoopTaskRepository, ModelExecutor, ToolExecutor
-from .repository import FileAgentLoopTaskRepository
+from .sqlite_repositories import SQLiteLoopTaskBundle
 from .state import resolve_agent_loop_workspace_root, resolve_contact_roots
 
 from apmatia.modules.ysparr.core.types import PromptRequest
@@ -42,10 +42,13 @@ from apmatia.modules.ysparr.modalities.text2text.executor import execute
 from apmatia.modules.ysparr.modalities.text2text.storage import TextFileStorage
 
 
-TOOL_CALL_RE = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
+TOOL_CALL_RE = re.compile(r"<tool_call>\s*(?P<payload>.*?)\s*</tool_call>", re.DOTALL)
+UNTERMINATED_TOOL_CALL_RE = re.compile(r"<tool_call>\s*.*\Z", re.DOTALL)
 _TOOL_CALL_START = "<tool_call>"
 _TOOL_CALL_END = "</tool_call>"
-_MAX_AGENT_LOOP_RESPONSE_SIZE = 1024
+_MAX_TOOL_DIAGNOSTIC_CHARS = 1024
+_MAX_AGENT_LOOP_PROMPT_CHARS = 12000
+_PROMPT_TRUNCATION_MARKER = "[Earlier conversation context truncated to fit the prompt budget.]"
 
 
 @dataclass(slots=True)
@@ -151,6 +154,37 @@ def _longest_suffix_prefix(value: str, marker: str) -> int:
         if value.endswith(marker[:length]):
             return length
     return 0
+
+
+def _prompt_json(value: Any) -> str:
+    try:
+        return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+    except (TypeError, ValueError):
+        return json.dumps(str(value), ensure_ascii=False)
+
+
+def _format_prompt_event(event: LoopEvent) -> str:
+    payload = event.payload or {}
+    if event.event_type == LoopEventType.USER_MESSAGE:
+        return f"User: {payload.get('text', '')}"
+    if event.event_type == LoopEventType.ASSISTANT_MESSAGE:
+        return f"Assistant: {payload.get('text', '')}"
+    if event.event_type == LoopEventType.TOOL_REQUESTED:
+        return (
+            f"Tool request ({payload.get('tool_name', '')}): "
+            f"{_prompt_json(payload.get('arguments', {}))}"
+        )
+    if event.event_type in {
+        LoopEventType.TOOL_RESULT,
+        LoopEventType.TOOL_COMPLETED,
+        LoopEventType.TOOL_FAILED,
+    }:
+        result = payload.get("output") if payload.get("output") is not None else payload.get("error")
+        return (
+            f"Tool result ({payload.get('tool_name', '')}, {payload.get('status', '')}): "
+            f"{_prompt_json(result)}"
+        )
+    return f"{event.event_type.value}: {_prompt_json(payload)}"
 
 
 class DefaultStaticModelExecutor:
@@ -368,19 +402,62 @@ class YsparrModelExecutor:
             f"- status: {request.task.status.value if hasattr(request.task.status, 'value') else request.task.status}",
             f"- execution_status: {request.task.execution_status.value if hasattr(request.task.execution_status, 'value') else request.task.execution_status}",
         ]
+        fixed_lines = list(lines)
         if request.tool_results:
-            lines.append("Tool results from the previous turn:")
+            fixed_lines.append("Current tool results (included in full):")
             for result in request.tool_results:
                 payload = result.output if result.output is not None else result.error
-                lines.append(f"- {result.tool_name} [{result.status}]: {payload}")
+                fixed_lines.append(
+                    f"Tool result ({result.tool_name}, {result.status}): "
+                    f"{_prompt_json(payload)}"
+                )
         loop_status = request.task.metadata.get("loop_status") if isinstance(request.task.metadata, dict) else None
         if isinstance(loop_status, dict) and loop_status:
-            lines.append("Current loop status JSON:")
-            lines.append(json.dumps(loop_status, indent=2, ensure_ascii=False))
-        if request.prior_events:
-            lines.append("Recent execution events:")
-            for event in request.prior_events[-8:]:
-                lines.append(f"- {event.event_type.value}: {event.payload}")
+            fixed_lines.extend(["Current loop status JSON:", _prompt_json(loop_status)])
+
+        events = tuple(request.prior_events or ())
+        active_user_event = next(
+            (event for event in reversed(events) if event.event_type == LoopEventType.USER_MESSAGE),
+            None,
+        )
+        protected_call_ids = {
+            result.call_id for result in request.tool_results or () if result.call_id
+        }
+        protected_event_lines: list[str] = []
+        older_event_lines: list[str] = []
+        for event in events:
+            is_active_user = active_user_event is event
+            is_current_tool_result = (
+                event.event_type in {LoopEventType.TOOL_RESULT, LoopEventType.TOOL_COMPLETED, LoopEventType.TOOL_FAILED}
+                and event.payload.get("call_id") in protected_call_ids
+            )
+            formatted = _format_prompt_event(event)
+            if is_active_user or is_current_tool_result:
+                protected_event_lines.append(formatted)
+            else:
+                older_event_lines.append(formatted)
+
+        if active_user_event is None and request.task.prompt:
+            protected_event_lines.insert(0, f"User: {request.task.prompt}")
+
+        lines = [*fixed_lines]
+        if protected_event_lines:
+            lines.extend(["Active conversation context (included in full):", *protected_event_lines])
+
+        older_lines = list(reversed(older_event_lines))
+        if older_lines:
+            lines.append("Earlier conversation and execution events:")
+            budget = _MAX_AGENT_LOOP_PROMPT_CHARS - len("\n".join(lines))
+            selected: list[str] = []
+            for event_line in older_lines:
+                required = len(event_line) + (1 if selected else 0)
+                if required > budget:
+                    break
+                selected.append(event_line)
+                budget -= required
+            lines.extend(reversed(selected))
+            if len(selected) != len(older_lines):
+                lines.insert(len(fixed_lines), _PROMPT_TRUNCATION_MARKER)
         lines.append("Respond with the next step for the task and include the required <loop_status> block.")
         return "\n".join(lines)
 
@@ -407,7 +484,12 @@ class YsparrModelExecutor:
         return ModelResponse(
             final_text=final_text,
             tool_requests=tuple(
-                ToolRequest(tool_name=tool_call.name, arguments=dict(tool_call.arguments))
+                ToolRequest(
+                    tool_name=tool_call.name,
+                    arguments=dict(tool_call.arguments),
+                    validation_error=tool_call.error,
+                    diagnostic=tool_call.diagnostic,
+                )
                 for tool_call in tool_requests
             ),
             raw_response={
@@ -491,10 +573,7 @@ def _default_generation_parameters(llm_config=None) -> dict[str, Any]:
 
 
 def _limit_agent_loop_response_size(llm_config):
-    if llm_config is None:
-        return None
-    max_response_size = int(getattr(llm_config, "max_response_size", 0) or _MAX_AGENT_LOOP_RESPONSE_SIZE)
-    return replace(llm_config, max_response_size=min(max_response_size, _MAX_AGENT_LOOP_RESPONSE_SIZE))
+    return llm_config
 
 
 def extend_system_prompt_with_tools(system_prompt: str, tools: list[Any]) -> str:
@@ -532,29 +611,100 @@ def _build_tool_runtime_instructions(tools: list[Any]) -> str:
 def parse_tool_calls(text: str) -> list["ParsedToolCall"]:
     calls: list[ParsedToolCall] = []
     for match in TOOL_CALL_RE.finditer(text or ""):
-        payload = match.group(1).strip()
+        payload = match.group("payload").strip()
         try:
             decoded = json.loads(payload)
         except json.JSONDecodeError:
+            recovered_name = _recover_tool_name(payload)
+            calls.append(
+                ParsedToolCall(
+                    name=recovered_name or "malformed_tool_call",
+                    arguments={},
+                    error=f"INVALID_TOOL_CALL_JSON: {payload}",
+                    diagnostic=_bound_tool_diagnostic(payload),
+                )
+            )
             continue
         if not isinstance(decoded, dict):
+            calls.append(
+                ParsedToolCall(
+                    name="malformed_tool_call",
+                    arguments={},
+                    error="INVALID_TOOL_CALL_FORMAT: tool call must be a JSON object.",
+                )
+            )
             continue
         name = str(decoded.get("name", "")).strip()
         arguments = decoded.get("arguments", {})
-        if not name or not isinstance(arguments, dict):
+        if not name:
+            calls.append(
+                ParsedToolCall(
+                    name="malformed_tool_call",
+                    arguments={},
+                    error="INVALID_TOOL_CALL_FORMAT: tool name is required.",
+                )
+            )
+            continue
+        if not isinstance(arguments, dict):
+            calls.append(
+                ParsedToolCall(
+                    name=name,
+                    arguments={},
+                    error="INVALID_TOOL_ARGUMENTS: arguments must be a JSON object.",
+                )
+            )
             continue
         calls.append(ParsedToolCall(name=name, arguments=arguments))
+    last_start = (text or "").rfind(_TOOL_CALL_START)
+    last_end = (text or "").rfind(_TOOL_CALL_END)
+    if last_start > last_end:
+        payload = (text or "")[last_start + len(_TOOL_CALL_START):].strip()
+        try:
+            decoded = json.loads(payload)
+        except json.JSONDecodeError:
+            decoded = None
+        recovered_name = _recover_tool_name(payload)
+        recovered_arguments = (
+            decoded.get("arguments", {})
+            if isinstance(decoded, dict) and isinstance(decoded.get("arguments", {}), dict)
+            else {}
+        )
+        diagnostic = None if isinstance(decoded, dict) and isinstance(decoded.get("arguments", {}), dict) else _bound_tool_diagnostic(payload)
+        calls.append(
+            ParsedToolCall(
+                name=recovered_name or "malformed_tool_call",
+                arguments=recovered_arguments,
+                error="MALFORMED_TOOL_CALL: unterminated tool call block.",
+                diagnostic=diagnostic,
+            )
+        )
     return calls
 
 
 def strip_tool_calls(text: str) -> str:
-    return TOOL_CALL_RE.sub("", text or "").strip()
+    stripped = TOOL_CALL_RE.sub("", text or "")
+    return UNTERMINATED_TOOL_CALL_RE.sub("", stripped).strip()
 
 
 @dataclass(slots=True)
 class ParsedToolCall:
     name: str
     arguments: dict[str, Any]
+    error: str | None = None
+    diagnostic: str | None = None
+
+
+def _recover_tool_name(payload: str) -> str | None:
+    match = re.search(r'"name"\s*:\s*"(?P<name>[^"\\]{1,128})', payload or "")
+    name = str(match.group("name")).strip() if match else ""
+    return name or None
+
+
+def _bound_tool_diagnostic(payload: str) -> str:
+    value = str(payload or "")
+    if len(value) <= _MAX_TOOL_DIAGNOSTIC_CHARS:
+        return value
+    return f"{value[:_MAX_TOOL_DIAGNOSTIC_CHARS - 1]}…"
 
 
 class _ChunkCallbackStorage(TextFileStorage):
@@ -620,6 +770,12 @@ class ToolManagerToolExecutor:
         )
 
     def execute(self, request, context, cancellation):  # type: ignore[no-untyped-def]
+        return self._execute_with_approval(request, context, approval_granted=False)
+
+    def execute_approved(self, request, context, cancellation):  # type: ignore[no-untyped-def]
+        return self._execute_with_approval(request, context, approval_granted=True)
+
+    def _execute_with_approval(self, request, context, *, approval_granted: bool):  # type: ignore[no-untyped-def]
         from apmatia.core.tool_management_runtime import get_tool_manager
 
         agent_id = _resolve_context_agent_id(getattr(context, "task", None))
@@ -627,7 +783,11 @@ class ToolManagerToolExecutor:
             return self._missing_agent_result(request)
 
         tool_manager = get_tool_manager()
-        tool = self._resolve_tool(tool_manager.list_tools_available_to_agent(agent_id), request.tool_name)
+        tool = self._resolve_tool(
+            tool_manager.list_tools_available_to_agent(agent_id),
+            request.tool_name,
+            tool_id=getattr(request, "tool_id", None),
+        )
         if tool is None or getattr(tool, "id", None) is None:
             return self._missing_tool_result(request)
 
@@ -635,8 +795,9 @@ class ToolManagerToolExecutor:
             tool_id=int(tool.id),
             arguments=dict(getattr(request, "arguments", {}) or {}),
             requester_agent_id=agent_id,
+            call_id=str(getattr(request, "call_id", "") or ""),
         )
-        result = tool_manager.execute_tool_call(runtime_call)
+        result = tool_manager.execute_tool_call(runtime_call, approval_granted=approval_granted)
         return ToolResult(
             tool_name=request.tool_name,
             call_id=runtime_call.call_id,
@@ -647,10 +808,12 @@ class ToolManagerToolExecutor:
         )
 
     @staticmethod
-    def _resolve_tool(tools, tool_name: str):  # type: ignore[no-untyped-def]
+    def _resolve_tool(tools, tool_name: str, *, tool_id: int | None = None):  # type: ignore[no-untyped-def]
         needle = str(tool_name or "").strip()
         for tool in tools:
-            if str(getattr(tool, "name", "") or "").strip() == needle:
+            if tool_id is not None and getattr(tool, "id", None) == tool_id:
+                return tool
+            if tool_id is None and str(getattr(tool, "name", "") or "").strip() == needle:
                 return tool
         return None
 
@@ -700,29 +863,257 @@ class AgentLoopRuntime:
     ) -> None:
         self._workspace_root = _ensure_agent_loop_workspace_root(workspace_root or resolve_agent_loop_workspace_root())
         persistence_logger.configure_agent_loop_logging()
-        self._repository = repository or FileAgentLoopTaskRepository(self._workspace_root)
+        self._repository = repository or SQLiteLoopTaskBundle(db_path=self._workspace_root / "loop_tasks.db").tasks
         self._model_executor = model_executor or YsparrModelExecutor()
         self._tool_executor = tool_executor or ToolManagerToolExecutor()
         self._executor = AgentLoopExecutor(self._repository, self._model_executor, self._tool_executor)
-        self._lock = Lock()
+        self._lock = RLock()
         self._tokens: dict[str, EventCancellationToken] = {}
         self._threads: dict[str, Thread] = {}
+        self._recover_orphaned_tasks()
 
     def start_task(self, request: LoopTaskRequest) -> dict[str, Any]:
         task = self._build_task(request)
-        token = EventCancellationToken()
         self._repository.save(task)
+        self._start_task_thread(task)
+        return self.get_task(str(task.id or "")) or task.to_dict()
+
+    def create_task(
+        self,
+        *,
+        agent_id: int,
+        owner_user_id: int,
+        owner_group_id: int | None = None,
+        title: str = "",
+        model_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Create an idle conversation for an existing agent."""
+        agent = get_agent_manager().get_agent(int(agent_id))
+        if agent is None:
+            raise ValueError(f"Agent not found: {agent_id}")
+        task = AgentLoopTask(
+            id=new_task_id(),
+            owner_user_id=owner_user_id,
+            owner_group_id=owner_group_id,
+            mode=int(getattr(agent, "mode", 0) or 0),
+            title=str(title or getattr(agent, "name", "Executive Assistant") or "Task").strip(),
+            contact_kind="agent",
+            contact_id=str(agent_id),
+            agent_id=int(agent_id),
+            selected_model_id=(
+                int(model_id)
+                if model_id is not None
+                else getattr(agent, "active_model_id", None) or getattr(agent, "default_model_id", None)
+            ),
+            chat_mode="conversation",
+            allow_tools=True,
+            max_model_turns=10,
+            max_tool_calls=10,
+            status=TaskStatus.IDLE,
+            execution_status=ExecutionStatus.PENDING,
+            workspace_root=str(self._workspace_root / "agents" / f"agent-{int(agent_id)}"),
+            metadata={"conversation": True},
+        )
+        self._repository.save(task)
+        return task.to_dict()
+
+    def submit_message(self, task_id: str, text: str) -> dict[str, Any]:
+        """Persist one user message and start its single active run."""
+        message = str(text or "").strip()
+        if not message:
+            raise ValueError("Message must not be blank.")
         with self._lock:
-            self._tokens[str(task.id or "")] = token
+            task = self._repository.get(task_id)
+            if task is None:
+                raise KeyError(f"Task not found: {task_id}")
+            if task.status in {
+                TaskStatus.RUNNING,
+                TaskStatus.QUEUED,
+                TaskStatus.STOPPING,
+                TaskStatus.AWAITING_APPROVAL,
+            }:
+                raise RuntimeError(f"Task is not idle: {task.status.value}")
+            if task.status == TaskStatus.ARCHIVED:
+                raise RuntimeError("Archived tasks cannot receive messages.")
+            existing = self._threads.get(task_id)
+            if existing is not None and existing.is_alive():
+                raise RuntimeError("Task already has an active run.")
+
+            # Claim before appending so a competing request cannot leave a
+            # user event behind when its worker start is rejected.
+            claimed = replace(
+                task,
+                status=TaskStatus.QUEUED,
+                execution_status=ExecutionStatus.PENDING,
+                stop_requested=False,
+                updated_at=utc_now(),
+            )
+            self._repository.save(claimed)
+            try:
+                self._repository.append_event(
+                    task_id,
+                    LoopEvent(
+                        LoopEventType.USER_MESSAGE,
+                        task_id,
+                        {"message_id": f"message_{uuid.uuid4().hex}", "text": message},
+                    ),
+                )
+                claimed = self._repository.get(task_id) or claimed
+                self._start_task_thread(claimed)
+            except Exception:
+                self._repository.save(task)
+                raise
+            return self.get_task(task_id) or claimed.to_dict()
+
+    def _recover_orphaned_tasks(self) -> None:
+        """Make persisted active tasks usable after a Core process restart."""
+        try:
+            tasks = self._repository.list_all()
+        except Exception:
+            return
+        for task in tasks:
+            if task.status not in {TaskStatus.RUNNING, TaskStatus.QUEUED, TaskStatus.STOPPING}:
+                continue
+            task_id = str(task.id or "")
+            if not task_id:
+                continue
+            recovered = replace(
+                task,
+                status=TaskStatus.STOPPED,
+                execution_status=ExecutionStatus.CANCELLED,
+                stop_requested=False,
+                last_error="Core restarted while this task was running.",
+                updated_at=utc_now(),
+            )
+            self._repository.save(recovered)
+            self._repository.append_event(
+                task_id,
+                LoopEvent(
+                    LoopEventType.TASK_STOPPED,
+                    task_id,
+                    {"reason": "core_restart", "recoverable": True},
+                ),
+            )
+
+    def archive_task(self, task_id: str) -> dict[str, Any] | None:
+        task = self._repository.get(task_id)
+        if task is None:
+            return None
+        if task.status not in {
+            TaskStatus.IDLE,
+            TaskStatus.STOPPED,
+            TaskStatus.CANCELLED,
+            TaskStatus.FAILED,
+            TaskStatus.LIMIT_REACHED,
+        }:
+            raise RuntimeError("Only an inactive task can be archived.")
+        task = replace(task, status=TaskStatus.ARCHIVED, updated_at=utc_now())
+        self._repository.save(task)
+        task = self._persist_runtime_event(
+            task,
+            LoopEvent(LoopEventType.TASK_ARCHIVED, task_id, {"reason": "user_requested"}),
+        )
+        return task.to_dict()
+
+    def decide_approval(self, task_id: str, decision: str) -> dict[str, Any] | None:
+        """Approve or deny the task's one durable pending tool call."""
+        normalized = str(decision or "").strip().lower()
+        if normalized not in {"approve", "deny"}:
+            raise ValueError("Approval decision must be 'approve' or 'deny'.")
+        # The executor persists awaiting_approval before its worker reaches
+        # the cleanup block.  Let that completed pause worker release its
+        # bookkeeping before starting the continuation run.
+        with self._lock:
+            existing = self._threads.get(task_id)
+        if existing is not None and existing.is_alive():
+            existing.join(timeout=2.0)
+        with self._lock:
+            task = self._repository.get(task_id)
+            if task is None:
+                return None
+            if task.status != TaskStatus.AWAITING_APPROVAL or not task.pending_tool_call:
+                raise RuntimeError("Task has no pending approval.")
+            pending = dict(task.pending_tool_call)
+            request = ToolRequest(
+                tool_name=str(pending.get("tool_name") or ""),
+                arguments=dict(pending.get("arguments") or {}),
+                call_id=str(pending.get("call_id") or ""),
+                tool_id=(
+                    None
+                    if pending.get("tool_id") in (None, "")
+                    else int(pending["tool_id"])
+                ),
+            )
+            if normalized == "deny":
+                result = ToolResult(
+                    tool_name=request.tool_name,
+                    call_id=request.call_id,
+                    status="denied",
+                    error="Tool execution was denied by the user.",
+                    metadata={"approval": "denied"},
+                )
+            else:
+                execute_approved = getattr(self._tool_executor, "execute_approved", None)
+                if not callable(execute_approved):
+                    raise RuntimeError("The configured tool executor cannot approve calls.")
+                context = self._executor._build_tool_context(
+                    task, int(task.current_turn or 0), int(task.tool_call_count or 0)
+                )
+                result = execute_approved(request, context, EventCancellationToken())
+
+            task = replace(
+                task,
+                status=TaskStatus.QUEUED,
+                execution_status=ExecutionStatus.PENDING,
+                pending_tool_call=None,
+                updated_at=utc_now(),
+            )
+            self._repository.save(task)
+            event_type = LoopEventType.TOOL_RESULT if result.status == "success" else LoopEventType.TOOL_FAILED
+            task = self._persist_runtime_event(
+                task,
+                LoopEvent(
+                    event_type,
+                    task_id,
+                    {
+                        "tool_call_index": task.tool_call_count,
+                        "tool_name": result.tool_name,
+                        "call_id": result.call_id,
+                        "status": result.status,
+                        "output": result.output,
+                        "error": result.error,
+                        "metadata": {**result.metadata, "approval": normalized},
+                    },
+                ),
+            )
+            self._start_task_thread(task, initial_tool_results=(result,))
+            return self.get_task(task_id)
+
+    def _start_task_thread(
+        self,
+        task: AgentLoopTask,
+        *,
+        initial_tool_results: tuple[ToolResult, ...] = (),
+    ) -> None:
+        task_id = str(task.id or "")
+        token = EventCancellationToken()
+        with self._lock:
+            existing = self._threads.get(task_id)
+            if existing is not None and existing.is_alive():
+                raise RuntimeError(f"Task already has an active run: {task_id}")
+            self._tokens[task_id] = token
             thread = Thread(
                 target=self._run_task,
-                args=(str(task.id or ""), token),
+                args=(task_id, token, initial_tool_results),
                 name=f"apmatia-agent-loop-{task.id}",
                 daemon=True,
             )
-            self._threads[str(task.id or "")] = thread
+            self._threads[task_id] = thread
             thread.start()
-        return self.get_task(str(task.id or "")) or task.to_dict()
+
+    def _persist_runtime_event(self, task: AgentLoopTask, event: LoopEvent) -> AgentLoopTask:
+        self._repository.append_event(str(task.id or ""), event)
+        return self._repository.get(str(task.id or "")) or replace(task, events=(*task.events, event))
 
     def start_loop(self, *, agent_id: int, prompt: str, model_id: int | None = None) -> dict[str, Any]:
         agent = get_agent_manager().get_agent(int(agent_id))
@@ -779,8 +1170,20 @@ class AgentLoopRuntime:
             thread.start()
         return self.get_loop_run(str(task.id or "")) or task.to_dict()
 
-    def list_tasks(self, *, contact_kind: str | None = None, contact_id: int | str | None = None) -> list[dict[str, Any]]:
-        tasks = self._repository.list_all()
+    def list_tasks(
+        self,
+        *,
+        contact_kind: str | None = None,
+        contact_id: int | str | None = None,
+        include_archived: bool = False,
+    ) -> list[dict[str, Any]]:
+        list_tasks = getattr(self._repository, "list_tasks", None)
+        if callable(list_tasks):
+            tasks = list_tasks(include_archived=include_archived)
+        else:
+            tasks = self._repository.list_all()
+            if not include_archived:
+                tasks = [task for task in tasks if task.status != TaskStatus.ARCHIVED]
         if contact_kind is not None:
             tasks = [task for task in tasks if task.contact_kind == contact_kind]
         if contact_id is not None:
@@ -803,6 +1206,7 @@ class AgentLoopRuntime:
             TaskStatus.FAILED,
             TaskStatus.CANCELLED,
             TaskStatus.LIMIT_REACHED,
+            TaskStatus.ARCHIVED,
         }:
             return task.to_dict()
         with self._lock:
@@ -811,9 +1215,13 @@ class AgentLoopRuntime:
             if token is not None:
                 token.cancel()
         if thread is None or not thread.is_alive():
+            conversation_task = task.chat_mode == "conversation" or task.status in {
+                TaskStatus.IDLE,
+                TaskStatus.STOPPED,
+            }
             task = replace(
                 task,
-                status=TaskStatus.CANCELLED,
+                status=TaskStatus.STOPPED if conversation_task else TaskStatus.CANCELLED,
                 execution_status=ExecutionStatus.CANCELLED,
                 stop_requested=True,
                 last_error="Execution cancelled.",
@@ -821,6 +1229,11 @@ class AgentLoopRuntime:
             )
             self._repository.save(task)
             self._repository.append_event(task_id, LoopEvent(LoopEventType.CANCELLATION_REQUESTED, task_id, {}))
+            if conversation_task:
+                self._repository.append_event(
+                    task_id,
+                    LoopEvent(LoopEventType.TASK_STOPPED, task_id, {"reason": "cancelled"}),
+                )
             return task.to_dict()
         task = replace(task, status=TaskStatus.STOPPING, execution_status=ExecutionStatus.RUNNING, stop_requested=True, updated_at=utc_now())
         self._repository.save(task)
@@ -841,7 +1254,18 @@ class AgentLoopRuntime:
             return None
         messages: list[dict[str, Any]] = []
         for event in task.events:
-            if event.event_type == LoopEventType.MODEL_TURN_COMPLETED:
+            if event.event_type == LoopEventType.USER_MESSAGE:
+                messages.append({"role": "user", "text": event.payload.get("text", "")})
+            elif event.event_type == LoopEventType.ASSISTANT_MESSAGE:
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "text": event.payload.get("text", ""),
+                        "turn_index": event.payload.get("run_turn_index"),
+                        "usage": event.payload.get("usage"),
+                    }
+                )
+            elif event.event_type == LoopEventType.MODEL_TURN_COMPLETED and task.chat_mode != "conversation":
                 payload = event.payload
                 text = str(payload.get("final_text") or "").strip()
                 if text:
@@ -853,7 +1277,13 @@ class AgentLoopRuntime:
                             "usage": payload.get("usage"),
                         }
                     )
-            elif event.event_type in {LoopEventType.TOOL_COMPLETED, LoopEventType.TOOL_FAILED}:
+            elif event.event_type in {
+                LoopEventType.TOOL_RESULT,
+                LoopEventType.TOOL_COMPLETED,
+                LoopEventType.TOOL_FAILED,
+            } and not (
+                task.chat_mode == "conversation" and event.event_type == LoopEventType.TOOL_COMPLETED
+            ):
                 messages.append(
                     {
                         "role": "tool",
@@ -870,9 +1300,20 @@ class AgentLoopRuntime:
             "content": content,
         }
 
-    def _run_task(self, task_id: str, cancellation: EventCancellationToken) -> None:
+    def _run_task(
+        self,
+        task_id: str,
+        cancellation: EventCancellationToken,
+        initial_tool_results: tuple[ToolResult, ...] = (),
+    ) -> None:
         try:
-            self._executor.execute(AgentLoopExecutionRequest(task_id=task_id), cancellation)
+            self._executor.execute(
+                AgentLoopExecutionRequest(
+                    task_id=task_id,
+                    initial_tool_results=initial_tool_results,
+                ),
+                cancellation,
+            )
         except Exception as exc:  # pragma: no cover - background execution safety net
             task = self._repository.get(task_id)
             if task is None:

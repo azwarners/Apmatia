@@ -583,6 +583,66 @@ def test_generic_form_maps_schema_component_ids_to_api_field_names() -> None:
     assert intents[0]["is_enabled"] is True
 
 
+def test_select_field_displays_model_alias_but_submits_model_id() -> None:
+    intents: list[dict[str, object]] = []
+    root = ViewRenderer(intents.append).render(
+        {
+            "component_type": "form",
+            "properties": {"actions": [{"key": "save", "label": "Save"}]},
+            "children": [
+                {
+                    "component_type": "field",
+                    "component_id": "agent-default-model-id-field",
+                    "properties": {
+                        "label": "Default model",
+                        "field_type": "select",
+                        "binding_source": "model_configs",
+                    },
+                }
+            ],
+        },
+        actions={"save": {"key": "save", "label": "Save"}},
+        data_sources={
+            "model_configs": [
+                {"id": 9, "user_alias": "Fast Planner", "name": "fallback-name"},
+            ]
+        },
+        view_id="agents.agents.view",
+    )
+
+    field = root.content.controls[0]
+    assert field.options[0].key == "9"
+    assert field.options[0].text == "Fast Planner"
+
+
+def test_schema_form_submit_label_uses_declared_view_command() -> None:
+    intents: list[dict[str, object]] = []
+    root = ViewRenderer(intents.append).render(
+        {
+            "component_type": "form",
+            "properties": {"submit_label": "Save config"},
+            "children": [
+                {"component_type": "field", "properties": {"key": "user_alias", "label": "Alias"}},
+            ],
+        },
+        actions={
+            "create": {
+                "key": "create",
+                "scope": "view",
+                "label": "Create",
+                "command_id": "ai_model_manager.llm_configs.create",
+            }
+        },
+        view_id="ai_model_manager.llm_configs.view",
+    )
+
+    root.content.controls[0].value = "Qwen"
+    root.content.controls[1].on_click(None)
+
+    assert intents[0]["command_id"] == "ai_model_manager.llm_configs.create"
+    assert intents[0]["user_alias"] == "Qwen"
+
+
 def test_markdown_expander_and_in_visibility_are_supported() -> None:
     root = ViewRenderer(lambda _intent: None).render(
         {

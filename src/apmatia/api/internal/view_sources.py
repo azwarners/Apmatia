@@ -22,6 +22,11 @@ def load_view_source(operation: str, *, user_id: int, parameters: dict[str, Any]
         return [_serialize(agent) for agent in list_agents()]
     if operation in {"model_configs:list", "list_llm_configs"}:
         return [_serialize(config) for config in list_llm_configs()]
+    if operation.startswith("module_view_items:"):
+        view_id = operation.removeprefix("module_view_items:").strip()
+        if not view_id:
+            raise ValueError("Module view source is missing a view ID.")
+        return get_module_view_items(view_id, user_id=user_id)
     if operation == "preferences:list_catalog":
         return get_module_view_items("preferences.modules.view", user_id=user_id)
     if operation == "discussion_tree":

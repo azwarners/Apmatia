@@ -11,13 +11,17 @@ from apmatia.core.models import ApmatiaObject, utc_now
 
 class TaskStatus(str, Enum):
     DRAFT = "draft"
+    IDLE = "idle"
     QUEUED = "queued"
     RUNNING = "running"
+    AWAITING_APPROVAL = "awaiting_approval"
     STOPPING = "stopping"
+    STOPPED = "stopped"
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
     LIMIT_REACHED = "limit_reached"
+    ARCHIVED = "archived"
 
 
 class ExecutionStatus(str, Enum):
@@ -30,16 +34,22 @@ class ExecutionStatus(str, Enum):
 
 
 class LoopEventType(str, Enum):
+    USER_MESSAGE = "user_message"
+    ASSISTANT_MESSAGE = "assistant_message"
     TASK_STARTED = "task_started"
     MODEL_TURN_STARTED = "model_turn_started"
     MODEL_TURN_COMPLETED = "model_turn_completed"
     MODEL_ACTIVITY = "model_activity"
     TOOL_REQUESTED = "tool_requested"
+    TOOL_AWAITING_APPROVAL = "tool_awaiting_approval"
+    TOOL_RESULT = "tool_result"
     TOOL_COMPLETED = "tool_completed"
     TOOL_FAILED = "tool_failed"
     CANCELLATION_REQUESTED = "cancellation_requested"
     TASK_COMPLETED = "task_completed"
     TASK_FAILED = "task_failed"
+    TASK_STOPPED = "task_stopped"
+    TASK_ARCHIVED = "task_archived"
     EXECUTION_LIMIT_REACHED = "execution_limit_reached"
 
 
@@ -61,6 +71,14 @@ def _serialize(value: Any) -> Any:
     if isinstance(value, list):
         return [_serialize(item) for item in value]
     return value
+
+
+def _enum_or_default(enum_type: type[Enum], value: Any, default: Enum) -> Any:
+    """Deserialize enum values without making old task snapshots unreadable."""
+    try:
+        return enum_type(str(value)) if value not in (None, "") else default
+    except ValueError:
+        return default
 
 
 @dataclass(slots=True)
@@ -90,6 +108,9 @@ class ToolRequest:
     tool_name: str
     arguments: dict[str, Any] = field(default_factory=dict)
     call_id: str = field(default_factory=lambda: f"call_{uuid4().hex}")
+    validation_error: str | None = None
+    tool_id: int | None = None
+    diagnostic: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return _serialize(self)
@@ -100,6 +121,9 @@ class ToolRequest:
             tool_name=str(payload.get("tool_name") or payload.get("name") or "").strip(),
             arguments=dict(payload.get("arguments") or {}),
             call_id=str(payload.get("call_id") or payload.get("id") or f"call_{uuid4().hex}"),
+            validation_error=None if payload.get("validation_error") in (None, "") else str(payload.get("validation_error")),
+            tool_id=None if payload.get("tool_id") in (None, "") else int(payload.get("tool_id")),
+            diagnostic=None if payload.get("diagnostic") in (None, "") else str(payload.get("diagnostic")),
         )
 
 
@@ -182,6 +206,7 @@ class LoopEvent:
     task_id: str
     payload: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=utc_now)
+    sequence: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return _serialize(self)
@@ -195,11 +220,23 @@ class LoopEvent:
                 created_at = datetime.fromisoformat(created_at_raw.replace("Z", "+00:00"))
             except ValueError:
                 created_at = utc_now()
+        raw_event_type = str(payload.get("event_type") or payload.get("type") or "").strip()
+        try:
+            event_type = LoopEventType(raw_event_type)
+        except ValueError:
+            # Ignore event names introduced by a newer runtime when reading an
+            # older task snapshot.  The surrounding task remains readable.
+            event_type = LoopEventType.MODEL_ACTIVITY
         return cls(
-            event_type=LoopEventType(str(payload.get("event_type") or payload.get("type") or "").strip()),
+            event_type=event_type,
             task_id=str(payload.get("task_id") or "").strip(),
             payload=dict(payload.get("payload") or payload.get("data") or {}),
             created_at=created_at,
+            sequence=(
+                max(1, int(payload["sequence"]))
+                if payload.get("sequence") not in (None, "")
+                else None
+            ),
         )
 
 
@@ -220,6 +257,8 @@ class AgentLoopTask(ApmatiaObject):
     timeout_seconds: float | None = None
     status: TaskStatus = TaskStatus.DRAFT
     execution_status: ExecutionStatus = ExecutionStatus.PENDING
+    next_event_sequence: int = 1
+    pending_tool_call: dict[str, Any] | None = None
     stop_requested: bool = False
     current_turn: int = 0
     tool_call_count: int = 0
@@ -275,8 +314,18 @@ class AgentLoopTask(ApmatiaObject):
             max_model_turns=int(payload.get("max_model_turns") or 5),
             max_tool_calls=int(payload.get("max_tool_calls") or 10),
             timeout_seconds=payload.get("timeout_seconds"),
-            status=TaskStatus(str(payload.get("status") or TaskStatus.DRAFT.value)),
-            execution_status=ExecutionStatus(str(payload.get("execution_status") or ExecutionStatus.PENDING.value)),
+            status=_enum_or_default(TaskStatus, payload.get("status"), TaskStatus.DRAFT),
+            execution_status=_enum_or_default(
+                ExecutionStatus,
+                payload.get("execution_status"),
+                ExecutionStatus.PENDING,
+            ),
+            next_event_sequence=max(1, int(payload.get("next_event_sequence") or 1)),
+            pending_tool_call=(
+                dict(payload["pending_tool_call"])
+                if isinstance(payload.get("pending_tool_call"), dict)
+                else None
+            ),
             stop_requested=bool(payload.get("stop_requested", False)),
             current_turn=int(payload.get("current_turn") or 0),
             tool_call_count=int(payload.get("tool_call_count") or 0),
@@ -293,6 +342,7 @@ class AgentLoopTask(ApmatiaObject):
 @dataclass(slots=True)
 class AgentLoopExecutionRequest:
     task_id: str
+    initial_tool_results: tuple[ToolResult, ...] = ()
 
 
 @dataclass(slots=True)

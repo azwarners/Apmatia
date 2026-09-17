@@ -27,7 +27,7 @@ def test_preferences_provider_lists_current_preferences() -> None:
     with patch("apmatia.modules.preferences.module_views.get_settings_payload", return_value=current):
         items = provider.list_items(view=VIEW_DESCRIPTORS[0], context=ModuleViewContext(user_id=1))
 
-    assert items == [{"id": "preferences", **current}]
+    assert items == [{"id": "preferences", **current, "show_development_modules": False}]
 
 
 def test_preferences_provider_saves_and_returns_ui_preferences() -> None:
@@ -66,6 +66,6 @@ def test_preferences_provider_saves_and_returns_ui_preferences() -> None:
     assert result == {
         "status": "saved",
         "message": "Preferences saved.",
-        "item": {"id": "preferences", **payload},
-        "ui_preferences": payload,
+        "item": {"id": "preferences", **payload, "show_development_modules": False},
+        "ui_preferences": {**payload, "show_development_modules": False},
     }

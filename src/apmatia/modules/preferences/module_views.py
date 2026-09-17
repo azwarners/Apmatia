@@ -39,7 +39,11 @@ class ApmatiaPreferencesModuleViewProvider:
                     if isinstance(item, Mapping):
                         items.append({**item, "id": f"view:{item.get('view_id')}", "item_kind": "view", "module_id": module_id, "new_index": view_index})
             return items
-        return [{"id": "preferences", **get_settings_payload()}]
+        settings = dict(get_settings_payload())
+        settings["show_development_modules"] = bool(
+            get_module_activation().get("show_development_modules", False)
+        )
+        return [{"id": "preferences", **settings}]
 
     def execute_command(
         self,
@@ -75,7 +79,13 @@ class ApmatiaPreferencesModuleViewProvider:
             terminal_border_color=str(payload.get("terminal_border_color") or "rgba(110, 255, 170, 0.35)"),
             terminal_muted_color=str(payload.get("terminal_muted_color") or "rgba(157, 255, 173, 0.72)"),
         )
-        current = get_settings_payload()
+        show_development_modules = payload.get("show_development_modules")
+        if isinstance(show_development_modules, bool):
+            set_development_modules_enabled(show_development_modules)
+        current = dict(get_settings_payload())
+        current["show_development_modules"] = bool(
+            get_module_activation().get("show_development_modules", False)
+        )
         return {
             "status": "saved",
             "message": "Preferences saved.",

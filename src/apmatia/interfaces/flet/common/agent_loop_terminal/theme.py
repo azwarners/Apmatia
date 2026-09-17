@@ -1,0 +1,10 @@
+"""Visual constants for the shared dark/green Agent Loop terminal."""
+
+BACKGROUND = "#101512"
+PANEL = "#17221B"
+SURFACE = "#1E2C23"
+GREEN = "#8BE28B"
+MUTED_GREEN = "#5D9F6B"
+TEXT = "#E5F3E7"
+ERROR = "#FF8A80"
+WARNING = "#FFD180"

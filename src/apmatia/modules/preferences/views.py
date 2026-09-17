@@ -15,6 +15,16 @@ from apmatia.core.view_contract.models import (
 # Preferences form fields
 _PREFERENCES_FORM_FIELDS = (
     ViewComponent(
+        component_id="pref-show-development-modules-field",
+        component_type="field",
+        properties={
+            "key": "show_development_modules",
+            "label": "Show and enable development modules",
+            "field_type": "checkbox",
+            "help_text": "Enable development modules such as Agent Loops in the navigation and runtime.",
+        },
+    ),
+    ViewComponent(
         component_id="pref-llama-server-log-dir-field",
         component_type="field",
         properties={"label": "llama.cpp log directory", "field_type": "text", "help_text": "Directory containing llama.cpp server log files. Leave blank to use an environment override."},

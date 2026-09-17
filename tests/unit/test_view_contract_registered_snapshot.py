@@ -42,7 +42,7 @@ REGISTERED_VIEW_DOCUMENT_SNAPSHOTS = {
     "logging.entries.view": "745bf8e1b3813dae76bcdc3835239e054711ca272c28c5eb843a7423c41f9daa",
     "memory_manager.memory.view": "0cbdbf64a9ae51b942e394ab35e72988c622f412836edd3a43346de110552676",
     "preferences.modules.view": "24aa8ec02d179b78e2a78f38c2063b982b684067c59b15c03dd2834f7d16999f",
-    "preferences.preferences.view": "140640d28d535c5136f0388129af773e8f7fb3967b522ba18f3b6d0684929637",
+    "preferences.preferences.view": "a4085c264f92e333a57470f3e0e26d60a6fbb9318f98da80f06627e9349290dd",
     "users.groups.view": "ba05dec45990059e97cbd64ba6a5efe7e3bce3aa3a637627471ca7d00bf7a5e7",
     "users.users.view": "9c8132a3a0a68897b57209cfefc32466c648433ecd244cfc796b798ac9299e28",
     "worksim.org_chart_node.view": "16c899d4ec0dfe7d5c6f4bc6db3f8d66194b71c164f609aa3e37b8cc45b8d6e3",

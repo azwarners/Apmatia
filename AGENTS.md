@@ -43,7 +43,7 @@ Apmatia starts in stable-only mode. Bootstrap must inspect manifests before impo
 
 When reporting changes back to the user, always include the full absolute path of at least one relevant file so it is obvious which repo instance and directory were touched. Prefer verbose path references when mentioning files in responses, especially after work that could otherwise be confused with a different checkout.
 
-Do not use relative paths like `apmatia/...`, `./...`, or bare filenames when describing changed files to the user. Use absolute paths such as `/home/nick/ServerData/repos/apmatia/...` so there is no ambiguity about which checkout is being discussed.
+Do not use relative paths like `apmatia/...`, `./...`, or bare filenames when describing changed files to the user. Use absolute paths such as `/home/nick/apmatia/...` so there is no ambiguity about which checkout is being discussed.
 
 Do not rely on UI hover labels, file cards, shortened link text, or repo-relative display names to establish the file path. When a file is mentioned in a response, the absolute path must be written explicitly in the message body itself.
 

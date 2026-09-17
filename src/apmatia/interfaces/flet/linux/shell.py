@@ -9,6 +9,8 @@ from typing import Any
 import flet as ft
 
 from ..common.api_client import ApmatiaApiClient
+from ..common.agent_loop_terminal.controller import AgentLoopTerminalController
+from ..common.agent_loop_terminal.view import AgentLoopTerminalView
 from ..common.errors import AdapterError, ApiConnectionError, AuthenticationError, UnsupportedComponentError
 from ..common.renderer import ViewRenderer
 from ..common.state import ClientState
@@ -36,6 +38,7 @@ class ApmatiaShell:
         self._current_title = "Apmatia"
         self._view_state: dict[str, Any] = {}
         self._loop_poll_task: Any = None
+        self._terminal_controller: AgentLoopTerminalController | None = None
         self._login_document: dict[str, Any] | None = None
         self._modules: list[dict[str, Any]] | None = None
         self._renderer = ViewRenderer(self._handle_intent)
@@ -65,6 +68,7 @@ class ApmatiaShell:
 
     def render_route(self) -> None:
         """Render the current route, enforcing protection before rendering."""
+        self._cancel_terminal_polling()
         if not (self._page.route.startswith("/view/agent_loops.loops.view") and self._view_state.get("is_running")):
             self._cancel_loop_polling()
         if self._page.route != "/login" and not self._state.is_authenticated:
@@ -153,6 +157,13 @@ class ApmatiaShell:
             return
         try:
             self._ensure_module_catalog()
+            if view_id == "agent_loops.loops.view":
+                controller = AgentLoopTerminalController(self._page, self._api)
+                view = AgentLoopTerminalView(controller)
+                self._terminal_controller = controller
+                controller.load_agents()
+                self._render_shell(view.container, title="Agent Loops")
+                return
             document = self._api.get_module_view_document(view_id)
             declared_sources = document.get("data_sources", [])
             data_sources: dict[str, Any] = {}
@@ -216,6 +227,11 @@ class ApmatiaShell:
         self._render_shell(rendered, title=str(document.get("title") or view_id))
         if view_id == "agent_loops.loops.view" and self._view_state.get("is_running"):
             self._ensure_loop_polling()
+
+    def _cancel_terminal_polling(self) -> None:
+        if self._terminal_controller is not None:
+            self._terminal_controller.stop_polling()
+            self._terminal_controller = None
 
     def _ensure_loop_polling(self) -> None:
         if self._loop_poll_task is None or self._loop_poll_task.done():
@@ -403,6 +419,10 @@ class ApmatiaShell:
         except AdapterError as error:
             self._show_error(str(error))
             return
+        if command_id.startswith("preferences."):
+            # Module activation and navigation settings can change the active
+            # registry. Reload the catalog before rebuilding the shell.
+            self._modules = None
         if command_id == "agent_loops.start":
             task_id = result.get("task_id") if isinstance(result, dict) else None
             if task_id:

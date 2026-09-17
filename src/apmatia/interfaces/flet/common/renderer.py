@@ -89,7 +89,25 @@ class ViewRenderer:
         actions = properties.get("actions") or [self._actions[key] for key in component.get("action_keys", []) if key in self._actions]
         actions = [self._action_for(str(action.get("key", "")), action) for action in actions]
         if not actions and properties.get("submit_label"):
-            actions = [{"label": properties["submit_label"], "payload": {}}]
+            # Schema-inferred forms expose a submit label but may omit an
+            # explicit action in the component. Resolve the first declared
+            # view/form action so the submit intent still carries its command.
+            fallback = next(
+                (
+                    action
+                    for action in self._actions.values()
+                    if action.get("scope") in {"view", "form"}
+                    and action.get("command_id")
+                ),
+                {},
+            )
+            actions = [
+                {
+                    **fallback,
+                    "label": properties["submit_label"],
+                    "payload": dict(fallback.get("payload") or {}),
+                }
+            ]
         title = properties.get("title")
         description = properties.get("description")
         if title:
@@ -170,14 +188,23 @@ class ViewRenderer:
             return control
         if field_type == "select":
             options = self._field_options(properties)
-            control = ft.Dropdown(label=label, value=str(initial or options[0]) if options else None, options=[ft.DropdownOption(key=str(option), text=str(option)) for option in options])
+            option_values = [value for value, _option_label in options]
+            selected_value = initial if initial in option_values else (option_values[0] if option_values else None)
+            control = ft.Dropdown(
+                label=label,
+                value=None if selected_value is None else str(selected_value),
+                options=[
+                    ft.DropdownOption(key=str(value), text=option_label)
+                    for value, option_label in options
+                ],
+            )
         elif field_type == "multiselect":
             options = self._field_options(properties)
             selected = {str(value) for value in (initial or [])} if isinstance(initial, (list, tuple, set)) else set()
             checkboxes: list[ft.Control] = [ft.Text(label)]
-            for option in options:
-                option_value = str(option)
-                checkbox = ft.Checkbox(label=option_value, value=option_value in selected)
+            for option_value, option_label in options:
+                option_value = str(option_value)
+                checkbox = ft.Checkbox(label=option_label, value=option_value in selected)
 
                 def on_check(event: ft.ControlEvent, *, option_value: str = option_value) -> None:
                     if getattr(event.control, "value", False):
@@ -450,15 +477,31 @@ class ViewRenderer:
             value = self._data_sources.get(binding.get("source"), [])
         return self._value_at_path(value, binding.get("path", "")) if binding.get("path") else value
 
-    def _field_options(self, properties: Mapping[str, Any]) -> list[Any]:
+    def _field_options(self, properties: Mapping[str, Any]) -> list[tuple[Any, str]]:
         source = properties.get("binding_source")
         if source:
             values = self._data_sources.get(source, [])
             if isinstance(values, Mapping):
                 values = values.get("items", values.get("agents", values.get("discussions", [])))
             if isinstance(values, (list, tuple)):
-                return [item.get("id", item.get("discussion_id", item)) if isinstance(item, Mapping) else item for item in values]
-        return list(properties.get("options") or [])
+                return [self._option_pair(item) for item in values]
+        return [self._option_pair(option) for option in (properties.get("options") or [])]
+
+    @staticmethod
+    def _option_pair(option: Any) -> tuple[Any, str]:
+        """Return a stable submitted value and a human-readable option label."""
+        if isinstance(option, Mapping):
+            value = option.get("value", option.get("id", option.get("discussion_id", option)))
+            label = next(
+                (
+                    str(option[key]).strip()
+                    for key in ("label", "user_alias", "name", "title", "provider_name", "path")
+                    if option.get(key) not in (None, "")
+                ),
+                str(value),
+            )
+            return value, label
+        return option, str(option)
 
     def _state_key(self, component: Mapping[str, Any], key: str) -> str:
         explicit = component.get("state_key") or (component.get("properties") or {}).get("state_key")
@@ -507,7 +550,7 @@ class ViewRenderer:
             except (TypeError, ValueError):
                 pass
         self._state[key] = value
-        if self._view_id and field_type not in {"text", "textarea", "password"}:
+        if self._view_id and field_type not in {"text", "textarea", "password", "number"}:
             self._on_intent({"__view_id": self._view_id, "__state_update": {key: value}})
 
     def _resolve_payload(self, value: Any, *, item: Mapping[str, Any] | None = None) -> Any:

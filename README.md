@@ -1,8 +1,8 @@
 # Apmatia
 
-Apmatia is an API-first, self-hosted application framework for modular AI workflows. It packages capabilities as focused modules, keeps shared primitives and orchestration in a thin core layer, and serves both programmatic and interactive use through the same API boundary.
+Apmatia (Packs Multiple Agents and Tools Into an Application) is an API-first, self-hosted application for interactive agents. It owns agent configuration, role- and application-specific tools, application-facing orchestration, and adapters to external services.
 
-Apmatia is moving toward a module-first architecture:
+Apmatia uses a module-first architecture:
 
 - reusable capability code should live in modules
 - foundational primitives required before module bootstrap should live in core
@@ -10,9 +10,8 @@ Apmatia is moving toward a module-first architecture:
 - bundled modules live in `src/apmatia/modules/`
 - draft and agent-assisted modules live in `~/.apmatia/workspace/modules/`
 
-The first bundled module to actively drive new product behavior is `ipe`, which now
-demonstrates how module metadata, view schemas, and the Streamlit adapter can work together to
-deliver real UI and data-entry flows without custom page code for each screen.
+The target architecture and the phased realignment plan are documented in
+[`docs/architecture/APMATIA_REALIGNMENT.md`](docs/architecture/APMATIA_REALIGNMENT.md).
 
 ## What It Is
 
@@ -38,14 +37,11 @@ That gives the project a few important properties:
 
 ## Current Capabilities
 
-- discussion workflows backed by focused modules
-- saved LLM configurations for OpenAI-compatible and KoboldCpp backends
-- agent management backed by a dedicated module
-- model runtime concurrency (seats) managed by a persistent work queue and dispatcher
-- model runtime concurrency (seats) managed by a persistent work queue and dispatcher
+- agent management and configuration
+- role- and application-specific agent tools
+- API-mediated orchestration and external-service adapters
 - user, group, and session-backed authentication flows
-- soft-delete discussion and folder lifecycle with restore support
-- shared settings for prompting and UI appearance
+- shared settings and persistence infrastructure
 - registry-driven module metadata, scaffolding, validation, and workspace editing
 - stable-only module activation by default, with an explicit all-modules development toggle
 - module-driven Streamlit navigation, visibility controls, and generic view rendering
@@ -73,7 +69,7 @@ Modules are the home for feature and infrastructure packages. They own their imp
 
 ## Modules and Core
 
-Bundled modules in `src/apmatia/modules/` include agents, discussions, model management, persistence, users, and YsParr. Modules may be stable infrastructure or activatable features, but each owns its domain implementation.
+Bundled modules in `src/apmatia/modules/` include agents, agent configuration, agent tools, persistence, users, and the Ysparr/IPE adapters. Modules may be stable infrastructure or activatable features, but each owns its domain implementation. The realignment document records modules that are retained, reduced, or archived.
 
 The core package in `src/apmatia/core/` owns application-wide primitives such as `ApmatiaObject` and permission checks, plus configuration, module bootstrap, registry, and runtime orchestration. These facilities are always available and are not controlled by module activation.
 
@@ -218,8 +214,9 @@ The application starts in stable-only mode. Development modules remain discovera
 
 ## Additional Documentation
 
-- architecture: `docs/ARCHITECTURE.md`
-- transport security: `docs/TRANSPORT_SECURITY.md`
-- module creation guide: `docs/CREATING_MODULES.md`
-- changelog: `docs/CHANGELOG.md`
-- third-party notices: `docs/THIRD_PARTY_NOTICES.md`
+- architecture: [`docs/architecture/ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md)
+- realignment and coupling risks: [`docs/architecture/APMATIA_REALIGNMENT.md`](docs/architecture/APMATIA_REALIGNMENT.md)
+- transport security: [`docs/architecture/TRANSPORT_SECURITY.md`](docs/architecture/TRANSPORT_SECURITY.md)
+- module creation guide: [`docs/CREATING_MODULES.md`](docs/CREATING_MODULES.md)
+- changelog: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
+- third-party notices: [`docs/THIRD_PARTY_NOTICES.md`](docs/THIRD_PARTY_NOTICES.md)

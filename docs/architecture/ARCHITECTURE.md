@@ -1,44 +1,40 @@
 # Architecture
 
-Apmatia is built around a strict, API-first layered architecture. Business logic lives in focused modules, foundational primitives and orchestration live in core, the application layer stays thin, and every interface reaches the system through the API boundary.
+Apmatia is an application for interactive agents. Its canonical responsibility is to load an
+agent, apply its configuration, expose the tools appropriate to that agent and role, orchestrate
+the request, and adapt to external services such as Ysparr.
+
+The target architecture, ownership matrix, phased disposition plan, and known coupling risks live
+in [`APMATIA_REALIGNMENT.md`](APMATIA_REALIGNMENT.md). This document defines the stable layering
+rules that remain true during that realignment.
 
 ## Core Principle
 
-All functionality flows in one direction:
+Interactive work follows one application boundary:
 
 ```text
-Modules/Core -> API (internal) -> Interfaces
+Interface -> HTTP/API transport -> API (internal) -> Apmatia-owned modules/core
+                                                        -> external adapter -> external service
 ```
 
-No layer is allowed to bypass another.
-
-## Execution Flow
-
-All interactive usage follows the same path:
-
-```text
-Interface -> API (internal) -> Core/Module -> External Service
-```
-
-For HTTP callers, the transport layer sits in front of the same internal contract:
-
-```text
-HTTP -> API (http) -> API (internal) -> Core/Module
-```
-
-This keeps behavior consistent across the CLI, the FastAPI surface, and the Streamlit application.
+The API is the application-facing contract. Interfaces do not call core or modules directly, and
+external-service behavior does not become Apmatia-owned merely because an adapter is hosted here.
 
 ## Layers
 
-### 1. Modules (Business Logic and Feature Packages)
+### 1. Apmatia modules (owned application behavior)
 
 **Location:** `src/apmatia/modules/` for bundled modules, `workspace/modules/` for draft modules
 
-Modules contain Apmatia's domain behavior. They implement features, encapsulate persistence details, integrate with model backends, and register application metadata, actions, tools, commands, and views.
+Modules contain Apmatia-owned behavior: agents, agent configuration, agent tools, authentication,
+users, preferences, persistence, logging, and application-specific adapters. They register
+metadata, actions, tools, commands, and views.
 
 They do not know about Streamlit or the CLI and should not own transport concerns.
 
-The stable `persistence` infrastructure module owns shared SQLite document storage, JSON/YAML configuration persistence, persistence descriptors, and structured log-file storage. Other bundled modules declare it as a module dependency and import its APIs from `apmatia.modules.persistence`.
+The stable `persistence` infrastructure module owns shared SQLite document storage, JSON/YAML
+configuration persistence, persistence descriptors, and structured log-file storage. Other bundled
+modules declare it as a module dependency and import its APIs from `apmatia.modules.persistence`.
 
 The stable `auth` infrastructure module owns sessions, login orchestration, and the Streamlit login view. The stable `users` infrastructure module owns the user, group, and membership domain and its registry-backed management view. HTTP and internal API routes use the modules' runtime entrypoints.
 
@@ -73,19 +69,23 @@ In stable-only mode, only stable modules with `default_enabled = true` are impor
 
 The persisted `ui.show_development_modules` setting can switch the application to all-modules mode. The registry-backed Module Manager view exposes it as "Enable all modules." A change rebuilds the active registry and provider set in each process; module deactivation hooks stop background work when returning to stable-only mode.
 
-### 2. Core (Foundation and Orchestration)
+### 2. Core (foundation and application wiring)
 
 **Location:** `src/apmatia/core/`
 
-Core provides primitives that must exist independently of module activation, including shared object ownership and permission checks. It also loads config, bootstraps modules, wires repositories and services together, and applies application-wide rules.
+Core provides primitives that must exist independently of module activation, including shared object
+ownership, permission checks, configuration, module bootstrap, registry management, and
+application-wide rules. Application workflows belong behind the internal API even when core
+coordinates them.
 
 It does not expose interfaces or own transport details.
 
-### 3. API (Internal)
+### 3. API (internal)
 
 **Location:** `src/apmatia/api/internal/`
 
-This is the canonical programmatic interface for Apmatia. Interfaces and transports use this layer instead of reaching into core or modules directly.
+This is the canonical programmatic interface for Apmatia. It owns application-facing orchestration
+and keeps transport and presentation concerns outside the domain modules.
 
 It exposes application capabilities as stable functions and keeps the rest of the system behind a single contract.
 
@@ -119,6 +119,18 @@ The Text adapter provides a second GUI implementation that proves the API/docume
 
 The key architectural point is that interfaces are now demonstrably one of multiple adapters. All interfaces consume the API/document contract rather than core or modules directly. The view contract models in `core/view_contract/` define the portable document boundary that both adapters negotiate.
 
+## External Boundaries
+
+- **Ysparr/proxq:** model execution infrastructure. Apmatia may own a client or adapter contract;
+  it does not own execution backends, modalities, runtime persistence, or process management.
+- **Redless:** long-running autonomous agent loops. Apmatia may initiate an interactive request;
+  durable autonomous scheduling and loop execution belong outside Apmatia.
+- **Sidecaravan:** reusable cross-agent capabilities. Apmatia consumes or adapts those capabilities
+  when needed for its own agents; it does not become their general-purpose home.
+- **OpenIPE and Worksim:** standalone productivity or simulation applications. Apmatia may expose
+  agent-facing tools or future adapters, but their application implementations are not Apmatia
+  responsibilities.
+
 ## Rules
 
 - Application-facing core workflows are only called by the internal API; modules may import foundational models, permission checks, registry contracts, and other documented core helpers.
@@ -139,28 +151,6 @@ This gives Apmatia persistent local settings without hardcoding secrets into sou
 
 Model configuration, prompting defaults, and UI preferences are all saved through the same API-controlled configuration path. The Streamlit settings page persists those values through `/api/settings`.
 
-## Discussion Data Lifecycle
-
-Discussion and folder deletion follows a soft-delete lifecycle:
-
-1. Delete actions mark records as trashed with retention metadata.
-2. Trashed items disappear from normal discussion and tree views.
-3. Restore endpoints can recover items during the retention window.
-4. Expired trash is purged automatically after 90 days.
-
-This keeps accidental deletions reversible without cluttering active views.
-
-## Tool Result Persistence
-
-Tool results are displayed back into the discussion flow and are also written to the tool-call audit log, but Apmatia does not maintain a separate durable tool-result store as part of the discussion transcript model.
-
-Practical guidance:
-
-- treat tool outputs as turn-local context unless they are explicitly saved elsewhere
-- use memory or wiki tools when a result should survive beyond the current conversation
-- use the audit log for debugging and historical inspection of tool calls
-- if a workflow needs cross-session retrieval of tool outputs, persist a concise summary into memory or another dedicated store rather than relying on the ephemeral result payload alone
-
 ## Extending the System
 
 To add a new feature:
@@ -175,4 +165,6 @@ That sequence preserves the API-first boundary and keeps interfaces thin.
 
 ## Summary
 
-Apmatia scales by keeping domain logic in focused modules, shared foundations and orchestration in core, and presentation in interface clients. The UI layer remains thin because interfaces consume the API rather than core or modules directly.
+Apmatia owns the interactive agent application boundary. Keep application behavior in focused
+modules, shared foundations and wiring in core, presentation in interface clients, and all
+external execution behind explicit adapters.

@@ -11,6 +11,7 @@ from apmatia.core.permissions import can_write
 
 from .manager import DEFAULT_AGENT_MODE, AgentManager
 from .models import Agent
+from .starter_catalog import install_starter_profiles
 
 
 class AgentsModuleViewProvider:
@@ -39,6 +40,16 @@ class AgentsModuleViewProvider:
         verb = str(command.metadata.get("verb") or command.command_id.rsplit(".", 1)[-1]).strip().lower()
         if verb == "list":
             return {"items": self.list_items(view=_view_from_command(command), context=context)}
+        if verb == "install_starters":
+            model_id = payload.get("default_model_id")
+            if model_id in ("", 0, "0"):
+                model_id = None
+            return install_starter_profiles(
+                self.manager,
+                owner_user_id=user_id,
+                default_model_id=model_id,
+                publish=payload.get("publish", False),
+            )
         if verb == "create":
             values = _agent_values(payload)
             values["owner_user_id"] = user_id
@@ -134,6 +145,7 @@ def _serialize_agent(agent: Agent, manager: AgentManager | None = None) -> dict[
         "workspace_root": agent.workspace_root,
         "knowledge_root": agent.knowledge_root,
         "metadata": dict(agent.metadata),
+        "starter_profile_id": agent.starter_profile_id,
     }
     if manager is not None and agent.prompt_id is not None:
         prompt = manager.get_prompt(agent.prompt_id)

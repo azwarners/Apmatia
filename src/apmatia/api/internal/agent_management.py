@@ -59,6 +59,7 @@ def _agent_to_dict(agent) -> dict:
         "default_model_id": agent.default_model_id,
         "active_model_id": agent.active_model_id,
         "is_public": getattr(agent, "is_public", False),
+        "starter_profile_id": getattr(agent, "starter_profile_id", None),
         "workspace_root": getattr(agent, "workspace_root", ""),
         "knowledge_root": getattr(agent, "knowledge_root", ""),
         "metadata": agent.metadata,

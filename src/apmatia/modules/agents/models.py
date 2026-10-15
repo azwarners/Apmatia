@@ -15,6 +15,7 @@ class Agent(ApmatiaObject):
     default_model_id: int | None = None
     active_model_id: int | None = None
     is_public: bool = False
+    starter_profile_id: str | None = None
     workspace_root: str = ""
     knowledge_root: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)

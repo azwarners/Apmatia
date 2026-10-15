@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from types import SimpleNamespace
 
 from apmatia.core.module_view_runtime import ModuleViewContext
 from apmatia.modules.agents.commands import COMMAND_DESCRIPTORS
@@ -8,6 +9,7 @@ from apmatia.modules.agents.manager import AgentManager
 from apmatia.modules.agents.module_views import AgentsModuleViewProvider
 from apmatia.modules.agents.sqlite_repositories import SQLiteAgentManagementBundle
 from apmatia.modules.agents.starter_catalog import install_starter_profiles, load_starter_profiles
+from apmatia.api.internal import agent_starter_bootstrap
 
 
 def _manager(tmp_path) -> AgentManager:
@@ -93,3 +95,82 @@ def test_existing_agents_command_installs_profiles_for_authenticated_user(tmp_pa
     assert result["installed"] == 5
     assert all(agent.owner_user_id == 31 for agent in manager.list_agents())
     assert {agent.default_model_id for agent in manager.list_agents()} == {73}
+
+
+def test_default_starters_seed_as_public_with_first_configured_model_and_remain_deleted(tmp_path, monkeypatch):
+    manager = _manager(tmp_path)
+    state = {"seeded": False}
+    monkeypatch.setattr(agent_starter_bootstrap, "get_agent_manager", lambda: manager)
+    monkeypatch.setattr(
+        agent_starter_bootstrap,
+        "get_llm_config_manager",
+        lambda: SimpleNamespace(list_configs=lambda: [SimpleNamespace(id=73, provider_name="Venice")]),
+    )
+    monkeypatch.setattr(agent_starter_bootstrap, "get_config_value", lambda *keys, default=None: state["seeded"])
+    monkeypatch.setattr(
+        agent_starter_bootstrap,
+        "set_config_value",
+        lambda *keys, value: state.__setitem__("seeded", value),
+    )
+
+    result = agent_starter_bootstrap.ensure_default_starter_agents(31)
+    assert result["installed"] == 5
+    assert all(agent.is_public for agent in manager.list_agents())
+    assert {agent.default_model_id for agent in manager.list_agents()} == {73}
+
+    removed_id = manager.list_agents()[0].id
+    manager.delete_agent(removed_id)
+    assert agent_starter_bootstrap.ensure_default_starter_agents(31) is None
+    assert len(manager.list_agents()) == 4
+
+
+def test_default_starter_seed_waits_for_a_configured_model(tmp_path, monkeypatch):
+    manager = _manager(tmp_path)
+    state = {"seeded": False}
+    configs = []
+    monkeypatch.setattr(agent_starter_bootstrap, "get_agent_manager", lambda: manager)
+    monkeypatch.setattr(
+        agent_starter_bootstrap,
+        "get_llm_config_manager",
+        lambda: SimpleNamespace(list_configs=lambda: configs),
+    )
+    monkeypatch.setattr(agent_starter_bootstrap, "get_config_value", lambda *keys, default=None: state["seeded"])
+    monkeypatch.setattr(
+        agent_starter_bootstrap,
+        "set_config_value",
+        lambda *keys, value: state.__setitem__("seeded", value),
+    )
+
+    assert agent_starter_bootstrap.ensure_default_starter_agents(31) is None
+    assert manager.list_agents() == []
+    assert state["seeded"] is False
+
+    configs.append(SimpleNamespace(id=73, provider_name="Venice"))
+    assert agent_starter_bootstrap.ensure_default_starter_agents(31)["installed"] == 5
+
+
+def test_default_starter_seed_preserves_customized_profiles(tmp_path, monkeypatch):
+    manager = _manager(tmp_path)
+    install_starter_profiles(manager, owner_user_id=31)
+    luna = next(agent for agent in manager.list_agents() if agent.name == "Luna the Linux Admin")
+    manager.update_agent(luna.id, name="Luna at Home", default_model_id=88, is_public=False)
+    state = {"seeded": False}
+    monkeypatch.setattr(agent_starter_bootstrap, "get_agent_manager", lambda: manager)
+    monkeypatch.setattr(
+        agent_starter_bootstrap,
+        "get_llm_config_manager",
+        lambda: SimpleNamespace(list_configs=lambda: [SimpleNamespace(id=73, provider_name="Venice")]),
+    )
+    monkeypatch.setattr(agent_starter_bootstrap, "get_config_value", lambda *keys, default=None: state["seeded"])
+    monkeypatch.setattr(
+        agent_starter_bootstrap,
+        "set_config_value",
+        lambda *keys, value: state.__setitem__("seeded", value),
+    )
+
+    agent_starter_bootstrap.ensure_default_starter_agents(31)
+    saved_luna = manager.get_agent(luna.id)
+    assert saved_luna.name == "Luna at Home"
+    assert saved_luna.default_model_id == 88
+    assert saved_luna.is_public is True
+    assert all(agent.is_public for agent in manager.list_agents())

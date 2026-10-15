@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException, Request
 from apmatia.api.http.routes import router
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from apmatia.api.internal.auth import get_session
+from apmatia.api.internal.agent_starter_bootstrap import seed_default_starters_for_first_user
 
 NO_CACHE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
@@ -39,6 +40,11 @@ def create_app():
     _ensure_runtime_dirs()
     app = FastAPI(title="python_core_api_ui_template")
     app.include_router(router, prefix="/api")
+
+    @app.on_event("startup")
+    def install_default_starters() -> None:
+        seed_default_starters_for_first_user()
+
     return app
 
 app = create_app()

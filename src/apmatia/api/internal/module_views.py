@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from apmatia.api.internal.group_access import enabled_group_ids
+from apmatia.api.internal.agent_starter_bootstrap import ensure_default_starter_agents
 from apmatia.api.internal.users import list_user_groups
 from apmatia.core.module_view_runtime import execute_module_command, list_module_view_items
 from apmatia.core.registry import get_application_registry
@@ -91,6 +92,12 @@ def _command_fields(metadata: dict[str, Any], views: Mapping[str, Any]) -> list[
 
 
 def get_module_view_items(view_id: str, *, user_id: int) -> list[dict[str, Any]]:
+    view = next(
+        (item for item in get_application_registry().list_views() if item.view_id == view_id.strip()),
+        None,
+    )
+    if view is not None and view.module_id == "agents":
+        ensure_default_starter_agents(user_id)
     return list_module_view_items(
         view_id,
         user_id=user_id,

@@ -9,6 +9,7 @@ from apmatia.api.internal.agent_management import (
     delete_agent,
     list_agents,
 )
+from apmatia.api.internal.agent_starter_bootstrap import ensure_default_starter_agents
 from apmatia.modules.agents.runtime import get_agent_manager
 from apmatia.modules.agents.manager import DEFAULT_AGENT_MODE
 from apmatia.core.permissions import can_write
@@ -55,7 +56,8 @@ def create_new_agent(
 @router.get("", response_model=list[dict])
 def get_all_agents(request: Request) -> list[dict]:
     """List all agents."""
-    require_session(request)
+    session = require_session(request)
+    ensure_default_starter_agents(session.user_id)
     return list_agents()
 
 

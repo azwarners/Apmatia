@@ -17,6 +17,7 @@ _DEFAULT_LEGACY_STATE_FILE = LEGACY_STATE_FILE
 
 
 PREFERRED_CONFIG_DIR = Path.home() / ".config" / "apmatia"
+_ARCHIVED_CONFIG_KEYS = ("discussion", "ai_model_executor", "llama_server")
 
 
 def _dir_is_writable(path: Path) -> bool:
@@ -86,30 +87,10 @@ def _default_config() -> dict[str, Any]:
                 "base_url": "http://localhost:5001",
             },
         },
-        "discussion": {
-            "current_discussion_id": None,
-            "system_prompt": "",
-            "architecture": "legacy",
-            "topic_transition_strategy": "layered",
-        },
         "ai_model_manager": {
             "gguf_directory": "",
             "gguf_directories": [],
             "auto_scan_gguf_directory": True,
-        },
-        "ai_model_executor": {
-            "runtime_config": {
-                "runtime_id": "llama_cpp",
-                "executable_path": "llama-server",
-                "default_args": [],
-                "host": "127.0.0.1",
-                "default_port": 8000,
-                "stop_conflicting_models": True,
-                "log_dir": "",
-            }
-        },
-        "llama_server": {
-            "log_dir": "",
         },
         "workspace": {
             "root": str(Path.home() / ".apmatia" / "workspace"),
@@ -202,9 +183,6 @@ def _seed_from_env(config: dict[str, Any]) -> dict[str, Any]:
         "KOBOLDCPP_URL": ("llm", "koboldcpp", "base_url"),
         "APMATIA_GGUF_DIRECTORY": ("ai_model_manager", "gguf_directory"),
         "APMATIA_GGUF_DIRECTORIES": ("ai_model_manager", "gguf_directories"),
-        "APMATIA_LLAMA_SERVER_EXECUTABLE_PATH": ("ai_model_executor", "runtime_config", "executable_path"),
-        "APMATIA_LLAMA_SERVER_DEFAULT_ARGS": ("ai_model_executor", "runtime_config", "default_args"),
-        "APMATIA_LLAMA_SERVER_LOG_DIR": ("llama_server", "log_dir"),
         "APMATIA_WORKSPACE_ROOT": ("workspace", "root"),
         "APMATIA_KNOWLEDGE_ROOT": ("knowledge", "root"),
         "APMATIA_TIMEZONE": ("ui", "timezone"),
@@ -230,8 +208,6 @@ def _seed_from_env(config: dict[str, Any]) -> dict[str, Any]:
             "APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY",
         }:
             _set_nested(seeded, cfg_keys, _parse_bool_env(env_value))
-        elif env_key == "APMATIA_LLAMA_SERVER_DEFAULT_ARGS":
-            _set_nested(seeded, cfg_keys, [part.strip() for part in env_value.split() if part.strip()])
         elif env_key == "APMATIA_GGUF_DIRECTORIES":
             directories = [part.strip() for part in env_value.replace(os.pathsep, "\n").splitlines() if part.strip()]
             _set_nested(seeded, cfg_keys, directories)
@@ -258,17 +234,27 @@ def _migrate_legacy_state(config: dict[str, Any]) -> dict[str, Any]:
         return config
 
     migrated = dict(config)
-    current_discussion_id = legacy_data.get("current_discussion_id")
-    system_prompt = legacy_data.get("system_prompt")
-
-    discussion = dict(migrated.get("discussion", {}))
-    if current_discussion_id and not discussion.get("current_discussion_id"):
-        discussion["current_discussion_id"] = str(current_discussion_id)
-    if isinstance(system_prompt, str) and not discussion.get("system_prompt"):
-        discussion["system_prompt"] = system_prompt
-
-    migrated["discussion"] = discussion
+    archived_state = dict(migrated.get("legacy", {}).get("archived_state", {}))
+    for key in ("current_discussion_id", "system_prompt"):
+        if key in legacy_data and key not in archived_state:
+            archived_state[key] = legacy_data[key]
+    if archived_state:
+        migrated.setdefault("legacy", {})["archived_state"] = archived_state
     return migrated
+
+
+def _archive_obsolete_config(config: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """Move obsolete settings out of active config without discarding persisted values."""
+    archived = dict(config.get("legacy", {}).get("archived_config", {}))
+    active = dict(config)
+    changed = False
+    for key in _ARCHIVED_CONFIG_KEYS:
+        if key in active:
+            archived[key] = active.pop(key)
+            changed = True
+    if archived:
+        active.setdefault("legacy", {})["archived_config"] = archived
+    return active, changed
 
 
 def load_app_config() -> dict[str, Any]:
@@ -277,6 +263,7 @@ def load_app_config() -> dict[str, Any]:
     config = loaded if isinstance(loaded, dict) else {}
     merged = _merge_dicts(_default_config(), config)
     migrated = _migrate_legacy_state(merged)
+    migrated, _archived_changed = _archive_obsolete_config(migrated)
     seeded = _seed_from_env(migrated)
     if seeded != config:
         save_app_config(seeded)

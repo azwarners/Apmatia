@@ -52,14 +52,6 @@ class ToolExecutor:
         if tool is None or not tool.enabled:
             return None
 
-        if tool.provider_id == "builtin.agent_loops_list_agents":
-            return EffectiveToolAccess(
-                tool=tool,
-                assignment=None,
-                confirmation_required=tool.confirmation_required,
-                read_only=True,
-            )
-
         assignment = self._assignment_repo.get_by_agent_tool(agent_id, tool_id)
         legacy_tool_ids = set(agent.tool_ids)
 
@@ -100,7 +92,7 @@ class ToolExecutor:
                     message="Tool is unavailable for this agent.",
                     tool_name=None if requested_tool is None else requested_tool.name,
                     request_id=request_id,
-                    remediation="Assign the tool to the agent or enable it for the current discussion.",
+                    remediation="Assign the tool to the agent or enable it for the current application context.",
                 ),
             )
             self._record_tool_call(tool_call, result, approval_granted=approval_granted, tool=requested_tool)

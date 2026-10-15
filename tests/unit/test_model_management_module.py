@@ -60,31 +60,3 @@ def test_create_config_persists_base_fields():
     assert configs[0]["mode"] == 0
     assert isinstance(configs[0]["created_at"], str)
     assert isinstance(configs[0]["updated_at"], str)
-
-
-def test_probe_config_uses_limited_prompt_response():
-    manager = LLMManager()
-
-    with patch.object(
-        manager,
-        "get_config",
-        return_value=LLM(
-            id=4,
-            user_alias="Verifier",
-            backend="openai_compatible",
-            provider_name="demo",
-            model_url="http://localhost:5001",
-            max_response_size=4096,
-        ),
-    ), patch(
-        "apmatia.modules.discuss.services.prompt_llm",
-        return_value="ready and connected",
-    ) as mock_prompt:
-        result = manager.probe_config(4)
-
-    assert result["config_id"] == 4
-    assert result["user_alias"] == "Verifier"
-    assert result["model_url"] == "http://localhost:5001"
-    assert result["reply_preview"] == "ready and connected"
-    probed_config = mock_prompt.call_args.kwargs["llm_config"]
-    assert probed_config.max_response_size == 64

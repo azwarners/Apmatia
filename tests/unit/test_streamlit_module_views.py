@@ -465,6 +465,7 @@ def test_module_views_page_creates_participant_for_agent_target(mock_streamlit):
     mock_render.assert_called_once_with(document)
 
 
+@pytest.mark.skip(reason="discussion module archived in Phase 2")
 def test_module_views_page_creates_fresh_group_discussion_from_participant_view(mock_streamlit):
     document = _portable_document("discuss.chat_targets.view")
     assert "create_discussion" in {action["key"] for action in document["actions"]}
@@ -512,6 +513,7 @@ def test_module_views_page_creates_fresh_group_discussion_from_participant_view(
     mock_render.assert_called_once_with(document)
 
 
+@pytest.mark.skip(reason="discussion module archived in Phase 2")
 def test_module_views_page_routes_active_contacts_shell_to_discussion(mock_streamlit):
     document = _portable_document("discuss.discussion.view")
     assert document["module_id"] == "discuss"
@@ -696,6 +698,7 @@ def test_render_module_view_form_coerces_float_number_fields(mock_streamlit):
     )
 
 
+@pytest.mark.skip(reason="agent_loops module archived in Phase 2")
 def test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs(mock_streamlit):
     document = _portable_document("agent_loops.loops.view")
     component_types = {component["component_type"] for component in _walk_components(document["presentation"])}
@@ -964,6 +967,7 @@ def test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs(mock_
     assert mock_streamlit.session_state["agent_loops_selected_task_id:agent:1"] == "task-1"
 
 
+@pytest.mark.skip(reason="agent_loops module archived in Phase 2")
 def test_module_views_page_starts_agent_loops_task_from_form(mock_streamlit, tmp_path, monkeypatch):
     document = _portable_document("agent_loops.loops.view")
     action = next(action for action in document["actions"] if action["key"] == "launch_task")
@@ -1080,6 +1084,7 @@ def test_module_views_page_starts_agent_loops_task_from_form(mock_streamlit, tmp
     assert "agent_loops_task_form_open:agent:7" not in mock_streamlit.session_state
 
 
+@pytest.mark.skip(reason="agent_loops module archived in Phase 2")
 def test_module_views_page_stops_agent_loops_task_from_history(mock_streamlit):
     document = _portable_document("agent_loops.loops.view")
     action = next(action for action in document["actions"] if action["key"] == "stop_task")
@@ -1121,6 +1126,7 @@ def test_module_views_page_stops_agent_loops_task_from_history(mock_streamlit):
     mock_streamlit.rerun.assert_called()
 
 
+@pytest.mark.skip(reason="agent_loops module archived in Phase 2")
 def test_agent_loop_live_output_is_append_only_and_ignores_streaming_fragments(mock_streamlit):
     document = _portable_document("agent_loops.loops.view")
     assert document["refresh_policy"]["update_strategy"] == "append"
@@ -1173,6 +1179,7 @@ def test_agent_loop_live_output_is_append_only_and_ignores_streaming_fragments(m
     assert not any(line.startswith("<loop_status>") for line in lines)
 
 
+@pytest.mark.skip(reason="agent_loops module archived in Phase 2")
 def test_module_views_page_renders_agent_loops_task_history_as_terminal_stack(mock_streamlit):
     document = _portable_document("agent_loops.loops.view")
     assert "tasks" in {source["key"] for source in document["data_sources"]}
@@ -1237,6 +1244,7 @@ def test_module_views_page_renders_agent_loops_task_history_as_terminal_stack(mo
     assert mock_streamlit.expander.call_count >= 1
 
 
+@pytest.mark.skip(reason="agent_loops module archived in Phase 2")
 def test_module_views_page_keeps_selected_current_task_stable(mock_streamlit):
     document = _portable_document("agent_loops.loops.view")
     assert "selected_task_id" in {state["key"] for state in document["state"]}
@@ -1254,6 +1262,7 @@ def test_module_views_page_keeps_selected_current_task_stable(mock_streamlit):
     assert str(selected.get("task_id") or "") == "task-1"
 
 
+@pytest.mark.skip(reason="agent_loops module archived in Phase 2")
 def test_agent_loop_event_stream_lines_omits_streaming_fragment_noise(mock_streamlit):
     document = _portable_document("agent_loops.loops.view")
     assert "terminal" in {component["component_type"] for component in _walk_components(document["presentation"])}
@@ -1316,6 +1325,7 @@ def test_agent_loop_event_stream_lines_omits_streaming_fragment_noise(mock_strea
     assert not any(line.startswith("<loop_status>") for line in lines)
 
 
+@pytest.mark.skip(reason="agent_loops module archived in Phase 2")
 def test_agent_loop_task_progress_redraws_checklist_and_status(mock_streamlit):
     types = {component["component_type"] for component in _walk_components(_portable_document("agent_loops.loops.view")["presentation"])}
     assert {"progress", "checklist", "status"} <= types
@@ -1354,6 +1364,7 @@ def test_agent_loop_task_progress_redraws_checklist_and_status(mock_streamlit):
     assert "LOOP STATUS" not in rendered_markdown
 
 
+@pytest.mark.skip(reason="agent_loops module archived in Phase 2")
 def test_agent_loops_current_task_output_renders_live_output_instead_of_separate_checklist(mock_streamlit):
     types = {component["component_type"] for component in _walk_components(_portable_document("agent_loops.loops.view")["presentation"])}
     assert {"terminal", "checklist"} <= types

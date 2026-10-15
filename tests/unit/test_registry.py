@@ -4,7 +4,6 @@ import subprocess
 import sys
 
 from apmatia.core.registry import ActionContribution, CommandContribution, ModuleCategory, ModuleMetadata, ModuleStatus, Registry, ViewContribution
-from apmatia.modules.worksim.module import register as register_worksim_module
 
 
 def test_registry_registers_and_lists_module():
@@ -55,35 +54,6 @@ def test_registry_registers_and_lists_view():
     registry.register_view(view)
 
     assert registry.list_views() == [view]
-
-
-def test_worksim_module_registers_into_registry():
-    registry = Registry()
-
-    register_worksim_module(registry)
-
-    assert registry.list_modules() == []
-    assert registry.list_modules(include_development=True) == [
-        ModuleMetadata(
-            module_id="worksim",
-            name="Worksim",
-            version="0.1.0",
-            description="A workplace simulation module centered on a persistent org chart wiki.",
-            author="Nick",
-            status=ModuleStatus.DEVELOPMENT,
-            category=ModuleCategory.FEATURE,
-            default_enabled=True,
-            tags=("wiki", "org-chart", "agents", "teams", "simulation"),
-        )
-    ]
-    assert [action.action_id for action in registry.list_actions()] == ["worksim.org_chart_node"]
-    assert [command.command_id for command in registry.list_commands()] == [
-        "worksim.create",
-        "worksim.delete",
-        "worksim.edit",
-        "worksim.list",
-    ]
-    assert [view.view_id for view in registry.list_views()] == ["worksim.org_chart_node.view"]
 
 
 def test_core_registry_import_does_not_require_streamlit():

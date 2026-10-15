@@ -25,7 +25,6 @@ PARITY_BASELINE: dict[str, tuple[str, ...]] = {
         "tests/unit/test_phase3_management_views.py::test_agent_config_provider_accepts_generic_item_identity",
         "tests/unit/test_streamlit_module_views.py::test_agent_alarm_document_declares_dropdown_sources_and_schedule_fields",
         "tests/unit/test_phase3_management_views.py::test_portable_alarm_sources_project_api_items_to_options",
-        "tests/unit/test_phase3_management_views.py::test_ai_host_documents_are_contract_ready_with_executable_form_actions",
     ),
     "agents": (
         "tests/unit/test_phase3_management_views.py::test_agents_management_is_a_portable_crud_document",
@@ -37,25 +36,6 @@ PARITY_BASELINE: dict[str, tuple[str, ...]] = {
     "module_management": (
         "tests/unit/test_phase3_management_views.py::test_module_management_is_a_portable_catalog_document",
         "tests/unit/test_preferences_module_management.py::test_preferences_provider_updates_view_order",
-    ),
-    "discussion_and_contacts": (
-        "tests/unit/test_streamlit_discussion_baseline.py::test_discussion_document_requires_an_agent_before_chatting",
-        "tests/unit/test_streamlit_discussion_baseline.py::test_discussion_document_preserves_active_streaming_timeline_semantics",
-        "tests/unit/test_streamlit.py::test_contacts_shell_creates_fresh_discussion_for_agent_contact",
-        "tests/unit/test_streamlit.py::test_contacts_shell_reopens_existing_discussion_for_agent_contact",
-        "tests/unit/test_streamlit.py::test_contacts_shell_creates_fresh_discussion_for_group_contact",
-        "tests/unit/test_streamlit.py::test_contacts_shell_reopens_existing_discussion_for_group_contact",
-        "tests/unit/test_streamlit.py::test_contacts_sidebar_filters_to_selected_group_members_and_highlights_current_speaker",
-        "tests/unit/test_streamlit_module_views.py::test_module_views_page_creates_participant_for_agent_target",
-        "tests/unit/test_streamlit_module_views.py::test_module_views_page_creates_fresh_group_discussion_from_participant_view",
-    ),
-    "agent_loops": (
-        "tests/unit/test_streamlit_module_views.py::test_module_views_page_renders_agent_loops_shell_with_sidebar_and_tabs",
-        "tests/unit/test_streamlit_module_views.py::test_module_views_page_starts_agent_loops_task_from_form",
-        "tests/unit/test_streamlit_module_views.py::test_module_views_page_stops_agent_loops_task_from_history",
-        "tests/unit/test_streamlit_module_views.py::test_agent_loop_live_output_is_append_only_and_ignores_streaming_fragments",
-        "tests/unit/test_streamlit_module_views.py::test_module_views_page_renders_agent_loops_task_history_as_terminal_stack",
-        "tests/unit/test_streamlit_module_views.py::test_agent_loop_task_progress_redraws_checklist_and_status",
     ),
 }
 

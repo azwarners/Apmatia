@@ -14,12 +14,12 @@ AGENT_ALARMS_MODULE = ModuleMetadata(
     module_id="agent_alarms",
     name="Agent Alarms",
     version="0.1.0",
-    description="An experimental alarm scheduler that dispatches prompts to Agent Loops.",
+    description="An experimental alarm scheduler for external agent-run adapters.",
     author="Nick",
     status="development",
     category="agent",
     default_enabled=True,
-    tags=("alarms", "scheduler", "agent-loops", "automation"),
+    tags=("alarms", "scheduler", "automation"),
     metadata={
     },
 )

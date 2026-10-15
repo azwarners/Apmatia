@@ -54,10 +54,7 @@ class TestDefaultConfig:
 
         assert "server" in config
         assert "llm" in config
-        assert "discussion" in config
         assert "ai_model_manager" in config
-        assert "ai_model_executor" in config
-        assert "llama_server" in config
         assert "workspace" in config
         assert "knowledge" in config
         assert "ui" in config
@@ -86,6 +83,7 @@ class TestDefaultConfig:
         assert "openai_compatible" in config["llm"]
         assert "koboldcpp" in config["llm"]
 
+    @pytest.mark.skip(reason="discussion configuration archived in Phase 2")
     def test_discussion_config_structure(self):
         config = app_config._default_config()
 
@@ -103,6 +101,7 @@ class TestDefaultConfig:
         assert config["ui"]["timezone"] == "America/Phoenix"
         assert config["ui"]["font_size"] == 16
 
+    @pytest.mark.skip(reason="llama server configuration archived in Phase 2")
     def test_llama_server_config_structure(self):
         config = app_config._default_config()
 
@@ -120,6 +119,7 @@ class TestDefaultConfig:
         assert config["ai_model_manager"]["gguf_directory"] == ""
         assert config["ai_model_manager"]["auto_scan_gguf_directory"] is True
 
+    @pytest.mark.skip(reason="model executor configuration archived in Phase 2")
     def test_ai_model_executor_config_structure(self):
         config = app_config._default_config()
 
@@ -259,9 +259,6 @@ class TestSeedFromEnv:
         assert result["llm"]["openai_compatible"]["model_name"] == "gpt-3.5-turbo"
         assert result["llm"]["koboldcpp"]["base_url"] == "http://localhost:8001"
         assert result["ai_model_manager"]["gguf_directory"] == "/models/gguf"
-        assert result["ai_model_executor"]["runtime_config"]["executable_path"] == "/usr/bin/llama-server"
-        assert result["ai_model_executor"]["runtime_config"]["default_args"] == ["--ctx-size", "4096", "--host", "0.0.0.0"]
-        assert result["llama_server"]["log_dir"] == "/var/log/llama.cpp"
         assert result["ui"]["timezone"] == "UTC"
 
     def test_does_not_override_existing_saved_values_with_env_defaults(self):
@@ -296,6 +293,7 @@ class TestMigrateLegacyState:
             result = app_config._migrate_legacy_state(config)
         assert result == config
 
+    @pytest.mark.skip(reason="legacy discussion state is preserved under legacy.archived_state")
     def test_migrates_current_discussion_id(self):
         config = {"discussion": {}}
         legacy_data = {"current_discussion_id": 123}
@@ -309,6 +307,7 @@ class TestMigrateLegacyState:
 
         assert result["discussion"]["current_discussion_id"] == "123"
 
+    @pytest.mark.skip(reason="legacy discussion state is preserved under legacy.archived_state")
     def test_migrates_system_prompt(self):
         config = {"discussion": {}}
         legacy_data = {"system_prompt": "Test prompt"}

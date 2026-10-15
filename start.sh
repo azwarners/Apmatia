@@ -71,7 +71,6 @@ APMATIA_WORKSPACE_DIR_HOST="${APMATIA_WORKSPACE_DIR:-$HOME/.apmatia/workspace}"
 APMATIA_WORKSPACE_ROOT_HOST="$APMATIA_WORKSPACE_DIR_HOST/modules"
 APMATIA_GGUF_DIRECTORY_HOST="${APMATIA_GGUF_DIRECTORY:-}"
 APMATIA_GGUF_DIRECTORIES_HOST="${APMATIA_GGUF_DIRECTORIES:-}"
-APMATIA_LLAMA_SERVER_LOG_DIR_HOST="${APMATIA_LLAMA_SERVER_LOG_DIR:-${LLAMA_LOG_DIR:-}}"
 APMATIA_CONTAINER_HOME="/home/apmatia"
 APMATIA_CONTAINER_HOME_DIR="$APMATIA_CONTAINER_HOME/.apmatia"
 APMATIA_CONTAINER_DATA_DIR="$APMATIA_CONTAINER_HOME/.local/share/apmatia"
@@ -120,12 +119,6 @@ ensure_host_permissions() {
 
 build_runtime_args() {
     LOG_DIR_ARGS=()
-    if [ -n "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST" ]; then
-        LOG_DIR_ARGS+=(
-            -v "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST":"$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
-            -e APMATIA_LLAMA_SERVER_LOG_DIR="$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
-        )
-    fi
 
     GGUF_DIR_ARGS=()
     if [ -n "$APMATIA_GGUF_DIRECTORIES_HOST" ]; then
@@ -284,25 +277,6 @@ run_dev_mode() {
     run_streamlit_container "$STREAMLIT_IMAGE_NAME"
 }
 
-if [ -z "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST" ] && [ -f "$APMATIA_CONFIG_DIR_HOST/config.json" ]; then
-    APMATIA_LLAMA_SERVER_LOG_DIR_HOST="$(python3 -c 'import json, sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-try:
-    data = json.loads(path.read_text(encoding="utf-8"))
-except Exception:
-    raise SystemExit(0)
-
-value = ""
-if isinstance(data, dict):
-    llama_server = data.get("llama_server")
-    if isinstance(llama_server, dict):
-        value = llama_server.get("log_dir") or ""
-
-print(str(value).strip())' "$APMATIA_CONFIG_DIR_HOST/config.json")"
-fi
-
 if [ -z "$APMATIA_GGUF_DIRECTORIES_HOST" ] && [ -f "$APMATIA_CONFIG_DIR_HOST/config.json" ]; then
     APMATIA_GGUF_DIRECTORIES_HOST="$(python3 -c 'import json, sys
 from pathlib import Path
@@ -340,10 +314,6 @@ ensure_host_permissions "$APMATIA_HOME_HOST" "$APMATIA_CONTAINER_HOME_DIR"
 ensure_host_permissions "$APMATIA_DATA_DIR_HOST" "$APMATIA_CONTAINER_DATA_DIR"
 ensure_host_permissions "$APMATIA_CONFIG_DIR_HOST" "$APMATIA_CONTAINER_CONFIG_DIR"
 mkdir -p "$APMATIA_WORKSPACE_ROOT_HOST"
-if [ -n "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST" ]; then
-    mkdir -p "$APMATIA_LLAMA_SERVER_LOG_DIR_HOST"
-fi
-
 # Run the container
 if [ "$MODE" = "dev" ]; then
     run_dev_mode

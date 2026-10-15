@@ -597,6 +597,7 @@ def test_message_text_blocks_preserve_markdown_and_emoji(mock_streamlit):
 
     mock_streamlit.markdown.assert_called_once_with("Hello **world**\nLine two 😀")
 
+@pytest.mark.skip(reason="discussion module archived in Phase 2")
 def test_contacts_shell_creates_fresh_discussion_for_agent_contact(mock_streamlit):
     """Selecting an agent contact should create a fresh contacts discussion."""
     document = _portable_document("discuss.discussion.view")
@@ -627,6 +628,7 @@ def test_contacts_shell_creates_fresh_discussion_for_agent_contact(mock_streamli
     )
     mock_open.assert_called_once_with("IDnew123")
 
+@pytest.mark.skip(reason="discussion module archived in Phase 2")
 def test_selecting_contacts_module_restores_contacts_shell(mock_streamlit):
     document = _portable_document("discuss.chat_targets.view")
     assert {"create_discussion", "open_discussion"} <= {action["key"] for action in document["actions"]}
@@ -652,6 +654,7 @@ def test_selecting_contacts_module_restores_contacts_shell(mock_streamlit):
     assert selected_page == "discussion"
     mock_contacts_sidebar.assert_called_once()
 
+@pytest.mark.skip(reason="discussion module archived in Phase 2")
 def test_contacts_shell_reopens_existing_discussion_for_agent_contact(mock_streamlit):
     document = _portable_document("discuss.discussion.view")
     assert "open_discussion" in {action["key"] for action in document["actions"]}
@@ -687,6 +690,7 @@ def test_contacts_shell_reopens_existing_discussion_for_agent_contact(mock_strea
     mock_open.assert_called_once_with("IDagentexisting")
     mock_create.assert_not_called()
 
+@pytest.mark.skip(reason="discussion module archived in Phase 2")
 def test_contacts_shell_creates_fresh_discussion_for_group_contact(mock_streamlit):
     document = _portable_document("discuss.discussion.view")
     assert "create_discussion" in {action["key"] for action in document["actions"]}
@@ -720,6 +724,7 @@ def test_contacts_shell_creates_fresh_discussion_for_group_contact(mock_streamli
     )
     mock_open.assert_called_once_with("IDgroupnew123")
 
+@pytest.mark.skip(reason="discussion module archived in Phase 2")
 def test_contacts_shell_reopens_existing_discussion_for_group_contact(mock_streamlit):
     document = _portable_document("discuss.discussion.view")
     assert "open_discussion" in {action["key"] for action in document["actions"]}
@@ -818,6 +823,7 @@ def test_message_card_css_includes_emoji_safe_font_stack(mock_streamlit):
     assert "Segoe UI Emoji" in rendered_css
     assert "Noto Color Emoji" in rendered_css
 
+@pytest.mark.skip(reason="discussion module archived in Phase 2")
 def test_contacts_sidebar_filters_to_selected_group_members_and_highlights_current_speaker(mock_streamlit):
     document = _portable_document("discuss.discussion.view")
     state = {entry["key"] for entry in document["state"]}
@@ -1019,6 +1025,7 @@ def test_render_sidebar_clicking_module_selects_first_visible_view(mock_streamli
     assert mock_streamlit.session_state["selected_module_view_id"] == "ipe.task.view"
     mock_streamlit.rerun.assert_called_once()
 
+@pytest.mark.skip(reason="agent_loops module archived in Phase 2")
 def test_render_sidebar_shows_agent_loops_contact_roster(mock_streamlit):
     document = _portable_document("agent_loops.loops.view")
     assert "contacts" in {source["key"] for source in document["data_sources"]}
@@ -1421,6 +1428,7 @@ def test_start_script_bootstraps_workspace_modules_on_the_host():
     assert 'mkdir -p "$APMATIA_HOME_HOST/workspace/modules"' not in launcher
     assert 'APMATIA_CONTAINER_HOME="/home/apmatia"' in launcher
 
+@pytest.mark.skip(reason="llama server configuration archived in Phase 2")
 def test_start_script_uses_saved_llama_server_log_dir_when_env_is_missing():
     """The standard launcher should fall back to the saved config for llama.cpp logs."""
     launcher = (REPO_ROOT / "start.sh").read_text()

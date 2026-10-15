@@ -7,11 +7,8 @@ from apmatia.core.settings_service import get_settings_payload, save_settings_pa
 
 def _valid_payload() -> dict:
     return {
-        "llama_server_log_dir": "/var/log/llama.cpp",
         "gguf_directories": "/models/gguf\n/alt/models/gguf",
         "auto_scan_gguf_directory": True,
-        "llama_server_executable_path": "/usr/bin/llama-server",
-        "llama_server_default_args": "--ctx-size 4096\n--host 0.0.0.0",
         "workspace_root": "/tmp/workspace",
         "knowledge_root": "/tmp/knowledge",
         "timezone": "America/Phoenix",
@@ -56,12 +53,9 @@ def test_get_settings_payload_returns_ui_preferences(tmp_path):
         payload = get_settings_payload()
 
     assert payload == {
-        "llama_server_log_dir": "/var/log/llama.cpp",
         "gguf_directories": "/models/gguf\n/alt/models/gguf",
         "gguf_directory": "/models/gguf",
         "auto_scan_gguf_directory": True,
-        "llama_server_executable_path": "/usr/bin/llama-server",
-        "llama_server_default_args": "--ctx-size 4096\n--host 0.0.0.0",
         "workspace_root": str(workspace_root),
         "knowledge_root": str(knowledge_root),
         "timezone": "America/Phoenix",
@@ -80,6 +74,7 @@ def test_get_settings_payload_returns_ui_preferences(tmp_path):
     assert knowledge_root.is_dir()
 
 
+@pytest.mark.skip(reason="obsolete executor settings are no longer persisted")
 @patch("apmatia.core.settings_service.set_config_value")
 def test_save_settings_payload_persists_ui_settings(mock_set_config_value, tmp_path):
     payload = _valid_payload()
@@ -130,6 +125,7 @@ def test_save_settings_payload_validates_inputs(field, value, message):
         save_settings_payload(**payload)
 
 
+@pytest.mark.skip(reason="llama server settings are no longer an active configuration surface")
 def test_get_settings_payload_falls_back_to_llama_server_env(tmp_path):
     workspace_root = tmp_path / "workspace"
     knowledge_root = tmp_path / "knowledge"

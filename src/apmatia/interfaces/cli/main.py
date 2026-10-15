@@ -23,7 +23,6 @@ def build_parser(catalog: list[dict] | None = None) -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", title="commands")
     add_module_parser(subparsers)
     _add_auth_parsers(subparsers)
-    _add_prompt_parser(subparsers)
     commands_parser = subparsers.add_parser("commands", help="List active registry commands.")
     commands_parser.add_argument("--format", choices=("text", "json"), default="text")
     commands_parser.set_defaults(handler=_handle_commands, command_catalog=resolved_catalog)
@@ -47,13 +46,6 @@ def _add_auth_parsers(subparsers) -> None:
 
     whoami_parser = subparsers.add_parser("whoami", help="Show the current CLI session.")
     whoami_parser.set_defaults(handler=_handle_whoami)
-
-
-def _add_prompt_parser(subparsers) -> None:
-    parser = subparsers.add_parser("prompt", help="Send a prompt through the Apmatia API.")
-    parser.add_argument("text")
-    parser.add_argument("--output-dir")
-    parser.set_defaults(handler=_handle_prompt)
 
 
 def _password(args: argparse.Namespace) -> str:
@@ -88,11 +80,6 @@ def _handle_whoami(_args: argparse.Namespace) -> int:
     return 0
 
 
-def _handle_prompt(args: argparse.Namespace) -> int:
-    print(api_client.prompt(args.text, output_dir=args.output_dir))
-    return 0
-
-
 def _handle_commands(args: argparse.Namespace) -> int:
     if args.format == "json":
         print(json.dumps(args.command_catalog, indent=2, default=str))
@@ -117,7 +104,7 @@ def _version() -> str:
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     try:
-        static_commands = {"module", "login", "register", "logout", "whoami", "prompt"}
+        static_commands = {"module", "login", "register", "logout", "whoami"}
         parser = build_parser([] if args and (args[0] in static_commands or args[0] == "--version") else None)
     except CliApiError as error:
         print(f"Error loading command catalog: {error.detail}", file=sys.stderr)

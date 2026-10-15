@@ -108,20 +108,6 @@ def root(request: Request):
     return _ui_file_response("src/interfaces/web/index.html")
 
 
-@app.get("/discussion")
-def discussion_page(request: Request):
-    if not _is_authenticated(request):
-        return RedirectResponse(url="/login", status_code=303)
-    return _ui_file_response("src/interfaces/web/pages/discussion.html")
-
-
-@app.get("/discussion_tree")
-def discussion_tree_page(request: Request):
-    if not _is_authenticated(request):
-        return RedirectResponse(url="/login", status_code=303)
-    return _ui_file_response("src/interfaces/web/pages/discussion_tree.html")
-
-
 @app.get("/desktop")
 def desktop_page(request: Request):
     if not _is_authenticated(request):
@@ -148,16 +134,6 @@ def styles():
     return _ui_file_response("src/interfaces/web/styles.css")
 
 
-@app.get("/discussion.js")
-def discussion_script():
-    return _ui_file_response("src/interfaces/web/js/discussion/discussion.js")
-
-
-@app.get("/discussion-tree.js")
-def discussion_tree_script():
-    return _ui_file_response("src/interfaces/web/js/discussion/discussion-tree.js")
-
-
 @app.get("/settings.js")
 def settings_script():
     return _ui_file_response("src/interfaces/web/js/settings/settings.js")
@@ -166,11 +142,6 @@ def settings_script():
 @app.get("/ai-settings.js")
 def ai_settings_script():
     return _ui_file_response("src/interfaces/web/webcomponents/ai-settings.js")
-
-
-@app.get("/discussion-settings.js")
-def discussion_settings_script():
-    return _ui_file_response("src/interfaces/web/webcomponents/discussion-settings.js")
 
 
 @app.get("/theme-settings.js")
@@ -248,44 +219,9 @@ def tree_list_script():
     return _ui_file_response("src/interfaces/web/webcomponents/tree-list.js")
 
 
-@app.get("/discussion-tree-list-items.js")
-def discussion_tree_list_items_script():
-    return _ui_file_response("src/interfaces/web/webcomponents/discussion-tree-list-items.js")
-
-
-@app.get("/discussion-tree-component.js")
-def discussion_tree_component_script():
-    return _ui_file_response("src/interfaces/web/webcomponents/discussion-tree-component.js")
-
-
-@app.get("/apm-discussion-page.js")
-def apm_discussion_page_script():
-    return _ui_file_response("src/interfaces/web/webcomponents/apm-discussion-page.js")
-
-
-@app.get("/apm-discussion-tree-page.js")
-def apm_discussion_tree_page_script():
-    return _ui_file_response("src/interfaces/web/webcomponents/apm-discussion-tree-page.js")
-
-
-@app.get("/apm-discussion-participants-panel.js")
-def apm_discussion_participants_panel_script():
-    return _ui_file_response("src/interfaces/web/webcomponents/apm-discussion-participants-panel.js")
-
-
-@app.get("/apm-discussion-settings-panel.js")
-def apm_discussion_settings_panel_script():
-    return _ui_file_response("src/interfaces/web/webcomponents/apm-discussion-settings-panel.js")
-
-
 @app.get("/apm-ai-settings-panel.js")
 def apm_ai_settings_panel_script():
     return _ui_file_response("src/interfaces/web/webcomponents/apm-ai-settings-panel.js")
-
-
-@app.get("/apm-discussion-settings-category-panel.js")
-def apm_discussion_settings_category_panel_script():
-    return _ui_file_response("src/interfaces/web/webcomponents/apm-discussion-settings-category-panel.js")
 
 
 @app.get("/apm-theme-settings-panel.js")

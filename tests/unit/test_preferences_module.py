@@ -62,7 +62,8 @@ def test_preferences_provider_saves_and_returns_ui_preferences() -> None:
             context=ModuleViewContext(user_id=1),
         )
 
-    save.assert_called_once_with(**payload)
+    expected_payload = {key: value for key, value in payload.items() if not key.startswith("llama_server_")}
+    save.assert_called_once_with(**expected_payload)
     assert result == {
         "status": "saved",
         "message": "Preferences saved.",

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -35,7 +34,6 @@ class ApmatiaShell:
         self._current_content: ft.Control = ft.Container()
         self._current_title = "Apmatia"
         self._view_state: dict[str, Any] = {}
-        self._loop_poll_task: Any = None
         self._login_document: dict[str, Any] | None = None
         self._modules: list[dict[str, Any]] | None = None
         self._renderer = ViewRenderer(self._handle_intent)
@@ -65,8 +63,6 @@ class ApmatiaShell:
 
     def render_route(self) -> None:
         """Render the current route, enforcing protection before rendering."""
-        if not (self._page.route.startswith("/view/agent_loops.loops.view") and self._view_state.get("is_running")):
-            self._cancel_loop_polling()
         if self._page.route != "/login" and not self._state.is_authenticated:
             self._page.route = "/login"
         if self._page.route == "/login":
@@ -165,7 +161,6 @@ class ApmatiaShell:
                     data_sources[source_key] = self._api.load_view_source(
                         operation,
                         {
-                            "discussion_id": self._view_state.get("selected_discussion_id"),
                             "task_id": self._view_state.get("selected_task_id"),
                             "contact_id": self._view_state.get("selected_contact_id"),
                         },
@@ -214,24 +209,6 @@ class ApmatiaShell:
                 f"This portable view needs a Phase 3 renderer component: {error}",
             )
         self._render_shell(rendered, title=str(document.get("title") or view_id))
-        if view_id == "agent_loops.loops.view" and self._view_state.get("is_running"):
-            self._ensure_loop_polling()
-
-    def _ensure_loop_polling(self) -> None:
-        if self._loop_poll_task is None or self._loop_poll_task.done():
-            self._loop_poll_task = self._page.run_task(self._poll_agent_loop)
-
-    def _cancel_loop_polling(self) -> None:
-        if self._loop_poll_task is not None and not self._loop_poll_task.done():
-            self._loop_poll_task.cancel()
-        self._loop_poll_task = None
-
-    async def _poll_agent_loop(self) -> None:
-        while self._page.route.startswith("/view/agent_loops.loops.view") and self._view_state.get("is_running"):
-            await asyncio.sleep(1.0)
-            if self._page.route.startswith("/view/agent_loops.loops.view") and self._view_state.get("is_running"):
-                self.render_route()
-
     def _ensure_module_catalog(self) -> None:
         if self._modules is None:
             catalog = self._api.list_modules()
@@ -376,24 +353,6 @@ class ApmatiaShell:
             self.render_route()
             return
         api_operation = str(payload.pop("api_operation", "") or "")
-        if api_operation == "discussion_prompt":
-            prompt = str(payload.pop("prompt", "") or "").strip()
-            if not prompt:
-                self._show_error("Please enter a message before sending.")
-                return
-            try:
-                self._api.send_discussion_prompt(
-                    prompt,
-                    agent_id=payload.pop("agent_id", None),
-                    discussion_id=payload.pop("discussion_id", None),
-                    model_id=payload.pop("model_id", None),
-                )
-            except AdapterError as error:
-                self._show_error(str(error))
-                return
-            self._view_state["message_input"] = ""
-            self.render_route()
-            return
         command_id = str(payload.pop("command_id", "") or "")
         if not command_id:
             self._show_error(f"The {action_key or 'requested'} action is not connected to a Core command.")
@@ -403,13 +362,6 @@ class ApmatiaShell:
         except AdapterError as error:
             self._show_error(str(error))
             return
-        if command_id == "agent_loops.start":
-            task_id = result.get("task_id") if isinstance(result, dict) else None
-            if task_id:
-                self._view_state["selected_task_id"] = task_id
-            self._view_state["is_running"] = True
-        elif command_id == "agent_loops.stop":
-            self._view_state["is_running"] = False
         self.render_route()
 
     def _handle_login(self, payload: dict[str, Any]) -> None:

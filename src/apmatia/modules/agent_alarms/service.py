@@ -11,7 +11,6 @@ from apmatia.modules.agents.runtime import get_agent_manager
 from apmatia.core.model_management_runtime import get_llm_config_manager
 from apmatia.core.runtime_paths import get_data_dir
 from apmatia.core.models import utc_now
-from apmatia.modules.agent_loops import get_agent_loop_run, start_agent_loop
 
 from .models import AlarmStatus, AgentAlarm
 from .repositories import AgentAlarmRepository, SQLiteAgentAlarmRepository
@@ -267,10 +266,12 @@ class AgentAlarmsService:
 
 class _DefaultAlarmLoopService:
     def start_loop(self, *, agent_id: int, prompt: str, model_id: int | None = None) -> dict[str, Any]:
-        return start_agent_loop(agent_id=agent_id, prompt=prompt, model_id=model_id)
+        del agent_id, prompt, model_id
+        raise RuntimeError("Agent alarm execution requires the external Redless adapter.")
 
     def get_loop_run(self, run_id: str) -> dict[str, Any] | None:
-        return get_agent_loop_run(run_id)
+        del run_id
+        return None
 
 
 _service: AgentAlarmsService | None = None

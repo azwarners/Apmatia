@@ -19,12 +19,4 @@ TOOL_DESCRIPTORS = [
         description="Clone an existing Apmatia agent under a new name.",
         metadata={"builtin": True, "module": "apmatia_admin", "tool": "clone_agent"},
     ),
-    ToolContribution(
-        module_id="apmatia_admin",
-        action_id="apmatia_admin.set_agent_mode.action",
-        tool_id="set_agent_mode",
-        name="set_agent_mode",
-        description="Switch a discussion between discussion and agentic execution modes.",
-        metadata={"builtin": True, "module": "apmatia_admin", "tool": "set_agent_mode"},
-    ),
 ]

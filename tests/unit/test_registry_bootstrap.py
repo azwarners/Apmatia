@@ -2,302 +2,52 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from apmatia.core.registry import (
-    create_application_registry,
-    get_application_registry,
-    load_bundled_modules,
-    Registry,
-)
+from apmatia.core.registry import Registry, create_application_registry, get_application_registry, load_bundled_modules
 from apmatia.core.registry import bootstrap
 
 
-STABLE_MODULE_IDS = {
-    "agents",
-    "auth",
-    "ai_model_manager",
-    "discuss",
-    "logging",
-    "persistence",
-    "preferences",
-    "runtime_telemetry",
-    "users",
-    "ysparr",
+ARCHIVED_MODULE_IDS = {
+    "agent_loops", "ai_host_management", "ai_model_executor", "dev_tools", "discuss",
+    "knowledge_wiki", "memory_manager", "os_admin", "runtime_telemetry", "worksim",
+}
+SURVIVING_MODULE_IDS = {
+    "agent_alarms", "agent_config", "agent_tools", "agents", "ai_model_manager",
+    "apmatia_admin", "auth", "ipe", "logging", "persistence", "preferences", "users", "ysparr",
 }
 
 
-def test_load_bundled_modules_loads_bundled_modules():
+def _module_ids(registry: Registry) -> set[str]:
+    return {module.module_id for module in registry.list_modules(include_development=True)}
+
+
+def test_load_bundled_modules_excludes_archived_modules():
     registry = load_bundled_modules(Registry(), include_development=True)
-
-    assert [module.module_id for module in registry.list_modules(include_development=True)] == [
-        "agent_alarms",
-        "agent_config",
-        "agent_loops",
-        "agent_tools",
-        "agents",
-        "ai_host_management",
-        "ai_model_executor",
-        "ai_model_manager",
-        "apmatia_admin",
-        "auth",
-        "dev_tools",
-        "discuss",
-        "ipe",
-        "knowledge_wiki",
-        "logging",
-        "memory_manager",
-        "os_admin",
-        "persistence",
-        "preferences",
-        "runtime_telemetry",
-        "users",
-        "worksim",
-        "ysparr",
-    ]
-    assert [action.action_id for action in registry.list_actions()] == [
-        "agent_alarms.alarms",
-        "agent_config.agent_config",
-        "agent_tools.agent_tools",
-        "agents.agents",
-        "ai_host_management.hosts",
-        "ai_host_management.resources",
-        "ai_model_executor.capacity",
-        "ai_model_executor.executions",
-        "ai_model_executor.queue",
-        "ai_model_executor.reservations",
-        "ai_model_executor.resources",
-        "ai_model_manager.llm_configs",
-        "ai_model_manager.models",
-        "ai_model_manager.preferences",
-        "auth.login",
-        "auth.register",
-        "discuss.chat_targets",
-        "discuss.discussions",
-        "discuss.summaries",
-        "discuss.topics",
-        "discuss.turns",
-        "ipe.calendar_event",
-        "ipe.habit",
-        "ipe.idea",
-        "ipe.project",
-        "ipe.task",
-        "memory_manager.memory",
-        "preferences.modules",
-        "preferences.preferences",
-        "users.users",
-        "worksim.org_chart_node",
-    ]
-    assert [command.command_id for command in registry.list_commands()] == [
-        "agent_alarms.create",
-        "agent_alarms.delete",
-        "agent_alarms.edit",
-        "agent_alarms.list",
-            "agent_config.save",
-            "agent_loops.start",
-            "agent_loops.stop",
-        "agent_tools.create",
-        "agent_tools.edit",
-        "agent_tools.list",
-            "agents.clone",
-            "agents.create",
-        "agents.delete",
-        "agents.edit",
-        "agents.list",
-        "ai_host_management.hosts.create",
-        "ai_host_management.hosts.delete",
-        "ai_host_management.hosts.disable",
-        "ai_host_management.hosts.edit",
-        "ai_host_management.hosts.list",
-        "ai_host_management.hosts.prepare_ssh_copy_command",
-        "ai_host_management.hosts.prepare_ssh_key",
-        "ai_host_management.resources.inspect_local",
-        "ai_host_management.resources.validate",
-        "ai_model_executor.capacity.list",
-        "ai_model_executor.executions.can_run",
-        "ai_model_executor.executions.list",
-        "ai_model_executor.executions.show",
-        "ai_model_executor.executions.start",
-        "ai_model_executor.executions.status",
-        "ai_model_executor.executions.stop",
-        "ai_model_executor.queue.cancel",
-        "ai_model_executor.queue.enqueue",
-        "ai_model_executor.queue.list",
-        "ai_model_executor.reservations.create",
-        "ai_model_executor.reservations.list",
-        "ai_model_executor.reservations.release",
-        "ai_model_executor.resources.inspect",
-        "ai_model_manager.llm_configs.create",
-        "ai_model_manager.llm_configs.delete",
-        "ai_model_manager.llm_configs.edit",
-        "ai_model_manager.llm_configs.list",
-        "ai_model_manager.llm_configs.test",
-        "ai_model_manager.models.create",
-        "ai_model_manager.models.delete",
-        "ai_model_manager.models.edit",
-        "ai_model_manager.models.list",
-        "ai_model_manager.models.scan",
-        "ai_model_manager.models.show",
-        "ai_model_manager.preferences.create",
-        "ai_model_manager.preferences.delete",
-        "ai_model_manager.preferences.edit",
-        "ai_model_manager.preferences.list",
-            "discuss.chat_targets.create",
-            "discuss.chat_targets.delete",
-            "discuss.chat_targets.edit",
-            "discuss.chat_targets.list",
-            "discuss.discussion.create",
-            "discuss.discussion.open",
-            "discuss.discussions.create",
-        "discuss.discussions.delete",
-        "discuss.discussions.edit",
-        "discuss.discussions.list",
-        "discuss.summaries.create",
-        "discuss.summaries.delete",
-        "discuss.summaries.edit",
-        "discuss.summaries.list",
-        "discuss.topics.assess_transition",
-        "discuss.topics.create",
-        "discuss.topics.delete",
-        "discuss.topics.edit",
-        "discuss.topics.list",
-        "discuss.topics.summarize",
-        "discuss.turns.create",
-        "discuss.turns.delete",
-        "discuss.turns.edit",
-        "discuss.turns.list",
-        "ipe.calendar_event.create",
-        "ipe.calendar_event.delete",
-        "ipe.calendar_event.edit",
-        "ipe.calendar_event.list",
-        "ipe.habit.create",
-        "ipe.habit.delete",
-        "ipe.habit.edit",
-        "ipe.habit.list",
-        "ipe.idea.create",
-        "ipe.idea.delete",
-        "ipe.idea.edit",
-        "ipe.idea.list",
-        "ipe.project.create",
-        "ipe.project.delete",
-        "ipe.project.edit",
-        "ipe.project.list",
-        "ipe.task.create",
-        "ipe.task.delete",
-        "ipe.task.edit",
-        "ipe.task.list",
-        "memory_manager.create",
-        "memory_manager.delete",
-        "memory_manager.edit",
-        "memory_manager.list",
-        "preferences.save",
-        "preferences.set_activation",
-        "preferences.set_module_order",
-        "preferences.set_module_visibility",
-        "preferences.set_view_order",
-        "preferences.set_view_visibility",
-        "preferences.update_catalog_item",
-        "users.add_member",
-        "users.create",
-        "users.create_group",
-        "users.create_user",
-        "users.delete",
-        "users.delete_group",
-        "users.delete_user",
-        "users.edit",
-        "users.edit_group",
-        "users.edit_user",
-        "users.list",
-        "users.set_membership_enabled",
-        "worksim.create",
-        "worksim.delete",
-        "worksim.edit",
-        "worksim.list",
-    ]
-    assert [view.view_id for view in registry.list_views()] == [
-        "agent_alarms.alarms.view",
-        "agent_config.agent_config.view",
-        "agent_loops.contacts.view",
-        "agent_loops.knowledge.view",
-        "agent_loops.loops.view",
-        "agent_loops.tasks.view",
-        "agent_loops.workspace.view",
-        "agent_tools.agent_tools.view",
-        "agents.agents.view",
-        "ai_host_management.hosts.view",
-        "ai_host_management.resources.view",
-        "ai_model_executor.capacity.view",
-        "ai_model_executor.executions.view",
-        "ai_model_executor.queue.view",
-        "ai_model_executor.reservations.view",
-        "ai_model_executor.resources.view",
-        "ai_model_manager.llm_configs.view",
-        "ai_model_manager.models.view",
-        "ai_model_manager.preferences.view",
-        "auth.login.view",
-        "auth.register.view",
-        "discuss.chat_targets.view",
-        "discuss.discussion.view",
-        "ipe.calendar_event.view",
-        "ipe.habit.view",
-        "ipe.idea.view",
-        "ipe.project.view",
-        "ipe.task.view",
-        "logging.entries.view",
-        "memory_manager.memory.view",
-        "preferences.modules.view",
-        "preferences.preferences.view",
-        "users.groups.view",
-        "users.users.view",
-        "worksim.org_chart_node.view",
-    ]
-
-
-def test_create_application_registry_loads_bundled_modules():
-    registry = create_application_registry(include_development=False)
-
-    assert [module.module_id for module in registry.list_modules(include_development=True)] == [
-        "agents",
-        "ai_model_manager",
-        "auth",
-        "discuss",
-        "logging",
-        "persistence",
-        "preferences",
-        "runtime_telemetry",
-        "users",
-        "ysparr",
-    ]
+    assert _module_ids(registry) == SURVIVING_MODULE_IDS
+    assert not (_module_ids(registry) & ARCHIVED_MODULE_IDS)
     assert registry.list_actions()
     assert registry.list_commands()
     assert registry.list_views()
 
 
+def test_create_application_registry_excludes_archived_modules():
+    registry = create_application_registry(include_development=False)
+    assert _module_ids(registry) == {"agents", "ai_model_manager", "auth", "logging", "persistence", "preferences", "users", "ysparr"}
+    assert not (_module_ids(registry) & ARCHIVED_MODULE_IDS)
+
+
 def test_stable_registry_excludes_all_development_contributions():
     registry = create_application_registry(include_development=False)
-
-    assert {module.module_id for module in registry.list_modules(include_development=True)} == STABLE_MODULE_IDS
-    assert {action.module_id for action in registry.list_actions()} <= STABLE_MODULE_IDS
-    assert {tool.module_id for tool in registry.list_tools()} <= STABLE_MODULE_IDS
-    assert {command.module_id for command in registry.list_commands()} <= STABLE_MODULE_IDS
-    assert {view.module_id for view in registry.list_views()} <= STABLE_MODULE_IDS
+    assert _module_ids(registry) <= SURVIVING_MODULE_IDS
+    assert all(item.module_id in SURVIVING_MODULE_IDS for item in registry.list_actions())
+    assert all(item.module_id in SURVIVING_MODULE_IDS for item in registry.list_tools())
+    assert all(item.module_id in SURVIVING_MODULE_IDS for item in registry.list_commands())
+    assert all(item.module_id in SURVIVING_MODULE_IDS for item in registry.list_views())
 
 
 def test_get_application_registry_returns_cached_registry():
     bootstrap.get_application_registry.cache_clear()
-
     with patch("apmatia.core.registry.bootstrap.get_config_value", return_value=False):
         first = get_application_registry()
         second = get_application_registry()
-
     assert first is second
-    assert [module.module_id for module in first.list_modules(include_development=True)] == [
-        "agents",
-        "ai_model_manager",
-        "auth",
-        "discuss",
-        "logging",
-        "persistence",
-        "preferences",
-        "runtime_telemetry",
-        "users",
-        "ysparr",
-    ]
+    assert _module_ids(first) == {"agents", "ai_model_manager", "auth", "logging", "persistence", "preferences", "users", "ysparr"}

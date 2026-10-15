@@ -176,6 +176,7 @@ class TestSQLiteAgentRepository:
             tool_ids=[300, 400],
             default_model_id=50,
             active_model_id=60,
+            is_public=True,
             metadata={"version": "1.0", "env": "test"},
         )
         agent_id = agent_repo.create(agent)
@@ -186,6 +187,7 @@ class TestSQLiteAgentRepository:
         assert retrieved.tool_ids == [300, 400]
         assert retrieved.default_model_id == 50
         assert retrieved.active_model_id == 60
+        assert retrieved.is_public is True
         assert retrieved.metadata == {"version": "1.0", "env": "test"}
 
     def test_get_agent_normalizes_missing_base_fields(self, agent_repo):

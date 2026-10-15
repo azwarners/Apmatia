@@ -83,6 +83,7 @@ def update_agent_by_id(
     tool_ids: list[int] | None = Body(None, description="Tool IDs"),
     default_model_id: int | None = Body(None, description="Default model ID"),
     active_model_id: int | None = Body(None, description="Active model ID"),
+    is_public: bool | None = Body(None, description="Publish this prompt-only agent publicly"),
     workspace_root: str | None = Body(None, description="Workspace root"),
     knowledge_root: str | None = Body(None, description="Knowledge root"),
     metadata: dict | None = Body(None, description="Metadata"),
@@ -132,12 +133,22 @@ def update_agent_by_id(
         updates["default_model_id"] = default_model_id
     if active_model_id is not None:
         updates["active_model_id"] = active_model_id
+    if isinstance(is_public, bool):
+        updates["is_public"] = is_public
     if workspace_root is not None:
         updates["workspace_root"] = workspace_root
     if knowledge_root is not None:
         updates["knowledge_root"] = knowledge_root
     if metadata is not None:
         updates["metadata"] = metadata
+    if updates.get("is_public") is True and not _is_publication_eligible(agent, updates):
+        raise HTTPException(
+            status_code=400,
+            detail="Only prompt-only agents without memory, RAG, tools, private knowledge, or metadata can be published.",
+        )
+    if getattr(agent, "is_public", False) and updates.get("is_public") is not False:
+        if not _is_publication_eligible(agent, updates):
+            updates["is_public"] = False
     return update_agent(agent_id, **updates)
 
 
@@ -185,3 +196,23 @@ def _is_owned_by_session(*, agent: object, session_user_id: int, session_group_i
     if current_owner_group_id is not None and current_owner_group_id in session_group_ids:
         return True
     return False
+
+
+def _is_publication_eligible(agent: object, updates: dict | None = None) -> bool:
+    """Return whether an agent contains only public-safe prompt configuration."""
+    updates = updates or {}
+    def value(name: str, default: object) -> object:
+        if name in updates:
+            return updates[name]
+        if isinstance(agent, dict):
+            return agent.get(name, default)
+        return getattr(agent, name, default)
+
+    return (
+        value("memory_id", 0) in (None, 0)
+        and value("system_prompt_id", 0) in (None, 0)
+        and not value("rag_root_ids", [])
+        and not value("tool_ids", [])
+        and not str(value("knowledge_root", "") or "").strip()
+        and not value("metadata", {})
+    )

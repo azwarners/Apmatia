@@ -1,5 +1,16 @@
 # Apmatia
 
+## Starter agents and chat-client model selection
+
+Apmatia includes five bundled starter profiles: **Mira the Software Engineer** (design, debugging, review), **Luna the Linux Admin** (Linux operations and troubleshooting), **Rowan the Writer** (drafting and editing), **Belle the General Assistant** (general planning and explanations), and **Ivy the Creative Partner** (ideation and worldbuilding).
+
+On a fresh setup, the first user receives the five starter agents automatically after an Apmatia model has been configured. Starter prompts are ordinary editable agent records. Installation does not replace customized agents, and deleting a starter does not make automatic setup recreate it. Manual installation is available through the `agents.install_starters` module command; see [starter catalog documentation](docs/agents/starter-catalog.md) for its API payload and publication behavior.
+
+**Implemented integration:** Agents explicitly published through Apmatia's read-only `GET /api/public/agents` endpoint can be exposed by [Ysparr](https://github.com/azwarners/Ysparr) as virtual entries in a chat client's model dropdown. Configure `YSPARR_APMATIA_PUBLIC_BASE_URL` in Ysparr to point to Apmatia, and configure the client to use Ysparr's OpenAI-compatible `/v1` endpoint. The entries appear by agent name, including the starter names above. Selecting one resolves its current published configuration, maps it to a backing model, and prepends the compiled agent prompt while preserving the client's messages in order. Agent prompts do **not** imply that memory or tools have been enabled.
+
+Publication is explicit; unpublished agents are not visible through the public discovery API. Ysparr returns upstream models without stale agent entries if Apmatia is unavailable. See [Ysparr's README](https://github.com/azwarners/Ysparr#configuration) for configuration and restrictions.
+
+
 Apmatia (Packs Multiple Agents and Tools Into an Application) is an API-first, self-hosted application for interactive agents. It owns agent configuration, role- and application-specific tools, application-facing orchestration, and adapters to external services.
 
 Apmatia uses a module-first architecture:

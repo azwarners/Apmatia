@@ -176,7 +176,6 @@ def _seed_from_env(config: dict[str, Any]) -> dict[str, Any]:
         ),
         "LLM_MODEL": ("llm", "model_name"),
         "LLM_MAX_TOKENS": ("llm", "max_tokens"),
-        "YSPARR_TEXT2TEXT_BACKEND": ("llm", "backend"),
         "OPENAI_COMPAT_BASE_URL": ("llm", "openai_compatible", "base_url"),
         "OPENAI_COMPAT_API_KEY": ("llm", "openai_compatible", "api_key"),
         "OPENAI_COMPAT_MODEL": ("llm", "openai_compatible", "model_name"),

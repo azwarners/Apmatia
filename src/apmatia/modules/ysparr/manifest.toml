@@ -2,18 +2,18 @@
 module_id = "ysparr"
 name = "Ysparr"
 version = "0.1.0"
-description = "Backend-agnostic generative execution and persistence infrastructure."
+description = "Authenticated adapter and Apmatia-owned Ysparr extension."
 author = "Nick"
 status = "stable"
 category = "infrastructure"
 default_enabled = true
-tags = ["generative-ai", "execution", "streaming", "backends", "persistence"]
+tags = ["generative-ai", "adapter", "extension", "streaming"]
 
 [metadata]
 
 [dependencies]
 python = ">=3.10"
-python_packages = ["requests", "jinja2"]
+python_packages = ["httpx"]
 system_packages = []
 modules = []
 tools = []

@@ -2,7 +2,7 @@
 
 ## 1. Discovered Architecture
 - **Canonical Execution Path**:
-  `Internal API (ai_model_executor.py)` $\rightarrow$ `Module Service (ai_model_executor/services.py)` $\rightarrow$ `Ysparr Module Executor (apmatia/modules/ysparr/modalities/text2text/executor.py)` $\rightarrow$ `Backend (OpenAI/KoboldCpp)`.
+  `Internal API (ai_model_executor.py)` $\rightarrow$ `Module Service (ai_model_executor/services.py)` $\rightarrow$ `Ysparr adapter (apmatia/modules/ysparr/client.py)` $\rightarrow$ `Standalone Ysparr` $\rightarrow$ `Configured upstream model`.
 - **Persistence Pattern**:
   Uses a `Repository` protocol. Current implementation relies on `get_config_value` (JSON/SQLite) but moves toward a formal `Repository` $\rightarrow$ `Service` $\rightarrow$ `Model` pattern.
 - **Dependency Direction**:

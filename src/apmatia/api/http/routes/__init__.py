@@ -10,6 +10,7 @@ from .model_routes import router as model_router
 from .module_routes import router as module_router
 from .settings_routes import router as settings_router
 from .tool_routes import router as tool_router
+from .ysparr_extension_routes import router as ysparr_extension_router
 from .users_routes import router as users_router
 
 router = APIRouter()
@@ -24,3 +25,4 @@ router.include_router(ai_model_manager_router)
 router.include_router(model_router)
 router.include_router(module_router)
 router.include_router(tool_router)
+router.include_router(ysparr_extension_router)

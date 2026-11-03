@@ -228,7 +228,6 @@ class TestSeedFromEnv:
             "APMATIA_SERVER_TRANSPORT_SECURITY_CONTAINER_HOST_LOOPBACK_ONLY": "true",
             "LLM_MODEL": "gpt-4",
             "LLM_MAX_TOKENS": "16384",
-            "YSPARR_TEXT2TEXT_BACKEND": "koboldcpp",
             "OPENAI_COMPAT_BASE_URL": "http://localhost:8000",
             "OPENAI_COMPAT_API_KEY": "test-key",
             "OPENAI_COMPAT_MODEL": "gpt-3.5-turbo",
@@ -253,7 +252,6 @@ class TestSeedFromEnv:
         assert result["server"]["transport_security"]["allow_insecure_non_loopback"] is True
         assert result["server"]["transport_security"]["container_host_loopback_only"] is True
         assert result["llm"]["max_tokens"] == 16384
-        assert result["llm"]["backend"] == "koboldcpp"
         assert result["llm"]["openai_compatible"]["base_url"] == "http://localhost:8000"
         assert result["llm"]["openai_compatible"]["api_key"] == "test-key"
         assert result["llm"]["openai_compatible"]["model_name"] == "gpt-3.5-turbo"

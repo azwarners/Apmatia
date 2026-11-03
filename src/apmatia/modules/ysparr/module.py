@@ -7,12 +7,12 @@ APMATIA_YSPARR_MODULE = ModuleMetadata(
     module_id="ysparr",
     name="Ysparr",
     version="0.1.0",
-    description="Backend-agnostic generative execution and persistence infrastructure.",
+    description="Authenticated adapter and Apmatia-owned Ysparr extension.",
     author="Nick",
     status="stable",
     category="infrastructure",
     default_enabled=True,
-    tags=("generative-ai", "execution", "streaming", "backends", "persistence"),
+    tags=("generative-ai", "adapter", "extension", "streaming"),
     metadata={},
 )
 

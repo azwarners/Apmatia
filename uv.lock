@@ -67,6 +67,7 @@ source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "flet" },
+    { name = "httpx" },
     { name = "python-dotenv" },
     { name = "streamlit" },
     { name = "uvicorn" },
@@ -76,6 +77,7 @@ dependencies = [
 requires-dist = [
     { name = "fastapi" },
     { name = "flet" },
+    { name = "httpx" },
     { name = "python-dotenv" },
     { name = "streamlit", specifier = "==1.58.0" },
     { name = "uvicorn" },

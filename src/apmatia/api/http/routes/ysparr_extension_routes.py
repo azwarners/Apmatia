@@ -1,6 +1,7 @@
 """Apmatia-owned, read-only Ysparr extension contract."""
 
 import hmac
+import json
 import os
 
 from fastapi import APIRouter, HTTPException, Request
@@ -15,6 +16,9 @@ from .ysparr_ids import legacy_agent_model_id, named_agent_model_id
 
 router = APIRouter(prefix="/public/ysparr", tags=["ysparr-extension"])
 EXTENSION_API_KEY_ENV = "APMATIA_YSPARR_EXTENSION_API_KEY"
+PRINCIPAL_MAP_ENV = "APMATIA_YSPARR_PRINCIPAL_MAP"
+PRINCIPAL_HEADER = "x-ysparr-principal"
+PRINCIPAL_SIGNATURE_HEADER = "x-ysparr-principal-signature"
 
 
 class ResolveRequest(BaseModel):
@@ -26,18 +30,23 @@ class ResolveRequest(BaseModel):
 @router.get("/catalog")
 def catalog(request: Request) -> dict:
     _authorize(request)
+    principal_user_id = _principal_user_id(request)
     entries = []
     for agent in list_agents():
-        if not _is_publication_eligible(agent) or not agent.get("is_public", False):
+        if not _is_publication_eligible(agent):
+            continue
+        is_public = bool(agent.get("is_public", False))
+        is_owned = principal_user_id is not None and agent.get("owner_user_id") == principal_user_id
+        if not is_public and not is_owned:
             continue
         public = _public_agent(agent)
         model = public.get("model")
         if not isinstance(model, dict) or not model.get("backend"):
             continue
         entries.append({
-            "id": named_agent_model_id(public["name"]),
+            "id": named_agent_model_id(public["name"]) if is_public else legacy_agent_model_id(public["id"]),
             "name": public["name"],
-            "aliases": [legacy_agent_model_id(public["id"])],
+            "aliases": [legacy_agent_model_id(public["id"])] if is_public else [],
             "owned_by": "apmatia",
             "target": {"preferred_model_type": model["backend"]},
         })
@@ -55,9 +64,11 @@ def resolve(payload: ResolveRequest, request: Request) -> dict:
     )
     if entry is None:
         raise HTTPException(status_code=404, detail="extension entry not found")
-    agent_name = entry["name"]
-    agent = next((item for item in list_agents() if item["name"] == agent_name), None)
-    if agent is None or not _is_publication_eligible(agent) or not agent.get("is_public", False):
+    principal_user_id = _principal_user_id(request)
+    agent = _agent_for_entry(entry, list_agents())
+    if agent is None or not _is_publication_eligible(agent):
+        raise HTTPException(status_code=404, detail="extension entry not found")
+    if not agent.get("is_public", False) and agent.get("owner_user_id") != principal_user_id:
         raise HTTPException(status_code=404, detail="extension entry not found")
     public = _public_agent(agent)
     model = public.get("model")
@@ -70,6 +81,26 @@ def resolve(payload: ResolveRequest, request: Request) -> dict:
     }
 
 
+def _agent_for_entry(entry: dict, agents: list[dict]) -> dict | None:
+    """Resolve a catalog entry to the exact current agent record.
+
+    Private selectors are ID-based so an agent-name collision cannot make a
+    request resolve to a different user's agent. Public named selectors retain
+    their legacy behavior and are restricted to published records.
+    """
+    selector = entry.get("id", "")
+    if selector.startswith("apmatia-agent-"):
+        try:
+            agent_id = int(selector.removeprefix("apmatia-agent-"))
+        except ValueError:
+            return None
+        return next((agent for agent in agents if agent.get("id") == agent_id), None)
+    return next(
+        (agent for agent in agents if agent.get("name") == entry.get("name") and agent.get("is_public", False)),
+        None,
+    )
+
+
 def _authorize(request: Request) -> None:
     expected = os.getenv(EXTENSION_API_KEY_ENV)
     if not expected:
@@ -78,3 +109,22 @@ def _authorize(request: Request) -> None:
     scheme, _, supplied = authorization.partition(" ")
     if scheme.lower() != "bearer" or not supplied or not hmac.compare_digest(supplied, expected):
         raise HTTPException(status_code=401, detail="invalid extension credentials")
+
+
+def _principal_user_id(request: Request) -> int | None:
+    principal = request.headers.get(PRINCIPAL_HEADER)
+    signature = request.headers.get(PRINCIPAL_SIGNATURE_HEADER)
+    if not principal and not signature:
+        return None
+    expected = os.getenv(EXTENSION_API_KEY_ENV)
+    if not expected or not principal or not signature:
+        raise HTTPException(status_code=401, detail="invalid principal assertion")
+    expected_signature = hmac.new(expected.encode(), principal.encode(), "sha256").hexdigest()
+    if not hmac.compare_digest(signature, expected_signature):
+        raise HTTPException(status_code=401, detail="invalid principal assertion")
+    try:
+        mapping = json.loads(os.getenv(PRINCIPAL_MAP_ENV, "{}"))
+        user_id = mapping.get(principal)
+        return int(user_id) if user_id is not None else None
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None

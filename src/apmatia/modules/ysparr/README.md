@@ -17,3 +17,11 @@ For deployments where the Apmatia API is not otherwise protected, set
 `APMATIA_YSPARR_EXTENSION_API_KEY` on Apmatia and the matching
 `YSPARR_EXTENSION_API_KEY` on Ysparr. Leave it unset only when the service
 boundary is already protected by the deployment network.
+
+For authenticated Ysparr callers, the adapter accepts the stable Ysparr
+principal ID only when it is accompanied by an HMAC-SHA256 proof made from the
+shared extension key. Configure an explicit JSON mapping from Ysparr principal
+IDs to existing Apmatia user IDs in `APMATIA_YSPARR_PRINCIPAL_MAP`. A mapped
+principal receives its own eligible private agents plus public starters;
+unmapped or missing principals receive public starters only, and private
+selectors fail closed.

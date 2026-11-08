@@ -8,10 +8,12 @@ client used by Apmatia-owned callers. The module also publishes the versioned
 read-only extension at `/api/public/ysparr/catalog` and
 `/api/public/ysparr/resolve`.
 
-Published agent entries contain only public names, stable selectors, and
-non-secret target metadata. Resolution receives a read-only request view and
-returns additive system/developer-role contributions; it cannot alter
-messages, history, model selection, or earlier contributions.
+Agent entries contain stable selectors and non-secret target metadata.
+Unauthenticated or unmapped callers receive only published public names;
+mapped callers additionally receive their own eligible private agents.
+Resolution receives a read-only request view and returns additive
+system/developer-role contributions; it cannot alter messages, history, model
+selection, or earlier contributions.
 
 For deployments where the Apmatia API is not otherwise protected, set
 `APMATIA_YSPARR_EXTENSION_API_KEY` on Apmatia and the matching

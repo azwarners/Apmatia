@@ -11,7 +11,7 @@ from apmatia.core.permissions import can_write
 
 from .manager import DEFAULT_AGENT_MODE, AgentManager
 from .models import Agent
-from .starter_catalog import install_starter_profiles
+from .starter_catalog import clone_starter_agents
 
 
 class AgentsModuleViewProvider:
@@ -40,15 +40,10 @@ class AgentsModuleViewProvider:
         verb = str(command.metadata.get("verb") or command.command_id.rsplit(".", 1)[-1]).strip().lower()
         if verb == "list":
             return {"items": self.list_items(view=_view_from_command(command), context=context)}
-        if verb == "install_starters":
-            model_id = payload.get("default_model_id")
-            if model_id in ("", 0, "0"):
-                model_id = None
-            return install_starter_profiles(
+        if verb == "clone_starters":
+            return clone_starter_agents(
                 self.manager,
                 owner_user_id=user_id,
-                default_model_id=model_id,
-                publish=payload.get("publish", False),
             )
         if verb == "create":
             values = _agent_values(payload)

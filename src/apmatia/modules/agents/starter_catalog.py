@@ -13,6 +13,7 @@ from .manager import DEFAULT_AGENT_MODE, AgentManager
 
 _PROMPT_KEYS = {item.name for item in fields(AgentPrompt)}
 _CATALOG_DIR = "starter_profiles"
+_CLONE_MARKER = "cloned_from_starter_profile_id"
 
 
 def load_starter_profiles() -> list[dict[str, Any]]:
@@ -119,3 +120,65 @@ def install_starter_profiles(
         "default_model_id": default_model_id,
         "profiles": results,
     }
+
+
+def clone_starter_agents(manager: AgentManager, *, owner_user_id: int) -> dict[str, Any]:
+    """Clone every available starter into editable, user-owned agents."""
+    profiles = load_starter_profiles()
+    profile_ids = {profile["profile_id"] for profile in profiles}
+    agents = manager.list_agents()
+    starters = {agent.starter_profile_id: agent for agent in agents if agent.starter_profile_id in profile_ids}
+    cloned_by_profile = {
+        agent.metadata.get(_CLONE_MARKER): agent
+        for agent in agents
+        if agent.owner_user_id == owner_user_id and agent.metadata.get(_CLONE_MARKER) in profile_ids
+    }
+    names = {agent.name.casefold() for agent in agents}
+    results: list[dict[str, Any]] = []
+    cloned = skipped = missing = 0
+
+    for profile in profiles:
+        profile_id = profile["profile_id"]
+        source = starters.get(profile_id)
+        if source is None:
+            missing += 1
+            results.append({"profile_id": profile_id, "name": profile["name"], "status": "starter_missing"})
+            continue
+        if profile_id in cloned_by_profile:
+            skipped += 1
+            existing = cloned_by_profile[profile_id]
+            results.append({"profile_id": profile_id, "name": existing.name, "status": "already_cloned", "agent_id": existing.id})
+            continue
+
+        name = _available_clone_name(source.name, names)
+        metadata = dict(source.metadata or {})
+        metadata[_CLONE_MARKER] = profile_id
+        agent = manager.clone_agent(
+            source.id,
+            name,
+            owner_user_id=owner_user_id,
+            owner_group_id=None,
+            metadata=metadata,
+        )
+        names.add(name.casefold())
+        cloned_by_profile[profile_id] = agent
+        cloned += 1
+        results.append({"profile_id": profile_id, "name": name, "status": "cloned", "agent_id": agent.id})
+
+    return {
+        "status": "cloned" if cloned else "unchanged",
+        "cloned": cloned,
+        "already_cloned": skipped,
+        "starter_missing": missing,
+        "profiles": results,
+    }
+
+
+def _available_clone_name(source_name: str, existing_names: set[str]) -> str:
+    base = f"Copy of {source_name}"
+    candidate = base
+    suffix = 2
+    while candidate.casefold() in existing_names:
+        candidate = f"{base} ({suffix})"
+        suffix += 1
+    return candidate

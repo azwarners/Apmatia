@@ -8,7 +8,7 @@ from apmatia.modules.agents.commands import COMMAND_DESCRIPTORS
 from apmatia.modules.agents.manager import AgentManager
 from apmatia.modules.agents.module_views import AgentsModuleViewProvider
 from apmatia.modules.agents.sqlite_repositories import SQLiteAgentManagementBundle
-from apmatia.modules.agents.starter_catalog import install_starter_profiles, load_starter_profiles
+from apmatia.modules.agents.starter_catalog import clone_starter_agents, install_starter_profiles, load_starter_profiles
 from apmatia.api.internal import agent_starter_bootstrap
 
 
@@ -75,10 +75,10 @@ def test_existing_name_conflict_is_reported_without_overwrite(tmp_path):
     assert manager.get_agent(original.id).starter_profile_id is None
 
 
-def test_existing_agents_command_installs_profiles_for_authenticated_user(tmp_path):
+def test_existing_agents_command_clones_profiles_for_authenticated_user(tmp_path):
     manager = _manager(tmp_path)
     provider = AgentsModuleViewProvider(manager_factory=lambda: manager)
-    command = next(command for command in COMMAND_DESCRIPTORS if command.command_id == "agents.install_starters")
+    command = next(command for command in COMMAND_DESCRIPTORS if command.command_id == "agents.clone_starters")
 
     with pytest.raises(ValueError, match="Authentication required"):
         provider.execute_command(
@@ -86,15 +86,27 @@ def test_existing_agents_command_installs_profiles_for_authenticated_user(tmp_pa
             payload={},
             context=ModuleViewContext(user_id=None, group_ids=frozenset()),
         )
-    result = provider.execute_command(
-        command=command,
-        payload={"default_model_id": "73"},
-        context=ModuleViewContext(user_id=31, group_ids=frozenset()),
-    )
+    install_starter_profiles(manager, owner_user_id=1, publish=True)
+    result = provider.execute_command(command=command, payload={}, context=ModuleViewContext(user_id=31, group_ids=frozenset()))
 
-    assert result["installed"] == 5
-    assert all(agent.owner_user_id == 31 for agent in manager.list_agents())
-    assert {agent.default_model_id for agent in manager.list_agents()} == {73}
+    assert result["cloned"] == 5
+    custom = [agent for agent in manager.list_agents() if agent.owner_user_id == 31]
+    assert len(custom) == 5
+    assert all(agent.starter_profile_id is None for agent in custom)
+    assert all(not agent.is_public for agent in custom)
+    assert all(agent.metadata["cloned_from_starter_profile_id"] for agent in custom)
+
+
+def test_clone_starters_is_idempotent(tmp_path):
+    manager = _manager(tmp_path)
+    install_starter_profiles(manager, owner_user_id=1, publish=True)
+
+    first = clone_starter_agents(manager, owner_user_id=31)
+    second = clone_starter_agents(manager, owner_user_id=31)
+
+    assert first["cloned"] == 5
+    assert second["already_cloned"] == 5
+    assert len([agent for agent in manager.list_agents() if agent.owner_user_id == 31]) == 5
 
 
 def test_default_starters_seed_as_public_with_first_configured_model_and_remain_deleted(tmp_path, monkeypatch):

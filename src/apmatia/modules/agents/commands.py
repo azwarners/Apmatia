@@ -3,7 +3,7 @@ from __future__ import annotations
 from apmatia.core.registry import CommandContribution
 
 
-_VERBS = ("list", "create", "edit", "clone", "delete", "install_starters")
+_VERBS = ("list", "create", "edit", "clone", "delete", "clone_starters")
 
 
 def _input_fields(verb: str) -> list[dict[str, object]]:
@@ -21,19 +21,6 @@ def _input_fields(verb: str) -> list[dict[str, object]]:
                 {"key": "knowledge_root", "label": "Knowledge Root"},
             ]
         )
-    if verb == "install_starters":
-        fields.extend(
-            [
-                {"key": "default_model_id", "label": "Default Model ID", "data_type": "number"},
-                {
-                    "key": "publish",
-                    "label": "Publish new profiles publicly",
-                    "data_type": "boolean",
-                    "default": False,
-                    "help_text": "Explicitly publish newly installed prompt-only profiles. Existing agents are never changed.",
-                },
-            ]
-        )
     return fields
 
 COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = tuple(
@@ -43,8 +30,8 @@ COMMAND_DESCRIPTORS: tuple[CommandContribution, ...] = tuple(
         path=("agents", verb),
         name=f"Agents {verb.title()}",
         description=(
-            "Install the bundled starter profiles without overwriting existing agents."
-            if verb == "install_starters"
+            "Clone all bundled starter agents as editable custom agents for the current user."
+            if verb == "clone_starters"
             else f"{verb.title()} agents through the stable agents module."
         ),
         metadata={

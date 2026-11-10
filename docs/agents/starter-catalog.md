@@ -35,6 +35,27 @@ selection, tools, skills, and knowledge configuration are copied from the
 starter and can then be changed independently. The operation is idempotent;
 running it again does not create another copy for the same user.
 
+## Public starter policy
+
+Built-in starters are public prompt-only agents. They are created without
+persistent memory, tools, RAG roots, private knowledge, or other private
+metadata. Their prompts also instruct them not to claim persistent memory or
+Apmatia tool access.
+
+Apmatia administrators may edit the prompts and model choices of public
+starters and may create additional public starter agents. Public status does
+not grant access to an administrator's personal capabilities: an agent with a
+memory assignment, tool assignment, RAG root, private knowledge root, or
+metadata cannot be published. If a public agent is changed to include one of
+those capabilities, Apmatia rejects the publication or removes its public
+status.
+
+The administrator authorization layer is separate from this capability guard.
+When an external identity provider such as Aggregare SSO is connected, its
+Apmatia administrator mapping should control who may perform these public
+agent changes. Users who need tools or memory should use `agents.clone_starters`
+and keep those custom copies private.
+
 ## Reapplication and customization
 
 Automatic seeding creates agents and their prompts through `AgentManager`, then

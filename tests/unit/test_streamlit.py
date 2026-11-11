@@ -1335,7 +1335,9 @@ def test_main_function_shows_auth_when_unauthenticated(mock_streamlit):
     app = importlib.reload(app)
     with patch.object(
         app, "get_auth_session", return_value={"authenticated": False, "username": None}
-    ), patch.object(app, "render_auth_views") as mock_render_auth_views:
+    ), patch.object(app, "get_settings", return_value={}), patch.object(
+        app, "render_auth_views"
+    ) as mock_render_auth_views:
         app.main()
 
     mock_render_auth_views.assert_called_once()

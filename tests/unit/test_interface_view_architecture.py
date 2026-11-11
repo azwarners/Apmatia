@@ -160,13 +160,22 @@ def _custom_streamlit_screens() -> set[str]:
 
 def _interface_layer_imports() -> set[tuple[str, str]]:
     imports: set[tuple[str, str]] = set()
-    for path in INTERFACES_ROOT.rglob("*.py"):
+    for path in _python_files(INTERFACES_ROOT):
         for imported in _imports(path):
             if imported == "apmatia.core" or imported.startswith("apmatia.core."):
                 imports.add((path.relative_to(INTERFACES_ROOT).as_posix(), imported))
             elif imported == "apmatia.modules" or imported.startswith("apmatia.modules."):
                 imports.add((path.relative_to(INTERFACES_ROOT).as_posix(), imported))
     return imports
+
+
+def _python_files(root: Path):
+    """Yield source files, excluding generated interface build artifacts."""
+    return (
+        path
+        for path in root.rglob("*.py")
+        if "build" not in path.parts and "__pycache__" not in path.parts
+    )
 
 
 def _imports(path: Path) -> set[str]:

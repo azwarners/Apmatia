@@ -4,3 +4,7 @@ build/
 __pycache__/
 *.pyc
 flet_debug.log
+.git/
+.pytest_cache/
+*.egg-info/
+src/apmatia/interfaces/flet/linux/build/

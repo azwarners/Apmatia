@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
@@ -22,6 +24,10 @@ from apmatia.modules.agent_tools.workspace_modules import (
 from apmatia.modules.agent_tools.workspace_files import (
     build_workspace_file_tool_providers,
     workspace_file_tool_definitions,
+)
+from apmatia.modules.agent_tools.sidecaravan import (
+    build_sidecaravan_memory_tool_providers,
+    sidecaravan_memory_tool_definitions,
 )
 
 if TYPE_CHECKING:
@@ -70,6 +76,7 @@ def _ensure_runtime() -> None:
                 *build_agent_config_tool_providers(get_app_dir()),
                 *(build_workspace_file_tool_providers(agent_manager) if development_enabled else []),
                 *(build_workspace_module_tool_providers() if development_enabled else []),
+                *(_build_sidecaravan_providers(agent_manager) if _sidecaravan_enabled() else []),
             ],
             builtin_definitions=[
                 *(apmatia_admin_tool_definitions() if development_enabled else []),
@@ -77,10 +84,26 @@ def _ensure_runtime() -> None:
                 *agent_config_tool_definitions(),
                 *(workspace_file_tool_definitions() if development_enabled else []),
                 *(workspace_module_tool_definitions() if development_enabled else []),
+                *(sidecaravan_memory_tool_definitions() if _sidecaravan_enabled() else []),
             ],
             include_builtin_tools=development_enabled,
         )
         _tool_manager_development_mode = development_enabled
+
+
+def _sidecaravan_enabled() -> bool:
+    if os.getenv("APMATIA_SIDECARAVAN_ENABLED", "").lower() not in {"1", "true", "yes", "on"}:
+        return False
+    token = os.getenv("SCV_TOKEN", "")
+    token_file = os.getenv("SCV_TOKEN_FILE", "")
+    return bool(token) or bool(token_file and Path(token_file).is_file())
+
+
+def _build_sidecaravan_providers(agent_manager):
+    try:
+        return build_sidecaravan_memory_tool_providers(agent_manager)
+    except (OSError, ValueError, RuntimeError):
+        return []
 
 
 def _set_agent_tools_definitions_enabled(

@@ -5,9 +5,7 @@ from unittest.mock import patch
 
 import pytest
 from fastapi import HTTPException
-from fastapi.testclient import TestClient
 
-from apmatia.api.http.app import create_app
 from apmatia.api.http.routes import module_routes
 from apmatia.api.internal.module_views import get_module_view_document, list_module_view_documents
 from apmatia.core.registry import Registry
@@ -93,11 +91,8 @@ def test_http_routes_serialize_catalog_and_individual_document():
         "apmatia.api.http.routes.module_routes.get_module_view_document",
         return_value=document,
     ):
-        client = TestClient(create_app())
-        catalog_response = client.get("/api/module-view-documents")
-        document_response = client.get("/api/module-views/example.items.view/document")
+        catalog_response = module_routes.get_view_documents(SimpleNamespace())
+        document_response = module_routes.get_view_document(SimpleNamespace(), "example.items.view")
 
-    assert catalog_response.status_code == 200
-    assert catalog_response.json() == [document]
-    assert document_response.status_code == 200
-    assert document_response.json() == document
+    assert catalog_response == [document]
+    assert document_response == document

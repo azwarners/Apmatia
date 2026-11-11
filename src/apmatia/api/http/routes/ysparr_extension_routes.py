@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from apmatia.api.internal.agent_management import list_agents
+from apmatia.api.internal.tools import execute_tool_call, list_tools_available_to_agent
 from apmatia.api.http.routes.agent_routes import _is_publication_eligible
 from apmatia.api.http.routes.public_agent_routes import _public_agent
 
@@ -25,6 +26,12 @@ class ResolveRequest(BaseModel):
     version: str = Field(min_length=1)
     model: str = Field(min_length=1)
     request: dict = Field(default_factory=dict)
+
+
+class ToolInvocationRequest(BaseModel):
+    arguments: dict = Field(default_factory=dict)
+    call_id: str | None = None
+    approval_granted: bool = False
 
 
 @router.get("/catalog")
@@ -81,6 +88,46 @@ def resolve(payload: ResolveRequest, request: Request) -> dict:
     }
 
 
+@router.get("/agents/{agent_id}/tools")
+def agent_tools(agent_id: int, request: Request) -> dict:
+    """Return assigned Sidecaravan tools for one verified private agent."""
+    _authorized_private_agent(request, agent_id)
+    tools = [
+        tool
+        for tool in list_tools_available_to_agent(agent_id)
+        if tool.get("metadata", {}).get("integration") == "sidecaravan"
+    ]
+    return {"version": "1", "agent_id": agent_id, "tools": tools}
+
+
+@router.post("/agents/{agent_id}/tools/{tool_name}")
+def invoke_agent_tool(
+    agent_id: int,
+    tool_name: str,
+    payload: ToolInvocationRequest,
+    request: Request,
+) -> dict:
+    """Invoke an assigned Sidecaravan tool after rechecking the principal mapping."""
+    _authorized_private_agent(request, agent_id)
+    tool = next(
+        (
+            item
+            for item in list_tools_available_to_agent(agent_id)
+            if item.get("name") == tool_name and item.get("metadata", {}).get("integration") == "sidecaravan"
+        ),
+        None,
+    )
+    if tool is None or tool.get("id") is None:
+        raise HTTPException(status_code=404, detail="agent tool not found")
+    return execute_tool_call(
+        tool_id=int(tool["id"]),
+        arguments=payload.arguments,
+        requester_agent_id=agent_id,
+        call_id=payload.call_id,
+        approval_granted=payload.approval_granted,
+    )
+
+
 def _agent_for_entry(entry: dict, agents: list[dict]) -> dict | None:
     """Resolve a catalog entry to the exact current agent record.
 
@@ -128,3 +175,17 @@ def _principal_user_id(request: Request) -> int | None:
         return int(user_id) if user_id is not None else None
     except (TypeError, ValueError, json.JSONDecodeError):
         return None
+
+
+def _authorized_private_agent(request: Request, agent_id: int) -> dict:
+    principal_user_id = _principal_user_id(request)
+    if principal_user_id is None:
+        raise HTTPException(status_code=404, detail="agent tool not found")
+    agent = next((item for item in list_agents() if item.get("id") == agent_id), None)
+    if (
+        agent is None
+        or agent.get("is_public", False)
+        or agent.get("owner_user_id") != principal_user_id
+    ):
+        raise HTTPException(status_code=404, detail="agent tool not found")
+    return agent

@@ -16,3 +16,9 @@ modules.
 The extension endpoints are read-only and can require a bearer token through
 `APMATIA_YSPARR_EXTENSION_API_KEY`; Ysparr sends the corresponding
 `YSPARR_EXTENSION_API_KEY` value.
+
+The optional memory-tool extension is separate from model resolution. It
+revalidates the mapped principal and private-agent ownership on every list and
+invocation request, then uses Apmatia's existing assigned-tool runtime. Its
+provider speaks Sidecaravan's newline-delimited MCP contract and never imports
+Memkeeper or accepts a caller-supplied team token.

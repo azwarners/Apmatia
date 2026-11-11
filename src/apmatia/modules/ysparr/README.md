@@ -27,3 +27,19 @@ IDs to existing Apmatia user IDs in `APMATIA_YSPARR_PRINCIPAL_MAP`. A mapped
 principal receives its own eligible private agents plus public starters;
 unmapped or missing principals receive public starters only, and private
 selectors fail closed.
+
+When Sidecaravan is enabled (`APMATIA_SIDECARAVAN_ENABLED=1` and either
+`SCV_TOKEN` or a readable `SCV_TOKEN_FILE`),
+the authenticated extension also exposes the selected private agent's assigned
+memory tools:
+
+* `GET /api/public/ysparr/agents/{agent_id}/tools` returns assigned
+  `memory.recall` and `memory.save` definitions.
+* `POST /api/public/ysparr/agents/{agent_id}/tools/{tool_name}` accepts
+  `{"arguments": {...}, "call_id": "...", "approval_granted": false}` and
+  returns the normal Apmatia tool result.
+
+Both endpoints require the extension bearer key and a valid HMAC principal
+assertion. The mapped principal must own the private agent; this check runs on
+every request. Sidecaravan is called only through its `scv-mcp` MCP boundary,
+and retrieved content includes source metadata and remains untrusted data.

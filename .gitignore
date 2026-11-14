@@ -4,6 +4,7 @@ __pycache__/
 .env
 docker-compose.override.yml
 .codex/
+.codebase-memory/
 .streamlit/
 flet_debug.log
 
